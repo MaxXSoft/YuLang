@@ -6,6 +6,7 @@
 #include <string>
 #include <cstdint>
 #include <cstddef>
+#include <cassert>
 
 namespace yulang::front {
 
@@ -46,17 +47,17 @@ enum class Operator {
   LogicAnd, LogicOr, LogicNot,
   // &, |, ~, ^, <<, >>
   And, Or, Not, Xor, Shl, Shr,
+  // .
+  Access,
   // =, +=, -=, *=, /=, %=
   Assign, AssAdd, AssSub, AssMul, AssDiv, AssMod,
   // &=, |=, ^=, <<=, >>=
   AssAnd, AssOr, AssXor, AssShl, AssShr,
-  // .
-  Access,
 };
 
 class Lexer {
  public:
-  Lexer(std::istream &in) : in_(in) {}
+  Lexer(std::istream &in) : in_(in) { Reset(); }
 
   // reset lexer status
   void Reset() {
@@ -125,6 +126,28 @@ class Lexer {
   Operator op_val_;
   char other_val_;
 };
+
+// check if operator is assign ('=', '+=', '-=', ...)
+inline bool IsOperatorAssign(Operator op) {
+  return static_cast<int>(op) >= static_cast<int>(Operator::Assign);
+}
+
+// get de-assigned operator ('+=' -> '+', '-=' -> '-', ...)
+inline Operator GetDeAssignedOp(Operator op) {
+  switch (op) {
+    case Operator::AssAdd: return Operator::Add;
+    case Operator::AssSub: return Operator::Sub;
+    case Operator::AssMul: return Operator::Mul;
+    case Operator::AssDiv: return Operator::Div;
+    case Operator::AssMod: return Operator::Mod;
+    case Operator::AssAnd: return Operator::And;
+    case Operator::AssOr: return Operator::Or;
+    case Operator::AssXor: return Operator::Xor;
+    case Operator::AssShl: return Operator::Shl;
+    case Operator::AssShr: return Operator::Shr;
+    default: assert(false); return Operator::Assign;
+  }
+}
 
 }  // namespace yulang::front
 
