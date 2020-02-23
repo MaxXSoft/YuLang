@@ -1,0 +1,3 @@
+[submodule "3rdparty/xstl"]
+	path = 3rdparty/xstl
+	url = https://github.com/MaxXSoft/XSTL/
