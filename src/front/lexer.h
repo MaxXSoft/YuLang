@@ -10,7 +10,7 @@
 namespace yulang::front {
 
 enum class Token {
-  Error, End, EOL,
+  Error, End,
   Id, Int, Float, String, Char,
   Keyword, Operator,
   Other,
@@ -66,12 +66,10 @@ class Lexer {
     in_ >> std::noskipws;
   }
 
+  // check if next token is end of line, and skip it if true
+  bool SkipEOL();
   // get next token from input stream
   Token NextToken();
-  // check if next token is end of line
-  bool IsNextEOL();
-  // expect next token is end of line
-  void ExpectEOL();
 
   // current line position
   std::size_t line_pos() const { return line_pos_; }
@@ -109,6 +107,7 @@ class Lexer {
   Token HandleId();
   Token HandleNum();
   Token HandleString();
+  Token HandleChar();
   Token HandleOperator();
   Token HandleComment();
   Token HandleBlockComment();
