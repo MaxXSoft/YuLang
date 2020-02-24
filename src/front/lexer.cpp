@@ -292,6 +292,9 @@ Token Lexer::HandleEOL() {
 }
 
 bool Lexer::SkipEOL() {
+  // skip spaces
+  while (!IsEOL() && std::isspace(last_char_)) NextChar();
+  // check if is delimiter
   if (last_char_ == ';') {
     NextChar();
     return true;
