@@ -8,6 +8,7 @@
 #include "xstl/style.h"
 
 using namespace yulang::front;
+using namespace yulang::define;
 
 namespace {
 
