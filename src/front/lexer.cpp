@@ -5,8 +5,6 @@
 #include <cstdlib>
 #include <cctype>
 
-#include "xstl/style.h"
-
 using namespace yulang::front;
 using namespace yulang::define;
 
@@ -57,12 +55,9 @@ bool IsOperatorChar(char c) {
 
 }  // namespace
 
-Token Lexer::PrintError(std::string_view message) {
-  using namespace xstl;
-  // print error message
-  std::cerr << style("B") << "lexer";
-  std::cerr << " (line " << line_pos_ << "): " << style("RBr") << "error";
-  std::cerr << ": " << message << std::endl;
+Token Lexer::LogError(std::string_view message) {
+  // log error using logger
+  logger_.LogError(message);
   // increase error count
   ++error_num_;
   return Token::Error;
@@ -140,7 +135,7 @@ Token Lexer::HandleNum() {
           return Token::Int;
         }
         else {
-          return PrintError("invalid number literal");
+          return LogError("invalid number literal");
         }
         break;
       }
@@ -183,7 +178,7 @@ Token Lexer::HandleNum() {
     default:;
   }
   // check if conversion is valid
-  return *end_pos ? PrintError("invalid number literal") : ret;
+  return *end_pos ? LogError("invalid number literal") : ret;
 }
 
 Token Lexer::HandleString() {
@@ -194,14 +189,14 @@ Token Lexer::HandleString() {
     if (last_char_ == '\\') {
       // read escape char
       int ret = ReadEscape();
-      if (ret < 0) return PrintError("invalid escape character");
+      if (ret < 0) return LogError("invalid escape character");
       str += ret;
     }
     else {
       str += last_char_;
     }
     NextChar();
-    if (IsEOL()) return PrintError("expected '\"'");
+    if (IsEOL()) return LogError("expected '\"'");
   }
   // eat right quotation mark
   NextChar();
@@ -215,7 +210,7 @@ Token Lexer::HandleChar() {
   if (last_char_ == '\\') {
     // read escape char
     int ret = ReadEscape();
-    if (ret < 0) return PrintError("invalid escape character");
+    if (ret < 0) return LogError("invalid escape character");
     char_val_ = ret;
   }
   else {
@@ -223,7 +218,7 @@ Token Lexer::HandleChar() {
   }
   NextChar();
   // check & eat right quotation mark
-  if (last_char_ != '\'') return PrintError("expected \"'\"");
+  if (last_char_ != '\'') return LogError("expected \"'\"");
   NextChar();
   return Token::Char;
 }
@@ -274,11 +269,11 @@ Token Lexer::HandleBlockComment() {
   bool star = false;
   while (!in_.eof() && !(star && last_char_ == '/')) {
     star = last_char_ == '*';
-    if (IsEOL() && !in_.eof()) ++line_pos_;
+    if (IsEOL() && !in_.eof()) logger_.IncreaseLinePos();
     NextChar();
   }
   // check unclosed block comment
-  if (in_.eof()) return PrintError("comment unclosed at EOF");
+  if (in_.eof()) return LogError("comment unclosed at EOF");
   // eat '/'
   NextChar();
   return NextToken();
@@ -286,10 +281,26 @@ Token Lexer::HandleBlockComment() {
 
 Token Lexer::HandleEOL() {
   do {
-    ++line_pos_;
+    logger_.IncreaseLinePos();
     NextChar();
   } while (IsEOL() && !in_.eof());
   return NextToken();
+}
+
+void Lexer::Reset() {
+  logger_.set_line_pos(1);
+  error_num_ = 0;
+  last_char_ = ' ';
+  // check if file was opened
+  if (!in_.is_open()) {
+    LogError("failed to open file");
+  }
+  else {
+    // reset status of file stream
+    in_.clear();
+    in_.seekg(0, std::ios::beg);
+    in_ >> std::noskipws;
+  }
 }
 
 bool Lexer::SkipEOL() {

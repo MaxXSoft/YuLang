@@ -1,36 +1,33 @@
 #ifndef YULANG_FRONT_LEXER_H_
 #define YULANG_FRONT_LEXER_H_
 
-#include <istream>
+#include <fstream>
+#include <utility>
 #include <string_view>
 #include <string>
+#include <memory>
 #include <cstdint>
 #include <cstddef>
 #include <cassert>
 
 #include "define/token.h"
+#include "front/logger.h"
 
 namespace yulang::front {
 
 class Lexer {
  public:
-  Lexer(std::istream &in) : in_(in) { Reset(); }
+  Lexer(std::string_view file) : in_(file), logger_(file) { Reset(); }
 
   // reset lexer status
-  void Reset() {
-    line_pos_ = 1;
-    error_num_ = 0;
-    last_char_ = ' ';
-    in_ >> std::noskipws;
-  }
-
+  void Reset();
   // check if next token is end of line, and skip it if true
   bool SkipEOL();
   // get next token from input stream
   define::Token NextToken();
 
-  // current line position
-  std::size_t line_pos() const { return line_pos_; }
+  // current logger
+  const Logger &logger() const { return logger_; }
   // current error count
   std::size_t error_num() const { return error_num_; }
   // identifiers
@@ -57,7 +54,7 @@ class Lexer {
   }
 
   // print error message and return Token::Error
-  define::Token PrintError(std::string_view message);
+  define::Token LogError(std::string_view message);
 
   // read escape character from stream
   int ReadEscape();
@@ -71,8 +68,9 @@ class Lexer {
   define::Token HandleBlockComment();
   define::Token HandleEOL();
 
-  std::istream &in_;
-  std::size_t line_pos_, error_num_;
+  std::ifstream in_;
+  Logger logger_;
+  std::size_t error_num_;
   char last_char_;
   // value of token
   std::string id_val_, str_val_;
@@ -83,6 +81,9 @@ class Lexer {
   define::Operator op_val_;
   char other_val_;
 };
+
+// pointer to lexer
+using LexerPtr = std::shared_ptr<Lexer>;
 
 }  // namespace yulang::front
 
