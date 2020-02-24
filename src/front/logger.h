@@ -22,6 +22,10 @@ class Logger {
   }
   void set_line_pos(std::size_t line_pos) { line_pos_ = line_pos; }
 
+  // getters
+  std::string_view cur_file() const { return cur_file_; }
+  std::size_t line_pos() const { return line_pos_; }
+
  private:
   std::string_view cur_file_;
   std::size_t line_pos_;

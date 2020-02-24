@@ -11,7 +11,7 @@ using namespace yulang::front;
 void Logger::LogError(std::string_view message) const {
   using namespace xstl;
   // print error message
-  std::cerr << style("B") << cur_file_;
-  std::cerr << ":" << line_pos_ << ": " << style("RBr") << "error:";
-  std::cerr << " " << message << std::endl;
+  std::cerr << style("B") << cur_file_ << ":" << line_pos_ << ": ";
+  std::cerr << style("RBr") << "error: ";
+  std::cerr << message << std::endl;
 }
