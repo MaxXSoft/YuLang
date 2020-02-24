@@ -8,17 +8,19 @@ namespace yulang::front {
 
 class Logger {
  public:
-  Logger() {}
-  Logger(std::string_view cur_file) : cur_file_(cur_file), line_pos_(0) {}
+  Logger() : cur_file_(""), line_pos_(1) {}
+  Logger(std::string_view cur_file) : cur_file_(cur_file), line_pos_(1) {}
 
   // print error message to stderr
-  void LogError(std::string_view message);
+  void LogError(std::string_view message) const;
+  // increase line position
+  void IncreaseLinePos() { ++line_pos_; }
 
   // setters
   void set_cur_file(std::string_view cur_file) {
     cur_file_ = cur_file;
   }
-  void set_line_num(std::size_t line_pos) { line_pos_ = line_pos; }
+  void set_line_pos(std::size_t line_pos) { line_pos_ = line_pos; }
 
  private:
   std::string_view cur_file_;

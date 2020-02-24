@@ -8,7 +8,7 @@ using namespace yulang::front;
 
 // TODO: show content of file
 
-void Logger::LogError(std::string_view message) {
+void Logger::LogError(std::string_view message) const {
   using namespace xstl;
   // print error message
   std::cerr << style("B") << cur_file_;
