@@ -1,6 +1,7 @@
 #include "front/lexer.h"
 
 #include <iostream>
+#include <cstddef>
 #include <cstring>
 #include <cstdlib>
 #include <cctype>
@@ -56,10 +57,7 @@ bool IsOperatorChar(char c) {
 }  // namespace
 
 Token Lexer::LogError(std::string_view message) {
-  // log error using logger
   logger_.LogError(message);
-  // increase error count
-  ++error_num_;
   return Token::Error;
 }
 
@@ -288,8 +286,7 @@ Token Lexer::HandleEOL() {
 }
 
 void Lexer::Reset() {
-  logger_.set_line_pos(1);
-  error_num_ = 0;
+  logger_.Reset();
   last_char_ = ' ';
   // check if file was opened
   if (!in_.is_open()) {

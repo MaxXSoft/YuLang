@@ -7,7 +7,6 @@
 #include <string>
 #include <memory>
 #include <cstdint>
-#include <cstddef>
 #include <cassert>
 
 #include "define/token.h"
@@ -28,8 +27,6 @@ class Lexer {
 
   // current logger
   const Logger &logger() const { return logger_; }
-  // current error count
-  std::size_t error_num() const { return error_num_; }
   // identifiers
   std::string_view id_val() const { return id_val_; }
   // integer values
@@ -48,7 +45,10 @@ class Lexer {
   char other_val() const { return other_val_; }
 
  private:
-  void NextChar() { in_ >> last_char_; }
+  void NextChar() {
+    in_ >> last_char_;
+    logger_.IncreaseColPos();
+  }
   bool IsEOL() {
     return in_.eof() || last_char_ == '\n' || last_char_ == '\r';
   }
@@ -70,7 +70,6 @@ class Lexer {
 
   std::ifstream in_;
   Logger logger_;
-  std::size_t error_num_;
   char last_char_;
   // value of token
   std::string id_val_, str_val_;
