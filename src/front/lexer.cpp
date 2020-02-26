@@ -6,6 +6,8 @@
 #include <cstdlib>
 #include <cctype>
 
+#include "define/token.h"
+
 using namespace yulang::front;
 using namespace yulang::define;
 
@@ -15,27 +17,8 @@ enum class NumberType {
   Normal, Hex, Bin, Float
 };
 
-const char *kKeywords[] = {
-  "var", "let", "def", "declare", "type", "as", "sizeof",
-  "struct", "enum", "asm",
-  "i8", "i16", "i32", "i64",
-  "u8", "u16", "u32", "u64",
-  "bool", "f32", "f64",
-  "true", "false", "null",
-  "import", "public", "extern", "volatile",
-  "if", "else", "when", "while", "for", "in",
-  "break", "continue", "return",
-};
-
-const char *kOperators[] = {
-  "+", "-", "*", "/", "%",
-  "==", "!=", "<", "<=", ">", ">=",
-  "&&", "||", "!",
-  "&", "|", "~", "^", "<<", ">>",
-  ".",
-  "=", "+=", "-=", "*=", "/=", "%=",
-  "&=", "|=", "^=", "<<=", ">>=",
-};
+const char *kKeywords[] = {YULANG_KEYWORDS(YULANG_EXPAND_SECOND)};
+const char *kOperators[] = {YULANG_OPERATORS(YULANG_EXPAND_SECOND)};
 
 // get index of a string in string array
 template <typename T, std::size_t N>
