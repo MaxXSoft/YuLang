@@ -3,6 +3,41 @@
 
 #include <cassert>
 
+// all supported keywords
+#define YULANG_KEYWORDS(e) \
+  e(Var, "var") e(Let, "let") e(Def, "def") e(Declare, "declare") \
+  e(Type, "type") e(As, "as") e(SizeOf, "sizeof") \
+  e(Struct, "struct") e(Enum, "enum") e(Asm, "asm") \
+  e(Int8, "i8") e(Int16, "i16") e(Int32, "i32") e(Int64, "i64") \
+  e(UInt8, "u8") e(UInt16, "u16") e(UInt32, "u32") e(UInt64, "u64") \
+  e(Bool, "bool") e(Float32, "f32") e(Float64, "f64") \
+  e(True, "true") e(False, "false") e(Null, "null") \
+  e(Import, "import") e(Public, "public") \
+  e(Extern, "extern") e(Volatile, "volatile") \
+  e(If, "if") e(Else, "else") e(When, "when") e(While, "while") \
+  e(For, "for") e(In, "in") \
+  e(Break, "break") e(Continue, "continue") e(Return, "return")
+
+// all supported operators
+#define YULANG_OPERATORS(e) \
+  e(Add, "+", 90) e(Sub, "-", 90) e(Mul, "*", 100) e(Div, "/", 100) \
+  e(Mod, "%", 100) e(Equal, "==", 60) e(NotEqual, "!=", 60) \
+  e(Less, "<", 70) e(LessEqual, "<=", 70) e(Great, ">", 70) \
+  e(GreatEqual, ">=", 70) e(LogicAnd, "&&", 20) e(LogicOr, "||", 10) \
+  e(LogicNot, "!", -1) e(And, "&", 50) e(Or, "|", 30) e(Not, "~", -1) \
+  e(Xor, "^", 40) e(Shl, "<<", 80) e(Shr, ">>", 80) e(Access, ".", 110) \
+  e(Assign, "=", 0) e(AssAdd, "+=", 0) e(AssSub, "-=", 0) \
+  e(AssMul, "*=", 0) e(AssDiv, "/=", 0) e(AssMod, "%=", 0) \
+  e(AssAnd, "&=", 0) e(AssOr, "|=", 0) e(AssXor, "^=", 0) \
+  e(AssShl, "<<=", 0) e(AssShr, ">>=", 0)
+
+// expand first element to comma-separated list
+#define YULANG_EXPAND_FIRST(i, ...)       i,
+// expand second element to comma-separated list
+#define YULANG_EXPAND_SECOND(i, j, ...)   j,
+// expand third element to comma-separated list
+#define YULANG_EXPAND_THIRD(i, j, k, ...) k,
+
 namespace yulang::define {
 
 enum class Token {
@@ -12,43 +47,8 @@ enum class Token {
   Other,
 };
 
-enum class Keyword {
-  // var, let, def, declare, type, as, sizeof
-  Var, Let, Def, Declare, Type, As, SizeOf,
-  // struct, enum, asm
-  Struct, Enum, Asm,
-  // i8, i16, i32, i64
-  Int8, Int16, Int32, Int64,
-  // u8, u16, u32, u64
-  UInt8, UInt16, UInt32, UInt64,
-  // bool, f32, f64
-  Bool, Float32, Float64,
-  // true, false, null
-  True, False, Null,
-  // import, public, extern, volatile
-  Import, Public, Extern, Volatile,
-  // if, else, when, while, for, in
-  If, Else, When, While, For, In,
-  // break, continue, return
-  Break, Continue, Return,
-};
-
-enum class Operator {
-  // +, -, *, /, %
-  Add, Sub, Mul, Div, Mod,
-  // ==, !=, <, <=, >, >=
-  Equal, NotEqual, Less, LessEqual, Great, GreatEqual,
-  // &&, ||, !
-  LogicAnd, LogicOr, LogicNot,
-  // &, |, ~, ^, <<, >>
-  And, Or, Not, Xor, Shl, Shr,
-  // .
-  Access,
-  // =, +=, -=, *=, /=, %=
-  Assign, AssAdd, AssSub, AssMul, AssDiv, AssMod,
-  // &=, |=, ^=, <<=, >>=
-  AssAnd, AssOr, AssXor, AssShl, AssShr,
-};
+enum class Keyword { YULANG_KEYWORDS(YULANG_EXPAND_FIRST) };
+enum class Operator { YULANG_OPERATORS(YULANG_EXPAND_FIRST) };
 
 // check if operator is assign ('=', '+=', '-=', ...)
 inline bool IsOperatorAssign(Operator op) {
