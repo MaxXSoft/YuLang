@@ -89,8 +89,6 @@ class Parser {
   define::ASTPtr LogError(std::string_view message);
 
   define::ASTPtr ParseLine();
-  define::ASTPtr ParseStatement();
-  define::ASTPtr ParseDefinition(define::PropertyAST::Property prop);
 
   define::ASTPtr ParseVarDef(define::ASTPtr prop);
   define::ASTPtr ParseLetDef(define::ASTPtr prop);
@@ -150,6 +148,8 @@ class Parser {
 
   // try to get property and goto next token
   define::PropertyAST::Property GetProp();
+  // parse statement, returns nullptr if failed
+  define::ASTPtr GetStatement(define::PropertyAST::Property prop);
   // make sure current token is specific character and goto next token
   bool ExpectChar(char c);
   // make sure current token is identifier
