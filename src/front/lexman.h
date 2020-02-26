@@ -31,6 +31,8 @@ class LexerManager {
   bool SetLexer(const ModName &mod_name);
   // set or create current lexer by path
   bool SetLexer(const std::filesystem::path &file);
+  // reset lexer to default
+  void ResetLexer() { lexer_ = default_lexer_; }
 
   // getters
   // current lexer

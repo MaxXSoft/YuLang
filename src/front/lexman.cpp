@@ -17,29 +17,22 @@ bool LexerManager::LoadDefauleSource(const std::filesystem::path &file) {
 }
 
 bool LexerManager::SetLexer(const ModName &mod_name) {
-  if (mod_name.empty()) {
-    // reset current lexer to default
-    lexer_ = default_lexer_;
-    return true;
-  }
-  else {
-    // get relative path of specific module
-    std::filesystem::path mod_path;
-    for (int i = 0; i < mod_name.size(); ++i) {
-      if (i == mod_name.size() - 1) {
-        mod_path /= mod_name[i] + ".yu";
-      }
-      else {
-        mod_path /= mod_name[i];
-      }
+  // get relative path of specific module
+  std::filesystem::path mod_path;
+  for (int i = 0; i < mod_name.size(); ++i) {
+    if (i == mod_name.size() - 1) {
+      mod_path /= mod_name[i] + ".yu";
     }
-    // try to find a valid module on the disk
-    for (const auto &i : import_paths_) {
-      auto file = i.second / mod_path;
-      if (std::filesystem::exists(file)) return SetLexer(file);
+    else {
+      mod_path /= mod_name[i];
     }
-    return false;
   }
+  // try to find a valid module on the disk
+  for (const auto &i : import_paths_) {
+    auto file = i.second / mod_path;
+    if (std::filesystem::exists(file)) return SetLexer(file);
+  }
+  return false;
 }
 
 bool LexerManager::SetLexer(const std::filesystem::path &file) {
