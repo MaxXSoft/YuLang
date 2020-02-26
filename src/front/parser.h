@@ -17,7 +17,6 @@ class Parser {
   void Reset() {
     lexer()->Reset();
     ended_ = false;
-    in_import_ = false;
     NextToken();
   }
 
@@ -39,9 +38,8 @@ class Parser {
  private:
   // get next token from lexer
   define::Token NextToken() {
-    return cur_token_ = lexer()->logger().error_num()
-                            ? define::Token::Error
-                            : lexer()->NextToken();
+    return cur_token_ = logger().error_num() ? define::Token::Error
+                                             : lexer()->NextToken();
   }
 
   // check if current token is a character (token type 'Other')
@@ -75,7 +73,7 @@ class Parser {
   template <typename T, typename... Args>
   define::ASTPtr MakeAST(Args &&... args) {
     auto ast = std::make_unique<T>(std::forward<Args>(args)...);
-    ast->set_logger(lexer()->logger());
+    ast->set_logger(logger());
     return ast;
   }
 
@@ -92,9 +90,11 @@ class Parser {
 
   define::ASTPtr ParseLine();
   define::ASTPtr ParseStatement();
+  define::ASTPtr ParseDefinition(define::PropertyAST::Property prop);
 
   define::ASTPtr ParseVarDef(define::ASTPtr prop);
   define::ASTPtr ParseLetDef(define::ASTPtr prop);
+  define::ASTPtr ParseFunDef(define::ASTPtr prop);
   define::ASTPtr ParseDeclare(define::ASTPtr prop);
   define::ASTPtr ParseTypeAlias(define::ASTPtr prop);
   define::ASTPtr ParseStruct(define::ASTPtr prop);
@@ -103,8 +103,8 @@ class Parser {
 
   define::ASTPtr ParseVarElem();
   define::ASTPtr ParseLetElem();
-  define::ASTPtr ParseArgList();
-  define::ASTPtr ParseEnumList();
+  define::ASTPtr ParseArgElem();
+  define::ASTPtr ParseEnumElem();
 
   define::ASTPtr ParseBlock();
   define::ASTPtr ParseBlockLine();
@@ -138,7 +138,6 @@ class Parser {
   define::ASTPtr ParseString();
   define::ASTPtr ParseBool();
   define::ASTPtr ParseNull();
-  define::ASTPtr ParseFunDef();
   define::ASTPtr ParseValInit();
 
   define::ASTPtr ParseType();
@@ -152,17 +151,19 @@ class Parser {
   // try to get property and goto next token
   define::PropertyAST::Property GetProp();
   // make sure current token is specific character and goto next token
-  bool CheckChar(char c);
+  bool ExpectChar(char c);
+  // make sure current token is identifier
+  bool ExpectId();
 
   // private getters
   // current lexer
   const LexerPtr &lexer() const { return lex_man_.lexer(); }
+  // current logger
+  const Logger &logger() const { return lex_man_.lexer()->logger(); }
 
   LexerManager &lex_man_;
   define::Token cur_token_;
   bool ended_;
-  // flag is true if is parsing an 'import' file
-  bool in_import_;
 };
 
 }  // namespace yulang::front
