@@ -18,7 +18,7 @@ declare   ::= property "declare" id ":" type;
 ty_alias  ::= visib "type" id "=" type;
 struct    ::= visib "struct" id "{" arg_list [","] "}";
 enum      ::= visib "enum" id [":" type] "{" enum_list "}";
-import    ::= "import" id {"." id};
+import    ::= visib "import" id {"." id};
 
 property  ::= ["public" | "extern"];
 visib     ::= ["public"];
