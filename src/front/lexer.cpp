@@ -16,7 +16,7 @@ enum class NumberType {
 };
 
 const char *kKeywords[] = {
-  "var", "let", "declare", "type", "as", "sizeof",
+  "var", "let", "def", "declare", "type", "as", "sizeof",
   "struct", "enum", "asm",
   "i8", "i16", "i32", "i64",
   "u8", "u16", "u32", "u64",

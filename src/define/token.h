@@ -13,8 +13,8 @@ enum class Token {
 };
 
 enum class Keyword {
-  // var, let, declare, type, as, sizeof
-  Var, Let, Declare, Type, As, SizeOf,
+  // var, let, def, declare, type, as, sizeof
+  Var, Let, Def, Declare, Type, As, SizeOf,
   // struct, enum, asm
   Struct, Enum, Asm,
   // i8, i16, i32, i64
