@@ -4,8 +4,8 @@ using namespace yulang::front;
 
 void LexerManager::AddImportPath(int priority,
                                  const std::filesystem::path &path) {
-  for (const auto &i : import_paths_) {
-    if (i.second == path) return;
+  for (const auto &[_, p] : import_paths_) {
+    if (p == path) return;
   }
   import_paths_.insert({priority, path});
 }
@@ -28,8 +28,8 @@ bool LexerManager::SetLexer(const ModName &mod_name) {
     }
   }
   // try to find a valid module on the disk
-  for (const auto &i : import_paths_) {
-    auto file = i.second / mod_path;
+  for (const auto &[_, path] : import_paths_) {
+    auto file = path / mod_path;
     if (std::filesystem::exists(file)) return SetLexer(file);
   }
   return false;
