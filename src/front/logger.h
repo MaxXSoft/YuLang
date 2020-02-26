@@ -12,17 +12,21 @@ class Logger {
   Logger(std::string_view cur_file)
       : cur_file_(cur_file), line_pos_(1), col_pos_(0) {}
 
+  static void ResetErrorNum(bool warn_as_err) {
+    error_num_ = 0;
+    warning_num_ = 0;
+    warn_as_err_ = warn_as_err;
+  }
+
   // print error message to stderr
   void LogError(std::string_view message) const;
   // print warning message to stderr
   void LogWarning(std::string_view message) const;
 
-  // reset error number
+  // reset line & column position
   void Reset() {
     line_pos_ = 1;
     col_pos_ = 0;
-    error_num_ = 0;
-    warning_num_ = 0;
   }
   // increase line position
   void IncreaseLinePos() {
@@ -31,9 +35,6 @@ class Logger {
   }
   // increase column position
   void IncreaseColPos() { ++col_pos_; }
-
-  // setters
-  void set_warn_as_err(bool warn_as_err) { warn_as_err_ = warn_as_err; }
 
   // getters
   std::string_view cur_file() const { return cur_file_; }
