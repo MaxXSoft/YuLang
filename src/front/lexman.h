@@ -25,14 +25,14 @@ class LexerManager {
 
   // add a path as a new import path
   void AddImportPath(int priority, const std::filesystem::path &path);
-  // load default source file
-  bool LoadDefauleSource(const std::filesystem::path &file);
-  // set or create current lexer by module name
-  bool SetLexer(const ModName &mod_name);
-  // set or create current lexer by path
-  bool SetLexer(const std::filesystem::path &file);
-  // reset lexer to default
-  void ResetLexer() { lexer_ = default_lexer_; }
+  // load source file
+  bool LoadSource(const std::filesystem::path &file);
+  // set or create current lexer by module name, returns last lexer
+  LexerPtr SetLexer(const ModName &mod_name);
+  // set or create current lexer by path, returns last lexer
+  LexerPtr SetLexer(const std::filesystem::path &file);
+  // set current lexer
+  LexerPtr SetLexer(const LexerPtr &lexer);
 
   // getters
   // current lexer
@@ -43,8 +43,8 @@ class LexerManager {
   std::map<int, std::filesystem::path, std::greater<int>> import_paths_;
   // all loaded lexers
   std::unordered_map<std::string, LexerPtr> lexers_;
-  // default/current lexer
-  LexerPtr default_lexer_, lexer_;
+  // current lexer
+  LexerPtr lexer_;
 };
 
 }  // namespace yulang::front

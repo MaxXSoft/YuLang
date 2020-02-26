@@ -10,13 +10,12 @@ void LexerManager::AddImportPath(int priority,
   import_paths_.insert({priority, path});
 }
 
-bool LexerManager::LoadDefauleSource(const std::filesystem::path &file) {
+bool LexerManager::LoadSource(const std::filesystem::path &file) {
   AddImportPath(0, file.parent_path());
-  if (!SetLexer(file)) return false;
-  default_lexer_ = lexer_;
+  return !!SetLexer(file);
 }
 
-bool LexerManager::SetLexer(const ModName &mod_name) {
+LexerPtr LexerManager::SetLexer(const ModName &mod_name) {
   // get relative path of specific module
   std::filesystem::path mod_path;
   for (int i = 0; i < mod_name.size(); ++i) {
@@ -32,10 +31,11 @@ bool LexerManager::SetLexer(const ModName &mod_name) {
     auto file = path / mod_path;
     if (std::filesystem::exists(file)) return SetLexer(file);
   }
-  return false;
+  return nullptr;
 }
 
-bool LexerManager::SetLexer(const std::filesystem::path &file) {
+LexerPtr LexerManager::SetLexer(const std::filesystem::path &file) {
+  auto last = lexer_;
   // find specific lexer
   auto file_str = file.string();
   auto it = lexers_.find(file_str);
@@ -48,5 +48,12 @@ bool LexerManager::SetLexer(const std::filesystem::path &file) {
     // just set
     lexer_ = it->second;
   }
-  return true;
+  return last;
+}
+
+// set current lexer
+LexerPtr LexerManager::SetLexer(const LexerPtr &lexer) {
+  auto last = lexer_;
+  lexer_ = lexer;
+  return last;
 }
