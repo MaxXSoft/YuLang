@@ -355,6 +355,9 @@ ASTPtr Parser::ParseBlockStatement() {
       case Keyword::Return: return ParseControl();
     }
   }
+  else if (IsTokenChar('{')) {
+    return ParseBlock();
+  }
   // parse expression
   return ParseExpr();
 }
