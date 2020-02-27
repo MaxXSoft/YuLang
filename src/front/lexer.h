@@ -20,6 +20,8 @@ class Lexer {
 
   // reset lexer status
   void Reset();
+  // check if next token is end of line
+  bool CheckEOL();
   // check if next token is end of line, and skip it if true
   bool SkipEOL();
   // get next token from input stream
@@ -58,6 +60,8 @@ class Lexer {
 
   // read escape character from stream
   int ReadEscape();
+  // skip spaces in stream
+  void SkipSpaces();
 
   define::Token HandleId();
   define::Token HandleNum();

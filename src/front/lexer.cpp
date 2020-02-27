@@ -77,6 +77,10 @@ int Lexer::ReadEscape() {
   }
 }
 
+void Lexer::SkipSpaces() {
+  while (!IsEOL() && std::isspace(last_char_)) NextChar();
+}
+
 Token Lexer::HandleId() {
   // read string
   std::string id;
@@ -283,9 +287,13 @@ void Lexer::Reset() {
   }
 }
 
+bool Lexer::CheckEOL() {
+  SkipSpaces();
+  return last_char_ == ';' || IsEOL();
+}
+
 bool Lexer::SkipEOL() {
-  // skip spaces
-  while (!IsEOL() && std::isspace(last_char_)) NextChar();
+  SkipSpaces();
   // check if is delimiter
   if (last_char_ == ';') {
     NextChar();
@@ -300,7 +308,7 @@ Token Lexer::NextToken() {
   // end of file
   if (in_.eof()) return Token::End;
   // skip spaces
-  while (!IsEOL() && std::isspace(last_char_)) NextChar();
+  SkipSpaces();
   // id or keyword
   if (std::isalpha(last_char_) || last_char_ == '_') return HandleId();
   // number
