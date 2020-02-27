@@ -123,10 +123,8 @@ class Parser {
   define::ASTPtr ParseUnary();
   define::ASTPtr ParseFactor();
 
-  define::ASTPtr ParseIfExpr();
-  define::ASTPtr ParseWhenExpr();
-  define::ASTPtr ParseIndex();
-  define::ASTPtr ParseFunCall();
+  define::ASTPtr ParseIndex(define::ASTPtr expr);
+  define::ASTPtr ParseFunCall(define::ASTPtr expr);
 
   define::ASTPtr ParseValue();
   define::ASTPtr ParseInt();
@@ -141,10 +139,11 @@ class Parser {
   define::ASTPtr ParseType();
   define::ASTPtr ParseValType();
   define::ASTPtr ParsePrimType();
-  define::ASTPtr ParsePointer();
-  define::ASTPtr ParseArray();
-  define::ASTPtr ParseRef();
   define::ASTPtr ParseFunc();
+  define::ASTPtr ParseVolaType(define::ASTPtr type);
+  define::ASTPtr ParseArray(define::ASTPtr type);
+  define::ASTPtr ParsePointer(bool is_var, define::ASTPtr type);
+  define::ASTPtr ParseRef(bool is_var, define::ASTPtr type);
 
   // try to get property and goto next token
   define::PropertyAST::Property GetProp();
