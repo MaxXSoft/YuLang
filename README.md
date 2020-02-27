@@ -46,7 +46,7 @@ expr      ::= binary {id binary};
 binary    ::= cast {bin_op cast};
 cast      ::= unary ["as" type];
 unary     ::= [unary_op | "sizeof"] factor;
-factor    ::= value | if_expr   | when_expr
+factor    ::= value | if_else   | when
             | index | fun_call  | "(" expr ")";
 
 bin_op    ::= "+"   | "-"   | "*"   | "/"   | "%"   | "&"
@@ -55,11 +55,8 @@ bin_op    ::= "+"   | "-"   | "*"   | "/"   | "%"   | "&"
             | "="   | "+="  | "-="  | "*="  | "/="  | "%="
             | "&="  | "|="  | "^="  | "<<=" | ">>=" | ".";
 unary_op  ::= "+"   | "-"   | "!"   | "~"   | "*"   | "&";
-if_expr   ::= "if" expression block {"else" "if" expression block}
-              "else" block;
-when_expr ::= "when" expression "{" when_elem {when_elem} "else" block "}";
-index     ::= expr "[" expr "]";
-fun_call  ::= expr "(" [expr {"," expr}] ")";
+index     ::= factor "[" expr "]";
+fun_call  ::= factor "(" [expr {"," expr}] ")";
 
 value     ::= INT_VAL | FLOAT_VAL | CHAR_VAL | id
             | string  | bool      | null_ptr | val_init;
@@ -67,15 +64,14 @@ id        ::= ID_VAL;
 string    ::= STR_VAL;
 bool      ::= "true"  | "false";
 null_ptr  ::= "null";
-val_init  ::= type "{" [expr {"," expr} [","]] "}";
+val_init  ::= "[" type "]" "{" [expr {"," expr} [","]] "}";
 
-type      ::= val_type | ref | func;
-val_type  ::= (prim_type | id | pointer | array) ["volatile"];
+type      ::= (prim_type | id | pointer | array | ref | func) ["volatile"];
 prim_type ::= "i8"  | "i16" | "i32" | "i64" | "u8"  | "u16"
             | "u32" | "u64" | "f32" | "f64" | "bool";
-pointer   ::= type ["val"] "*";
+pointer   ::= type ["var"] "*";
 array     ::= type "[" expr "]";
-ref       ::= type ["val"] "&";
+ref       ::= type ["var"] "&";
 func      ::= "(" [type {"," type}] ")" [":" type];
 ```
 
