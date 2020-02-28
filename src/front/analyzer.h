@@ -1,7 +1,11 @@
 #ifndef YULANG_FRONT_ANALYZER_H_
 #define YULANG_FRONT_ANALYZER_H_
 
+#include <optional>
+
+#include "define/ast.h"
 #include "define/type.h"
+#include "define/symbol.h"
 
 namespace yulang::front {
 
@@ -50,8 +54,50 @@ class Analyzer {
   define::TypePtr AnalyzeOn(define::PointerTypeAST &ast);
   define::TypePtr AnalyzeOn(define::RefTypeAST &ast);
 
+  std::optional<define::EvalNum> EvalOn(define::PropertyAST &ast);
+  std::optional<define::EvalNum> EvalOn(define::VarLetDefAST &ast);
+  std::optional<define::EvalNum> EvalOn(define::FunDefAST &ast);
+  std::optional<define::EvalNum> EvalOn(define::DeclareAST &ast);
+  std::optional<define::EvalNum> EvalOn(define::TypeAliasAST &ast);
+  std::optional<define::EvalNum> EvalOn(define::StructAST &ast);
+  std::optional<define::EvalNum> EvalOn(define::EnumAST &ast);
+  std::optional<define::EvalNum> EvalOn(define::ImportAST &ast);
+  std::optional<define::EvalNum> EvalOn(define::VarElemAST &ast);
+  std::optional<define::EvalNum> EvalOn(define::LetElemAST &ast);
+  std::optional<define::EvalNum> EvalOn(define::ArgElemAST &ast);
+  std::optional<define::EvalNum> EvalOn(define::EnumElemAST &ast);
+  std::optional<define::EvalNum> EvalOn(define::BlockAST &ast);
+  std::optional<define::EvalNum> EvalOn(define::IfAST &ast);
+  std::optional<define::EvalNum> EvalOn(define::WhenAST &ast);
+  std::optional<define::EvalNum> EvalOn(define::WhileAST &ast);
+  std::optional<define::EvalNum> EvalOn(define::ForInAST &ast);
+  std::optional<define::EvalNum> EvalOn(define::AsmAST &ast);
+  std::optional<define::EvalNum> EvalOn(define::ControlAST &ast);
+  std::optional<define::EvalNum> EvalOn(define::WhenElemAST &ast);
+  std::optional<define::EvalNum> EvalOn(define::BinaryAST &ast);
+  std::optional<define::EvalNum> EvalOn(define::CastAST &ast);
+  std::optional<define::EvalNum> EvalOn(define::UnaryAST &ast);
+  std::optional<define::EvalNum> EvalOn(define::IndexAST &ast);
+  std::optional<define::EvalNum> EvalOn(define::FunCallAST &ast);
+  std::optional<define::EvalNum> EvalOn(define::IntAST &ast);
+  std::optional<define::EvalNum> EvalOn(define::FloatAST &ast);
+  std::optional<define::EvalNum> EvalOn(define::CharAST &ast);
+  std::optional<define::EvalNum> EvalOn(define::IdAST &ast);
+  std::optional<define::EvalNum> EvalOn(define::StringAST &ast);
+  std::optional<define::EvalNum> EvalOn(define::BoolAST &ast);
+  std::optional<define::EvalNum> EvalOn(define::NullAST &ast);
+  std::optional<define::EvalNum> EvalOn(define::ValInitAST &ast);
+  std::optional<define::EvalNum> EvalOn(define::PrimTypeAST &ast);
+  std::optional<define::EvalNum> EvalOn(define::UserTypeAST &ast);
+  std::optional<define::EvalNum> EvalOn(define::FuncTypeAST &ast);
+  std::optional<define::EvalNum> EvalOn(define::VolaTypeAST &ast);
+  std::optional<define::EvalNum> EvalOn(define::ArrayTypeAST &ast);
+  std::optional<define::EvalNum> EvalOn(define::PointerTypeAST &ast);
+  std::optional<define::EvalNum> EvalOn(define::RefTypeAST &ast);
+
  private:
-  //
+  EnvPtr symbols_, user_types_;
+  EvalEnvPtr values_;
 };
 
 }  // namespace yulang::front
