@@ -20,10 +20,6 @@ class Lexer {
 
   // reset lexer status
   void Reset();
-  // check if next token is end of line
-  bool CheckEOL();
-  // skip end of line
-  void SkipEOL();
   // get next token from input stream
   define::Token NextToken();
 

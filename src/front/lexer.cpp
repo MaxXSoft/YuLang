@@ -269,7 +269,7 @@ Token Lexer::HandleEOL() {
     logger_.IncreaseLinePos();
     NextChar();
   } while (IsEOL() && !in_.eof());
-  return NextToken();
+  return Token::EOL;
 }
 
 void Lexer::Reset() {
@@ -287,17 +287,6 @@ void Lexer::Reset() {
   }
 }
 
-bool Lexer::CheckEOL() {
-  SkipSpaces();
-  return last_char_ == ';' || IsEOL();
-}
-
-void Lexer::SkipEOL() {
-  SkipSpaces();
-  // check if is delimiter
-  if (last_char_ == ';') NextChar();
-}
-
 Token Lexer::NextToken() {
   // end of file
   if (in_.eof()) return Token::End;
@@ -313,8 +302,12 @@ Token Lexer::NextToken() {
   if (last_char_ == '\'') return HandleChar();
   // operator or id
   if (IsOperatorChar(last_char_)) return HandleOperator();
-  // end of line
+  // end of line (line break or delimiter)
   if (IsEOL()) return HandleEOL();
+  if (last_char_ == ';') {
+    NextChar();
+    return Token::EOL;
+  }
   // other characters
   other_val_ = last_char_;
   NextChar();
