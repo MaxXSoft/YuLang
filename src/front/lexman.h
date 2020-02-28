@@ -40,7 +40,7 @@ class LexerManager {
 
  private:
   // import path records
-  std::map<int, std::filesystem::path, std::greater<int>> import_paths_;
+  std::multimap<int, std::filesystem::path, std::greater<int>> imp_paths_;
   // all loaded lexers
   std::unordered_map<std::string, LexerPtr> lexers_;
   // current lexer

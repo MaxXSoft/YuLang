@@ -15,10 +15,10 @@ inline std::filesystem::path GetFullPath(const std::filesystem::path &p) {
 void LexerManager::AddImportPath(int priority,
                                  const std::filesystem::path &path) {
   auto full_path = GetFullPath(path);
-  for (const auto &[_, p] : import_paths_) {
+  for (const auto &[_, p] : imp_paths_) {
     if (p == full_path) return;
   }
-  import_paths_.insert({priority, full_path});
+  imp_paths_.insert({priority, full_path});
 }
 
 bool LexerManager::LoadSource(const std::filesystem::path &file) {
@@ -39,7 +39,7 @@ LexerPtr LexerManager::SetLexer(const ModName &mod_name) {
     }
   }
   // try to find a valid module on the disk
-  for (const auto &[_, path] : import_paths_) {
+  for (const auto &[_, path] : imp_paths_) {
     auto file = path / mod_path;
     if (std::filesystem::exists(file)) return SetLexer(file);
   }
