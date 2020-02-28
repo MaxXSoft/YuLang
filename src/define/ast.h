@@ -5,6 +5,7 @@
 #include <vector>
 #include <utility>
 #include <string>
+#include <string_view>
 #include <cstdint>
 
 #include "front/logger.h"
@@ -62,7 +63,7 @@ class VarLetDefAST : public BaseAST {
 // function definition
 class FunDefAST : public BaseAST {
  public:
-  FunDefAST(ASTPtr prop, const std::string &id, ASTPtrList args,
+  FunDefAST(ASTPtr prop, std::string_view id, ASTPtrList args,
             ASTPtr type, ASTPtr body)
       : id_(id), prop_(std::move(prop)), type_(std::move(type)),
         body_(std::move(body)), args_(std::move(args)) {}
@@ -78,7 +79,7 @@ class FunDefAST : public BaseAST {
 // declaration
 class DeclareAST : public BaseAST {
  public:
-  DeclareAST(ASTPtr prop, const std::string &id, ASTPtr type)
+  DeclareAST(ASTPtr prop, std::string_view id, ASTPtr type)
       : id_(id), prop_(std::move(prop)), type_(std::move(type)) {}
 
   void Dump(std::ostream &os) override;
@@ -91,7 +92,7 @@ class DeclareAST : public BaseAST {
 // type alias
 class TypeAliasAST : public BaseAST {
  public:
-  TypeAliasAST(ASTPtr prop, const std::string &id, ASTPtr type)
+  TypeAliasAST(ASTPtr prop, std::string_view id, ASTPtr type)
       : id_(id), prop_(std::move(prop)), type_(std::move(type)) {}
 
   void Dump(std::ostream &os) override;
@@ -104,7 +105,7 @@ class TypeAliasAST : public BaseAST {
 // structure definition
 class StructAST : public BaseAST {
  public:
-  StructAST(ASTPtr prop, const std::string &id, ASTPtrList defs)
+  StructAST(ASTPtr prop, std::string_view id, ASTPtrList defs)
       : id_(id), prop_(std::move(prop)), defs_(std::move(defs)) {}
 
   void Dump(std::ostream &os) override;
@@ -118,7 +119,7 @@ class StructAST : public BaseAST {
 // enumeration definition
 class EnumAST : public BaseAST {
  public:
-  EnumAST(ASTPtr prop, const std::string &id, ASTPtr type, ASTPtrList defs)
+  EnumAST(ASTPtr prop, std::string_view id, ASTPtr type, ASTPtrList defs)
       : id_(id), prop_(std::move(prop)), type_(std::move(type)),
         defs_(std::move(defs)) {}
 
@@ -144,7 +145,7 @@ class ImportAST : public BaseAST {
 // variable definition element
 class VarElemAST : public BaseAST {
  public:
-  VarElemAST(const std::string &id, ASTPtr type, ASTPtr init)
+  VarElemAST(std::string_view id, ASTPtr type, ASTPtr init)
       : id_(id), type_(std::move(type)), init_(std::move(init)) {}
 
   void Dump(std::ostream &os) override;
@@ -157,7 +158,7 @@ class VarElemAST : public BaseAST {
 // constant definition element
 class LetElemAST : public BaseAST {
  public:
-  LetElemAST(const std::string &id, ASTPtr type, ASTPtr init)
+  LetElemAST(std::string_view id, ASTPtr type, ASTPtr init)
       : id_(id), type_(std::move(type)), init_(std::move(init)) {}
 
   void Dump(std::ostream &os) override;
@@ -170,7 +171,7 @@ class LetElemAST : public BaseAST {
 // argument definition
 class ArgElemAST : public BaseAST {
  public:
-  ArgElemAST(const std::string &id, ASTPtr type)
+  ArgElemAST(std::string_view id, ASTPtr type)
       : id_(id), type_(std::move(type)) {}
 
   void Dump(std::ostream &os) override;
@@ -183,7 +184,7 @@ class ArgElemAST : public BaseAST {
 // element of enumeration list
 class EnumElemAST : public BaseAST {
  public:
-  EnumElemAST(const std::string &id, ASTPtr expr)
+  EnumElemAST(std::string_view id, ASTPtr expr)
       : id_(id), expr_(std::move(expr)) {}
 
   void Dump(std::ostream &os) override;
@@ -221,8 +222,8 @@ class IfAST : public BaseAST {
 class WhenAST : public BaseAST {
  public:
   WhenAST(ASTPtr expr, ASTPtrList elems, ASTPtr else_then)
-      : expr_(std::move(expr)), elems_(std::move(elems)),
-        else_then_(std::move(else_then)) {}
+      : expr_(std::move(expr)), else_then_(std::move(else_then)),
+        elems_(std::move(elems)) {}
 
   void Dump(std::ostream &os) override;
 
@@ -246,7 +247,7 @@ class WhileAST : public BaseAST {
 // for-in statement
 class ForInAST : public BaseAST {
  public:
-  ForInAST(const std::string &id, ASTPtr expr, ASTPtr body)
+  ForInAST(std::string_view id, ASTPtr expr, ASTPtr body)
       : id_(id), expr_(std::move(expr)), body_(std::move(body)) {}
 
   void Dump(std::ostream &os) override;
@@ -259,7 +260,7 @@ class ForInAST : public BaseAST {
 // inline assembly
 class AsmAST : public BaseAST {
  public:
-  AsmAST(const std::string &asm_str) : asm_str_(asm_str) {}
+  AsmAST(std::string_view asm_str) : asm_str_(asm_str) {}
 
   void Dump(std::ostream &os) override;
 
@@ -394,7 +395,7 @@ class CharAST : public BaseAST {
 // identifier
 class IdAST : public BaseAST {
  public:
-  IdAST(const std::string &id) : id_(id) {}
+  IdAST(std::string_view id) : id_(id) {}
 
   void Dump(std::ostream &os) override;
 
@@ -405,7 +406,7 @@ class IdAST : public BaseAST {
 // string literal
 class StringAST : public BaseAST {
  public:
-  StringAST(const std::string &str) : str_(str) {}
+  StringAST(std::string_view str) : str_(str) {}
 
   void Dump(std::ostream &os) override;
 
@@ -459,7 +460,7 @@ class PrimTypeAST : public BaseAST {
 // user defined type
 class UserTypeAST : public BaseAST {
  public:
-  UserTypeAST(const std::string &id) : id_(id) {}
+  UserTypeAST(std::string_view id) : id_(id) {}
 
   void Dump(std::ostream &os) override;
 

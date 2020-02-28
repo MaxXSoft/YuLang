@@ -353,6 +353,7 @@ ASTPtr Parser::ParseBlockStatement() {
       case Keyword::Asm: return ParseAsm();
       case Keyword::Break: case Keyword::Continue:
       case Keyword::Return: return ParseControl();
+      default:;
     }
   }
   else if (IsTokenChar('{')) {
@@ -502,7 +503,9 @@ ASTPtr Parser::ParseExpr() {
     auto rhs = ParseBinary();
     if (!rhs) return nullptr;
     // make function call
-    ASTPtrList args = {std::move(lhs), std::move(rhs)};
+    ASTPtrList args;
+    args.push_back(std::move(lhs));
+    args.push_back(std::move(rhs));
     lhs = MakeAST<FunCallAST>(log, std::move(id), std::move(args));
   }
   return lhs;
@@ -823,9 +826,9 @@ ASTPtr Parser::ParsePrimType() {
     case Keyword::Float64: case Keyword::Bool: break;
     default: return LogError("expected primitive type keywords");
   }
-  auto type = MakeAST<PrimTypeAST>(lexer()->key_val());
+  auto ast = MakeAST<PrimTypeAST>(lexer()->key_val());
   NextToken();
-  return type;
+  return ast;
 }
 
 ASTPtr Parser::ParseFunc() {
@@ -877,15 +880,15 @@ ASTPtr Parser::ParseArray(ASTPtr type) {
 }
 
 ASTPtr Parser::ParsePointer(bool is_var, ASTPtr type) {
-  auto type = MakeAST<PointerTypeAST>(is_var, std::move(type));
+  auto ast = MakeAST<PointerTypeAST>(is_var, std::move(type));
   NextToken();
-  return type;
+  return ast;
 }
 
 ASTPtr Parser::ParseRef(bool is_var, ASTPtr type) {
-  auto type = MakeAST<RefTypeAST>(is_var, std::move(type));
+  auto ast = MakeAST<RefTypeAST>(is_var, std::move(type));
   NextToken();
-  return type;
+  return ast;
 }
 
 Prop Parser::GetProp() {
@@ -911,6 +914,7 @@ ASTPtr Parser::GetStatement(Prop prop) {
     case Keyword::Let: return ParseLetDef(std::move(prop_ast));
     case Keyword::Def: return ParseFunDef(std::move(prop_ast));
     case Keyword::Declare: return ParseDeclare(std::move(prop_ast));
+    default:;
   }
   // parse type, struct, enum and import
   if (IsTokenKeyword(Keyword::Type) || IsTokenKeyword(Keyword::Struct) ||
@@ -925,6 +929,7 @@ ASTPtr Parser::GetStatement(Prop prop) {
       case Keyword::Struct: return ParseStruct(std::move(prop_ast));
       case Keyword::Enum: return ParseEnum(std::move(prop_ast));
       case Keyword::Import: return ParseImport();
+      default:;
     }
   }
   return nullptr;

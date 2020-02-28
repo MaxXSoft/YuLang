@@ -79,7 +79,7 @@ class Parser {
 
   // create a new AST with specific logger
   template <typename T, typename... Args>
-  define::ASTPtr MakeAST(const Logger &logger, Args &&... args) {
+  define::ASTPtr MakeAST(Logger &logger, Args &&... args) {
     auto ast = std::make_unique<T>(std::forward<Args>(args)...);
     ast->set_logger(logger);
     return ast;
