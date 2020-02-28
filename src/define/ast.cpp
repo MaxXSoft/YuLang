@@ -10,12 +10,9 @@ using namespace yulang::define;
 
 namespace {
 
-using Prop = PropertyAST::Property;
-
 const char *kOperators[] = {YULANG_OPERATORS(YULANG_EXPAND_SECOND)};
 
 int indent_count = 0, in_expr = 0;
-Prop last_prop;
 
 const auto indent = [](std::ostream &os) {
   if (indent_count && !in_expr) {
@@ -38,26 +35,13 @@ xstl::Guard InExpr() {
   return xstl::Guard([] { --in_expr; });
 }
 
-xstl::Guard DumpProp(std::ostream &os, ASTPtr &prop) {
-  if (indent_count) {
-    prop->Dump(os);
-    os << indent;
-    if (last_prop == Prop::None) {
-      os << "namespace {" << std::endl;
-      ++in_expr;
-      ++indent_count;
-      return xstl::Guard([&os] {
-        os << "}  // namespace" << std::endl;
-        --in_expr;
-        --indent_count;
-      });
-    }
-    else if (last_prop == Prop::Extern || last_prop == Prop::Demangle) {
-      os << "extern \"C\" ";
-      return InExpr();
-    }
-  }
-  return xstl::Guard(nullptr);
+xstl::Guard InExpr(std::ostream &os) {
+  os << indent;
+  ++in_expr;
+  return xstl::Guard([&os] {
+    --in_expr;
+    if (!in_expr) os << ';' << std::endl;
+  });
 }
 
 void ConvertChar(std::ostream &os, char c, bool in_char) {
@@ -88,19 +72,28 @@ void ConvertChar(std::ostream &os, char c, bool in_char) {
 }  // namespace
 
 void PropertyAST::Dump(std::ostream &os) {
-  last_prop = prop_;
+  using Prop = PropertyAST::Property;
+  if (!indent_count) {
+    os << indent;
+    if (prop_ == Prop::None) {
+      os << "static ";
+    }
+    else if (prop_ == Prop::Extern || prop_ == Prop::Demangle) {
+      os << "extern \"C\" ";
+    }
+  }
 }
 
 void VarLetDefAST::Dump(std::ostream &os) {
   for (const auto &i : defs_) {
-    auto guard = DumpProp(os, prop_);
+    prop_->Dump(os);
     os << indent;
     i->Dump(os);
   }
 }
 
 void FunDefAST::Dump(std::ostream &os) {
-  auto prop = DumpProp(os, prop_);
+  prop_->Dump(os);
   os << indent;
   type_->Dump(os);
   os << ' ' << id_ << '(';
@@ -113,21 +106,21 @@ void FunDefAST::Dump(std::ostream &os) {
 }
 
 void DeclareAST::Dump(std::ostream &os) {
-  auto prop = DumpProp(os, prop_);
+  prop_->Dump(os);
   os << indent;
   type_->Dump(os);
   os << ' ' << id_ << ';' << std::endl;
 }
 
 void TypeAliasAST::Dump(std::ostream &os) {
-  auto prop = DumpProp(os, prop_);
+  prop_->Dump(os);
   os << indent << "using " << id_ << " = ";
   type_->Dump(os);
   os << ';' << std::endl;
 }
 
 void StructAST::Dump(std::ostream &os) {
-  auto prop = DumpProp(os, prop_);
+  prop_->Dump(os);
   os << indent << "struct " << id_ << " {" << std::endl;
   {
     auto ind = Indent();
@@ -141,7 +134,7 @@ void StructAST::Dump(std::ostream &os) {
 }
 
 void EnumAST::Dump(std::ostream &os) {
-  auto prop = DumpProp(os, prop_);
+  prop_->Dump(os);
   os << indent << "enum class " << id_;
   if (type_) {
     os << " : ";
@@ -239,6 +232,7 @@ void IfAST::Dump(std::ostream &os) {
   if (in_expr) in_expr = 0;
   then_->Dump(os);
   if (else_then_) {
+    os << indent << "else" << std::endl;
     else_then_->Dump(os);
   }
   in_expr = prev_inex;
@@ -342,7 +336,7 @@ void BinaryAST::Dump(std::ostream &os) {
 }
 
 void CastAST::Dump(std::ostream &os) {
-  auto inex = InExpr();
+  auto inex = InExpr(os);
   os << '(';
   type_->Dump(os);
   os << ") ";
@@ -350,18 +344,22 @@ void CastAST::Dump(std::ostream &os) {
 }
 
 void UnaryAST::Dump(std::ostream &os) {
-  auto inex = InExpr();
-  if (op_ == UnaryOp::SizeOf) {
-    os << "sizeof ";
-  }
-  else {
-    os << kOperators[static_cast<int>(op_)];
+  auto inex = InExpr(os);
+  switch (op_) {
+    case UnaryOp::Pos:      os << '+';        break;
+    case UnaryOp::Neg:      os << '-';        break;
+    case UnaryOp::LogicNot: os << '!';        break;
+    case UnaryOp::Not:      os << '~';        break;
+    case UnaryOp::DeRef:    os << '*';        break;
+    case UnaryOp::AddrOf:   os << '&';        break;
+    case UnaryOp::SizeOf:   os << "sizeof ";  break;
+    default: assert(false);
   }
   opr_->Dump(os);
 }
 
 void IndexAST::Dump(std::ostream &os) {
-  auto inex = InExpr();
+  auto inex = InExpr(os);
   expr_->Dump(os);
   os << '[';
   index_->Dump(os);
@@ -369,7 +367,7 @@ void IndexAST::Dump(std::ostream &os) {
 }
 
 void FunCallAST::Dump(std::ostream &os) {
-  auto inex = InExpr();
+  auto inex = InExpr(os);
   expr_->Dump(os);
   os << '(';
   for (int i = 0; i < args_.size(); ++i) {
@@ -380,46 +378,51 @@ void FunCallAST::Dump(std::ostream &os) {
 }
 
 void IntAST::Dump(std::ostream &os) {
+  auto inex = InExpr(os);
   os << value_;
 }
 
 void FloatAST::Dump(std::ostream &os) {
+  auto inex = InExpr(os);
   os << value_;
 }
 
 void CharAST::Dump(std::ostream &os) {
+  auto inex = InExpr(os);
   os << "'";
   ConvertChar(os, c_, true);
   os << "'";
 }
 
 void IdAST::Dump(std::ostream &os) {
+  auto inex = InExpr(os);
   os << id_;
 }
 
 void StringAST::Dump(std::ostream &os) {
+  auto inex = InExpr(os);
   os << '"';
   for (const auto &c : str_) ConvertChar(os, c, false);
   os << '"';
 }
 
 void BoolAST::Dump(std::ostream &os) {
+  auto inex = InExpr(os);
   os << std::boolalpha << value_;
 }
 
 void NullAST::Dump(std::ostream &os) {
+  auto inex = InExpr(os);
   os << "nullptr";
 }
 
 void ValInitAST::Dump(std::ostream &os) {
+  auto inex = InExpr(os);
   type_->Dump(os);
   os << " {";
-  {
-    auto inex = InExpr();
-    for (int i = 0; i < elems_.size(); ++i) {
-      if (i) os << ", ";
-      elems_[i]->Dump(os);
-    }
+  for (int i = 0; i < elems_.size(); ++i) {
+    if (i) os << ", ";
+    elems_[i]->Dump(os);
   }
   os << '}';
 }
