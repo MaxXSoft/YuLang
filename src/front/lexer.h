@@ -22,21 +22,21 @@ class Lexer {
   void Reset();
   // check if next token is end of line
   bool CheckEOL();
-  // check if next token is end of line, and skip it if true
-  bool SkipEOL();
+  // skip end of line
+  void SkipEOL();
   // get next token from input stream
   define::Token NextToken();
 
   // current logger
   const Logger &logger() const { return logger_; }
   // identifiers
-  std::string_view id_val() const { return id_val_; }
+  const std::string &id_val() const { return id_val_; }
   // integer values
   std::uint64_t int_val() const { return int_val_; }
   // floating point values
   double fp_val() const { return fp_val_; }
   // string literals
-  std::string_view str_val() const { return str_val_; }
+  const std::string &str_val() const { return str_val_; }
   // character literals
   std::uint8_t char_val() const { return char_val_; }
   // keywords

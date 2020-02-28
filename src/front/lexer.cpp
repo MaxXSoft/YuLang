@@ -292,16 +292,10 @@ bool Lexer::CheckEOL() {
   return last_char_ == ';' || IsEOL();
 }
 
-bool Lexer::SkipEOL() {
+void Lexer::SkipEOL() {
   SkipSpaces();
   // check if is delimiter
-  if (last_char_ == ';') {
-    NextChar();
-    return true;
-  }
-  else {
-    return IsEOL();
-  }
+  if (last_char_ == ';') NextChar();
 }
 
 Token Lexer::NextToken() {
