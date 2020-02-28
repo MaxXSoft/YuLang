@@ -95,7 +95,12 @@ void VarLetDefAST::Dump(std::ostream &os) {
 void FunDefAST::Dump(std::ostream &os) {
   prop_->Dump(os);
   os << indent;
-  type_->Dump(os);
+  if (type_) {
+    type_->Dump(os);
+  }
+  else {
+    os << "void";
+  }
   os << ' ' << id_ << '(';
   for (int i = 0; i < args_.size(); ++i) {
     if (i) os << ", ";
