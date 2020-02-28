@@ -1,18 +1,30 @@
 #include "front/lexman.h"
 
+#include <utility>
+
 using namespace yulang::front;
+
+namespace {
+
+inline std::filesystem::path GetFullPath(const std::filesystem::path &p) {
+  return std::filesystem::canonical(std::filesystem::absolute(p));
+}
+
+}  // namespace
 
 void LexerManager::AddImportPath(int priority,
                                  const std::filesystem::path &path) {
+  auto full_path = GetFullPath(path);
   for (const auto &[_, p] : import_paths_) {
-    if (p == path) return;
+    if (p == full_path) return;
   }
-  import_paths_.insert({priority, path});
+  import_paths_.insert({priority, full_path});
 }
 
 bool LexerManager::LoadSource(const std::filesystem::path &file) {
-  AddImportPath(0, file.parent_path());
-  return !!SetLexer(file);
+  auto full_path = GetFullPath(file);
+  AddImportPath(0, full_path.parent_path());
+  return !!SetLexer(full_path);
 }
 
 LexerPtr LexerManager::SetLexer(const ModName &mod_name) {
@@ -41,8 +53,9 @@ LexerPtr LexerManager::SetLexer(const std::filesystem::path &file) {
   auto it = lexers_.find(file_str);
   if (it == lexers_.end()) {
     // not found, create lexer
-    lexer_ = std::make_shared<Lexer>(file_str);
-    lexers_.insert({file_str, lexer_});
+    auto [it, _] = lexers_.insert({file_str, nullptr});
+    lexer_ = std::make_shared<Lexer>(it->first);
+    it->second = lexer_;
   }
   else {
     // just set
