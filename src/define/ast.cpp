@@ -329,7 +329,9 @@ void BinaryAST::Dump(std::ostream &os) {
   {
     auto inex = InExpr();
     lhs_->Dump(os);
-    os << ' ' << kOperators[static_cast<int>(op_)] << ' ';
+    if (op_ != Operator::Access) os << ' ';
+    os << kOperators[static_cast<int>(op_)];
+    if (op_ != Operator::Access) os << ' ';
     rhs_->Dump(os);
   }
   if (!in_expr) {
