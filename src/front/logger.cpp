@@ -15,7 +15,7 @@ bool Logger::warn_as_err_;
 void Logger::LogFileInfo() const {
   using namespace xstl;
   std::cerr << style("B") << cur_file_ << ":";
-  std::cerr << style("B") << line_pos_ << ":" << col_pos_ << ":";
+  std::cerr << style("B") << line_pos_ << ":" << col_pos_ << ": ";
 }
 
 void Logger::LogError(std::string_view message) const {
