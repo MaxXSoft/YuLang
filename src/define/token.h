@@ -41,7 +41,7 @@
 namespace yulang::define {
 
 enum class Token {
-  Error, End,
+  Error, End, EOL,
   Id, Int, Float, String, Char,
   Keyword, Operator,
   Other,
