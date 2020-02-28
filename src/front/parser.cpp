@@ -36,7 +36,7 @@ ASTPtr Parser::LogError(std::string_view message) {
 ASTPtr Parser::ParseLine() {
   auto stmt = GetStatement(GetProp());
   if (!stmt) return LogError("invalid statement");
-  if (!lexer()->SkipEOL()) return LogError("expected line break or ';'");
+  lexer()->SkipEOL();
   return stmt;
 }
 
@@ -337,7 +337,7 @@ ASTPtr Parser::ParseBlock() {
 
 ASTPtr Parser::ParseBlockLine() {
   auto stmt = ParseBlockStatement();
-  if (!lexer()->SkipEOL()) return LogError("expected line break or ';'");
+  lexer()->SkipEOL();
   return stmt;
 }
 
@@ -632,6 +632,9 @@ ASTPtr Parser::ParseFactor() {
     else if (IsTokenChar('(')) {
       factor = ParseFunCall(std::move(factor));
     }
+    else {
+      break;
+    }
   }
   return factor;
 }
@@ -788,7 +791,7 @@ ASTPtr Parser::ParseType() {
         type = ParseRef(is_var, std::move(type));
       }
       else {
-        return LogError("invalid type");
+        break;
       }
     }
     // check if is volatiled type
