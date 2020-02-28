@@ -218,7 +218,7 @@ ASTPtr Parser::ParseImport() {
     NextToken();
   }
   // switch lexer
-  auto last_tok = cur_token_;
+  auto last_token = last_token_, cur_token = cur_token_;
   auto last_lex = lex_man_.SetLexer(mod_name);
   if (!last_lex) return LogError("invalid module name");
   NextToken();
@@ -238,7 +238,8 @@ ASTPtr Parser::ParseImport() {
   }
   // reset to original status
   lex_man_.SetLexer(last_lex);
-  cur_token_ = last_tok;
+  last_token_ = last_token;
+  cur_token_ = cur_token;
   return MakeAST<ImportAST>(log, std::move(defs));
 }
 
@@ -467,7 +468,7 @@ ASTPtr Parser::ParseControl() {
   NextToken();
   // check return expression
   ASTPtr expr;
-  if (type == Keyword::Return && last_tok_ != Token::EOL) {
+  if (type == Keyword::Return && last_token_ != Token::EOL) {
     expr = ParseExpr();
     if (!expr) return nullptr;
   }
@@ -498,7 +499,7 @@ ASTPtr Parser::ParseExpr() {
   auto lhs = ParseBinary();
   if (!lhs) return nullptr;
   // try to get the rest binary expressions
-  while (cur_token_ == Token::Id && last_tok_ != Token::EOL) {
+  while (cur_token_ == Token::Id && last_token_ != Token::EOL) {
     auto id = ParseId();
     auto rhs = ParseBinary();
     if (!rhs) return nullptr;
@@ -625,7 +626,7 @@ ASTPtr Parser::ParseFactor() {
     factor = ParseValue();
   }
   // parse the rest part
-  while (factor && last_tok_ != Token::EOL) {
+  while (factor && last_token_ != Token::EOL) {
     if (IsTokenChar('[')) {
       factor = ParseIndex(std::move(factor));
     }
@@ -770,7 +771,7 @@ ASTPtr Parser::ParseType() {
   // check if is volatiled type
   type = ParseVolaType(std::move(type));
   // parse the rest
-  while (last_tok_ != Token::EOL) {
+  while (last_token_ != Token::EOL) {
     if (IsTokenChar('[')) {
       // array type
       type = ParseArray(std::move(type));
@@ -921,7 +922,7 @@ ASTPtr Parser::GetStatement(Prop prop) {
   }
   // parse type, struct, enum and import
   if (IsTokenKeyword(Keyword::Type) || IsTokenKeyword(Keyword::Struct) ||
-      IsTokenKeyword(Keyword::Enum)) {
+      IsTokenKeyword(Keyword::Enum) || IsTokenKeyword(Keyword::Import)) {
     if (prop == Prop::Extern) {
       logger().LogWarning("type aliases, structures, enumerates and "
                           "import cannot be 'extern', try using 'public'");
@@ -958,7 +959,7 @@ bool Parser::ExpectId() {
 }
 
 bool Parser::ExpectEOL() {
-  if (last_tok_ != Token::EOL) {
+  if (last_token_ != Token::EOL) {
     LogError("expected line break or ';'");
     return false;
   }

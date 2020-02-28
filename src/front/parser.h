@@ -43,7 +43,7 @@ class Parser {
   }
   // get next token from lexer without skipping EOLs
   define::Token NextTokenKeepEOL() {
-    last_tok_ = cur_token_;
+    last_token_ = cur_token_;
     return cur_token_ = logger().error_num() ? define::Token::Error
                                              : lexer()->NextToken();
   }
@@ -169,7 +169,7 @@ class Parser {
   const Logger &logger() const { return lex_man_.lexer()->logger(); }
 
   LexerManager &lex_man_;
-  define::Token last_tok_, cur_token_;
+  define::Token last_token_, cur_token_;
   bool ended_;
 };
 
