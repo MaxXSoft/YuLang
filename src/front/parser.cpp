@@ -36,7 +36,7 @@ ASTPtr Parser::LogError(std::string_view message) {
 ASTPtr Parser::ParseLine() {
   auto stmt = GetStatement(GetProp());
   if (!stmt) return LogError("invalid statement");
-  lexer()->SkipEOL();
+  if (!ExpectEOL()) return nullptr;
   return stmt;
 }
 
@@ -337,7 +337,7 @@ ASTPtr Parser::ParseBlock() {
 
 ASTPtr Parser::ParseBlockLine() {
   auto stmt = ParseBlockStatement();
-  lexer()->SkipEOL();
+  if (!ExpectEOL()) return nullptr;
   return stmt;
 }
 
@@ -467,7 +467,7 @@ ASTPtr Parser::ParseControl() {
   NextToken();
   // check return expression
   ASTPtr expr;
-  if (type == Keyword::Return && !lexer()->CheckEOL()) {
+  if (type == Keyword::Return && last_tok_ != Token::EOL) {
     expr = ParseExpr();
     if (!expr) return nullptr;
   }
@@ -498,7 +498,7 @@ ASTPtr Parser::ParseExpr() {
   auto lhs = ParseBinary();
   if (!lhs) return nullptr;
   // try to get the rest binary expressions
-  while (cur_token_ == Token::Id) {
+  while (cur_token_ == Token::Id && last_tok_ != Token::EOL) {
     auto id = ParseId();
     auto rhs = ParseBinary();
     if (!rhs) return nullptr;
@@ -625,7 +625,7 @@ ASTPtr Parser::ParseFactor() {
     factor = ParseValue();
   }
   // parse the rest part
-  while (factor && !lexer()->CheckEOL()) {
+  while (factor && last_tok_ != Token::EOL) {
     if (IsTokenChar('[')) {
       factor = ParseIndex(std::move(factor));
     }
@@ -770,7 +770,7 @@ ASTPtr Parser::ParseType() {
   // check if is volatiled type
   type = ParseVolaType(std::move(type));
   // parse the rest
-  while (!lexer()->CheckEOL()) {
+  while (last_tok_ != Token::EOL) {
     if (IsTokenChar('[')) {
       // array type
       type = ParseArray(std::move(type));
@@ -952,6 +952,14 @@ bool Parser::ExpectChar(char c) {
 bool Parser::ExpectId() {
   if (cur_token_ != Token::Id) {
     LogError("expected identifier");
+    return false;
+  }
+  return true;
+}
+
+bool Parser::ExpectEOL() {
+  if (last_tok_ != Token::EOL) {
+    LogError("expected line break or ';'");
     return false;
   }
   return true;

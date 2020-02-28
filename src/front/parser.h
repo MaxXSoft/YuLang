@@ -36,8 +36,14 @@ class Parser {
   bool ended() const { return ended_; }
 
  private:
-  // get next token from lexer
+  // get next token from lexer and skip all EOLs
   define::Token NextToken() {
+    while (NextTokenKeepEOL() == define::Token::EOL);
+    return cur_token_;
+  }
+  // get next token from lexer without skipping EOLs
+  define::Token NextTokenKeepEOL() {
+    last_tok_ = cur_token_;
     return cur_token_ = logger().error_num() ? define::Token::Error
                                              : lexer()->NextToken();
   }
@@ -153,6 +159,8 @@ class Parser {
   bool ExpectChar(char c);
   // make sure current token is identifier
   bool ExpectId();
+  // make sure last token is end of line
+  bool ExpectEOL();
 
   // private getters
   // current lexer
@@ -161,7 +169,7 @@ class Parser {
   const Logger &logger() const { return lex_man_.lexer()->logger(); }
 
   LexerManager &lex_man_;
-  define::Token cur_token_;
+  define::Token last_tok_, cur_token_;
   bool ended_;
 };
 
