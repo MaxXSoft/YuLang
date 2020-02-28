@@ -456,7 +456,12 @@ void UserTypeAST::Dump(std::ostream &os) {
 }
 
 void FuncTypeAST::Dump(std::ostream &os) {
-  ret_->Dump(os);
+  if (ret_) {
+    ret_->Dump(os);
+  }
+  else {
+    os << "void";
+  }
   os << " (*)(";
   for (int i = 0; i < args_.size(); ++i) {
     if (i) os << ", ";
