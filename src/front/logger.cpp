@@ -38,7 +38,7 @@ void Logger::LogWarning(std::string_view message) const {
   }
   // print warning message
   LogFileInfo();
-  std::cerr << style("Bc") << "warning: ";
+  std::cerr << style("Bp") << "warning: ";
   std::cerr << message << std::endl;
   // increase warning number
   ++warning_num_;
