@@ -357,9 +357,6 @@ ASTPtr Parser::ParseBlockStatement() {
       default:;
     }
   }
-  else if (IsTokenChar('{')) {
-    return ParseBlock();
-  }
   // parse expression
   return ParseExpr();
 }
@@ -616,6 +613,10 @@ ASTPtr Parser::ParseFactor() {
       default: return LogError("invalid factor");
     }
   }
+  else if (IsTokenChar('{')) {
+    // block
+    factor = ParseBlock();
+  }
   else if (IsTokenChar('(')) {
     // bracket expression
     NextToken();
@@ -623,6 +624,7 @@ ASTPtr Parser::ParseFactor() {
     if (!ExpectChar(')')) return nullptr;
   }
   else {
+    // other values
     factor = ParseValue();
   }
   // parse the rest part
