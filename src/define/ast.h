@@ -34,15 +34,17 @@ class BaseAST {
 
   // setters
   void set_logger(const front::Logger &logger) { logger_ = logger; }
-  const TypePtr &set_type(const TypePtr &type) { return type_ = type; }
+  const TypePtr &set_ast_type(const TypePtr &ast_type) {
+    return ast_type_ = ast_type;
+  }
 
   // getters
   const front::Logger &logger() const { return logger_; }
-  const TypePtr &type() const { return type_; }
+  const TypePtr &ast_type() const { return ast_type_; }
 
  private:
   front::Logger logger_;
-  TypePtr type_;
+  TypePtr ast_type_;
 };
 
 using ASTPtr = std::unique_ptr<BaseAST>;
