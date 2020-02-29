@@ -30,7 +30,7 @@ enum_list ::= id ["=" expr] ["," enum_list] [","];
 block     ::= "{" {blk_line} "}";
 blk_line  ::= blk_stmt {";" blk_stmt} [";"];
 blk_stmt  ::= stmt    | if_else | when    | while | for_in
-            | asm     | control | block   | expr;
+            | asm     | control | expr;
 
 if_else   ::= "if" expr block ["else" (if_else | block)];
 when      ::= "when" expr "{" when_elem {when_elem} ["else" block] "}";
@@ -45,7 +45,7 @@ expr      ::= binary {id binary};
 binary    ::= cast {bin_op cast};
 cast      ::= unary ["as" type];
 unary     ::= [unary_op | "sizeof"] factor;
-factor    ::= value | if_else   | when
+factor    ::= value | block     | if_else   | when
             | index | fun_call  | "(" expr ")";
 
 bin_op    ::= "+"   | "-"   | "*"   | "/"   | "%"   | "&"
