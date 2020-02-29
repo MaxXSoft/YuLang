@@ -195,11 +195,9 @@ void LetElemAST::Dump(std::ostream &os) {
     os << "auto";
   }
   os << ' ' << id_;
-  if (init_) {
-    os << " = ";
-    auto inex = InExpr();
-    init_->Dump(os);
-  }
+  os << " = ";
+  auto inex = InExpr();
+  init_->Dump(os);
   os << ';' << std::endl;
 }
 
@@ -259,6 +257,7 @@ void WhenAST::Dump(std::ostream &os) {
     }
     if (else_then_) {
       os << indent << "default:" << std::endl;
+      auto ind = Indent();
       else_then_->Dump(os);
       os << indent << "break;" << std::endl;
     }
@@ -319,6 +318,7 @@ void WhenElemAST::Dump(std::ostream &os) {
     i->Dump(os);
     os << ':' << std::endl;
   }
+  auto ind = Indent();
   body_->Dump(os);
   os << indent << "break;" << std::endl;
 }
