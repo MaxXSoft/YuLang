@@ -4,6 +4,8 @@
 #include <string>
 #include <variant>
 #include <optional>
+#include <unordered_map>
+#include <cstdint>
 
 #include "define/type.h"
 #include "xstl/nested.h"
@@ -14,8 +16,10 @@ namespace yulang::define {
 using EnvPtr = xstl::NestedMapPtr<std::string, TypePtr>;
 
 // evaluated values
-using EvalNum = std::variant<std::uint32_t, float, double>;
+using EvalNum = std::variant<std::uint64_t, float, double>;
+using EnumNum = std::unordered_map<std::string, EvalNum>;
 using EvalEnvPtr = xstl::NestedMapPtr<std::string, std::optional<EvalNum>>;
+using EnumEnvPtr = xstl::NestedMapPtr<std::string, std::optional<EnumNum>>;
 
 // make a new environment
 inline EnvPtr MakeEnv() {
@@ -35,6 +39,16 @@ inline EvalEnvPtr MakeEvalEnv() {
 // make a new environment (with outer environment)
 inline EvalEnvPtr MakeEvalEnv(const EvalEnvPtr &outer) {
   return xstl::MakeNestedMap<std::string, std::optional<EvalNum>>(outer);
+}
+
+// make a new evaluation environment (for enumerations)
+inline EnumEnvPtr MakeEnumEnv() {
+  return xstl::MakeNestedMap<std::string, std::optional<EnumNum>>();
+}
+
+// make a new environment (for enumerations, with outer environment)
+inline EnumEnvPtr MakeEnumEnv(const EnumEnvPtr &outer) {
+  return xstl::MakeNestedMap<std::string, std::optional<EnumNum>>(outer);
 }
 
 }  // namespace yulang::define
