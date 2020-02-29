@@ -224,7 +224,7 @@ ASTPtr Parser::ParseImport() {
   NextToken();
   // get all public/extern definitions
   ASTPtrList defs;
-  while (cur_token_ != Token::End) {
+  while (!logger().error_num() && cur_token_ != Token::End) {
     auto prop = GetProp();
     if (prop != Prop::None) {
       prop = prop == Prop::Extern ? Prop::Demangle : Prop::None;
@@ -923,7 +923,7 @@ ASTPtr Parser::GetStatement(Prop prop) {
   // parse type, struct, enum and import
   if (IsTokenKeyword(Keyword::Type) || IsTokenKeyword(Keyword::Struct) ||
       IsTokenKeyword(Keyword::Enum) || IsTokenKeyword(Keyword::Import)) {
-    if (prop == Prop::Extern) {
+    if (prop == Prop::Extern || prop == Prop::Demangle) {
       logger().LogWarning("type aliases, structures, enumerates and "
                           "import cannot be 'extern', try using 'public'");
       prop_ast = MakeAST<PropertyAST>(Prop::Public);
