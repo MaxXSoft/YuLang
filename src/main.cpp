@@ -23,6 +23,7 @@ int main(int argc, const char *argv[]) {
   while (auto ast = parser.ParseNext()) {
     ast->Dump(cout);
     if (!ast->SemaAnalyze(ana)) break;
+    ast->Eval(ana);
   }
   return lex_man.lexer()->logger().error_num();
 }
