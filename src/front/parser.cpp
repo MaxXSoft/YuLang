@@ -2,6 +2,7 @@
 
 #include <sstream>
 #include <stack>
+#include <cassert>
 
 #include "define/token.h"
 
@@ -217,10 +218,18 @@ ASTPtr Parser::ParseImport() {
     if (!IsTokenOperator(Operator::Access)) break;
     NextToken();
   }
+  // get module path
+  auto mod_path = lex_man_.GetModPath(mod_name);
+  if (mod_path.empty()) return LogError("invalid module name");
+  // check if module is loaded
+  if (lex_man_.IsLoaded(mod_path)) {
+    // return an empty 'ImportAST'
+    return MakeAST<ImportAST>(log, ASTPtrList());
+  }
   // switch lexer
   auto last_token = last_token_, cur_token = cur_token_;
-  auto last_lex = lex_man_.SetLexer(mod_name);
-  if (!last_lex) return LogError("invalid module name");
+  auto last_lex = lex_man_.SetLexer(mod_path);
+  assert(last_lex);
   NextToken();
   // get all public/extern definitions
   ASTPtrList defs;
@@ -338,14 +347,16 @@ ASTPtr Parser::ParseBlock() {
 
 ASTPtr Parser::ParseBlockLine() {
   auto stmt = ParseBlockStatement();
-  if (!ExpectEOL()) return nullptr;
+  if (!IsTokenChar('}') && !ExpectEOL()) return nullptr;
   return stmt;
 }
 
 ASTPtr Parser::ParseBlockStatement() {
   // get normal statement
-  auto stmt = GetStatement(Prop::None);
-  if (stmt) return stmt;
+  if (!IsTokenKeyword(Keyword::Def)) {
+    auto stmt = GetStatement(Prop::None);
+    if (stmt) return stmt;
+  }
   // parse other in-block statements
   if (cur_token_ == Token::Keyword) {
     switch (lexer()->key_val()) {
