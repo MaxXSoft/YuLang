@@ -2,6 +2,9 @@
 #define YULANG_FRONT_ANALYZER_H_
 
 #include <optional>
+#include <string>
+#include <string_view>
+#include <cstdint>
 
 #include "define/ast.h"
 #include "define/type.h"
@@ -11,7 +14,15 @@ namespace yulang::front {
 
 class Analyzer {
  public:
-  Analyzer() {}
+  Analyzer() { Reset(); }
+
+  void Reset() {
+    symbols_ = MakeEnv();
+    user_types_ = MakeEnv();
+    values_ = MakeEvalEnv();
+    enum_values_ = MakeEnumEnv();
+    in_import_ = 0;
+  }
 
   define::TypePtr AnalyzeOn(define::PropertyAST &ast);
   define::TypePtr AnalyzeOn(define::VarLetDefAST &ast);
@@ -96,8 +107,23 @@ class Analyzer {
   std::optional<define::EvalNum> EvalOn(define::RefTypeAST &ast);
 
  private:
+  // switch to new environment
+  xstl::Guard NewEnv(bool eval_env);
+
+  // symbol tables & user defined types (structs, enums, aliases)
   EnvPtr symbols_, user_types_;
+  // evaluated values
   EvalEnvPtr values_;
+  // evaluated enumerations
+  EnumEnvPtr enum_values_;
+  // used when analyzing/evaluating imports
+  std::size_t in_import_;
+  // used when evaluating enumerations
+  std::string last_enum_name_;
+  std::uint64_t last_enum_val_;
+  std::optional<std::string_view> last_id_;
+  // used when evaluating 'when' statements
+  std::optional<EvalNum> last_when_expr_;
 };
 
 }  // namespace yulang::front
