@@ -7,6 +7,7 @@
 #include <string>
 #include <optional>
 #include <cstdint>
+#include <cstddef>
 
 #include "front/logger.h"
 #include "define/token.h"
@@ -247,6 +248,9 @@ class LetElemAST : public BaseAST {
   const ASTPtr &type() const { return type_; }
   const ASTPtr &init() const { return init_; }
 
+  // setters
+  void set_init(ASTPtr init) { init_ = std::move(init); }
+
  private:
   std::string id_;
   ASTPtr type_, init_;
@@ -285,6 +289,9 @@ class EnumElemAST : public BaseAST {
   const std::string &id() const { return id_; }
   const ASTPtr &expr() const { return expr_; }
 
+  // setters
+  void set_expr(ASTPtr expr) { expr_ = std::move(expr); }
+
  private:
   std::string id_;
   ASTPtr expr_;
@@ -301,6 +308,12 @@ class BlockAST : public BaseAST {
 
   // getters
   const ASTPtrList &stmts() const { return stmts_; }
+
+  // setters
+  void set_stmts(ASTPtrList stmts) { stmts_ = std::move(stmts); }
+  void set_stmt(std::size_t index, ASTPtr stmt) {
+    stmts_[index] = std::move(stmt);
+  }
 
  private:
   ASTPtrList stmts_;
@@ -322,6 +335,13 @@ class IfAST : public BaseAST {
   const ASTPtr &then() const { return then_; }
   const ASTPtr &else_then() const { return else_then_; }
 
+  // setters
+  void set_cond(ASTPtr cond) { cond_ = std::move(cond); }
+  void set_then(ASTPtr then) { then_ = std::move(then); }
+  void set_else_then(ASTPtr else_then) {
+    else_then_ = std::move(else_then);
+  }
+
  private:
   ASTPtr cond_, then_, else_then_;
 };
@@ -342,6 +362,12 @@ class WhenAST : public BaseAST {
   const ASTPtrList &elems() const { return elems_; }
   const ASTPtr &else_then() const { return else_then_; }
 
+  // setters
+  void set_expr(ASTPtr expr) { expr_ = std::move(expr); }
+  void set_else_then(ASTPtr else_then) {
+    else_then_ = std::move(else_then);
+  }
+
  private:
   ASTPtr expr_, else_then_;
   ASTPtrList elems_;
@@ -361,6 +387,10 @@ class WhileAST : public BaseAST {
   const ASTPtr &cond() const { return cond_; }
   const ASTPtr &body() const { return body_; }
 
+  // setters
+  void set_cond(ASTPtr cond) { cond_ = std::move(cond); }
+  void set_body(ASTPtr body) { body_ = std::move(body); }
+
  private:
   ASTPtr cond_, body_;
 };
@@ -379,6 +409,10 @@ class ForInAST : public BaseAST {
   const std::string &id() const { return id_; }
   const ASTPtr &expr() const { return expr_; }
   const ASTPtr &body() const { return body_; }
+
+  // setters
+  void set_expr(ASTPtr expr) { expr_ = std::move(expr); }
+  void set_body(ASTPtr body) { body_ = std::move(body); }
 
  private:
   std::string id_;
@@ -415,6 +449,9 @@ class ControlAST : public BaseAST {
   Keyword type() const { return type_; }
   const ASTPtr &expr() const { return expr_; }
 
+  // setters
+  void set_expr(ASTPtr expr) { expr_ = std::move(expr); }
+
  private:
   Keyword type_;
   ASTPtr expr_;
@@ -433,6 +470,13 @@ class WhenElemAST : public BaseAST {
   // getters
   const ASTPtrList &conds() const { return conds_; }
   const ASTPtr &body() const { return body_; }
+
+  // setters
+  void set_conds(ASTPtrList conds) { conds_ = std::move(conds); }
+  void set_cond(std::size_t index, ASTPtr cond) {
+    conds_[index] = std::move(cond);
+  }
+  void set_body(ASTPtr body) { body_ = std::move(body); }
 
  private:
   ASTPtrList conds_;
@@ -454,6 +498,10 @@ class BinaryAST : public BaseAST {
   const ASTPtr &lhs() const { return lhs_; }
   const ASTPtr &rhs() const { return rhs_; }
 
+  // setters
+  void set_lhs(ASTPtr lhs) { lhs_ = std::move(lhs); }
+  void set_rhs(ASTPtr rhs) { rhs_ = std::move(rhs); }
+
  private:
   Operator op_;
   ASTPtr lhs_, rhs_;
@@ -472,6 +520,9 @@ class CastAST : public BaseAST {
   // getters
   const ASTPtr &expr() const { return expr_; }
   const ASTPtr &type() const { return type_; }
+
+  // setters
+  void set_expr(ASTPtr expr) { expr_ = std::move(expr); }
 
  private:
   ASTPtr expr_, type_;
@@ -493,6 +544,9 @@ class UnaryAST : public BaseAST {
   UnaryOp op() const { return op_; }
   const ASTPtr &opr() const { return opr_; }
 
+  // setters
+  void set_opr(ASTPtr opr) { opr_ = std::move(opr); }
+
  private:
   UnaryOp op_;
   ASTPtr opr_;
@@ -512,6 +566,9 @@ class IndexAST : public BaseAST {
   const ASTPtr &expr() const { return expr_; }
   const ASTPtr &index() const { return index_; }
 
+  // setter
+  void set_index(ASTPtr index) { index_ = std::move(index); }
+
  private:
   ASTPtr expr_, index_;
 };
@@ -529,6 +586,12 @@ class FunCallAST : public BaseAST {
   // getters
   const ASTPtr &expr() const { return expr_; }
   const ASTPtrList &args() const { return args_; }
+
+  // setters
+  void set_args(ASTPtrList args) { args_ = std::move(args); }
+  void set_arg(std::size_t index, ASTPtr arg) {
+    args_[index] = std::move(arg);
+  }
 
  private:
   ASTPtr expr_;
@@ -655,6 +718,12 @@ class ValInitAST : public BaseAST {
   const ASTPtr &type() const { return type_; }
   const ASTPtrList &elems() const { return elems_; }
 
+  // setters
+  void set_elems(ASTPtrList elems) { elems_ = std::move(elems); }
+  void set_elem(std::size_t index, ASTPtr elem) {
+    elems_[index] = std::move(elem);
+  }
+
  private:
   ASTPtr type_;
   ASTPtrList elems_;
@@ -740,6 +809,9 @@ class ArrayTypeAST : public BaseAST {
   // getters
   const ASTPtr &base() const { return base_; }
   const ASTPtr &expr() const { return expr_; }
+
+  // setter
+  void set_expr(ASTPtr expr) { expr_ = std::move(expr); }
 
  private:
   ASTPtr base_, expr_;
