@@ -27,7 +27,7 @@ bool LexerManager::LoadSource(const std::filesystem::path &file) {
   return !!SetLexer(full_path);
 }
 
-LexerPtr LexerManager::SetLexer(const ModName &mod_name) {
+std::filesystem::path LexerManager::GetModPath(const ModName &mod_name) {
   // get relative path of specific module
   std::filesystem::path mod_path;
   for (int i = 0; i < mod_name.size(); ++i) {
@@ -41,9 +41,13 @@ LexerPtr LexerManager::SetLexer(const ModName &mod_name) {
   // try to find a valid module on the disk
   for (const auto &[_, path] : imp_paths_) {
     auto file = path / mod_path;
-    if (std::filesystem::exists(file)) return SetLexer(file);
+    if (std::filesystem::exists(file)) return file;
   }
-  return nullptr;
+  return {};
+}
+
+bool LexerManager::IsLoaded(const std::filesystem::path &file) {
+  return lexers_.find(file.string()) != lexers_.end();
 }
 
 LexerPtr LexerManager::SetLexer(const std::filesystem::path &file) {
