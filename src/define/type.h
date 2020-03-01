@@ -8,6 +8,7 @@
 #include <unordered_set>
 #include <utility>
 #include <cstdint>
+#include <cstddef>
 
 #include "define/token.h"
 
@@ -23,7 +24,19 @@ class BaseType {
  public:
   virtual ~BaseType() = default;
 
-  //
+  // return true if is integer
+  virtual bool IsInteger() const = 0;
+  // return true if is unsigned
+  virtual bool IsUnsigned() const = 0;
+  // return true if is floating point
+  virtual bool IsFloat() const = 0;
+  // return true if left value which is current type
+  // can accept the right value which is specific type
+  virtual bool CanAccept(const TypePtr &type) const = 0;
+  // return true if current type can be casted to specific type
+  virtual bool CanCastTo(const TypePtr &type) const = 0;
+  // return the size of current type
+  virtual std::size_t GetSize() const = 0;
 };
 
 class PrimType : public BaseType {
