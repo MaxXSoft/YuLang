@@ -29,8 +29,9 @@ enum_list ::= id ["=" expr] ["," enum_list] [","];
 
 block     ::= "{" {blk_line} "}";
 blk_line  ::= blk_stmt {";" blk_stmt} [";"];
-blk_stmt  ::= stmt    | if_else | when    | while | for_in
-            | asm     | control | expr;
+blk_stmt  ::= var_def | let_def | declare | ty_alias  | struct
+            | enum    | import  | if_else | when      | while
+            | for_in  | asm     | control | expr;
 
 if_else   ::= "if" expr block ["else" (if_else | block)];
 when      ::= "when" expr "{" when_elem {when_elem} ["else" block] "}";
