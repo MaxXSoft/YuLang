@@ -28,6 +28,17 @@ void Logger::LogError(std::string_view message) const {
   ++error_num_;
 }
 
+void Logger::LogError(std::string_view message,
+                      std::string_view id) const {
+  using namespace xstl;
+  LogFileInfo();
+  // print error message
+  std::cerr << style("Br") << "error: ";
+  std::cerr << "id: " << id << ", " << message << std::endl;
+  // increase error number
+  ++error_num_;
+}
+
 // print warning message to stderr
 void Logger::LogWarning(std::string_view message) const {
   using namespace xstl;

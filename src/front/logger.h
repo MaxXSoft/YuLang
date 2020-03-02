@@ -20,6 +20,8 @@ class Logger {
 
   // print error message to stderr
   void LogError(std::string_view message) const;
+  // print error message to stderr (with identifier)
+  void LogError(std::string_view message, std::string_view id) const;
   // print warning message to stderr
   void LogWarning(std::string_view message) const;
 
