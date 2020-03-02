@@ -21,7 +21,6 @@ class Analyzer {
     user_types_ = MakeEnv();
     values_ = MakeEvalEnv();
     enum_values_ = MakeEnumEnv();
-    in_import_ = 0;
   }
 
   define::TypePtr AnalyzeOn(define::PropertyAST &ast);
@@ -115,6 +114,13 @@ class Analyzer {
   std::string MangleFuncName(const std::string &id,
                              const define::TypePtrList &args,
                              const define::TypePtr &ret);
+  // check and add user type
+  bool AddUserType(const Logger &log, const std::string &id,
+                   define::TypePtr type);
+  // check and add variables/constants
+  bool AddVarConst(const Logger &log, const std::string &id,
+                   define::TypePtr type, define::TypePtr init,
+                   bool is_var);
 
   // symbol tables & user defined types (structs, enums, aliases)
   EnvPtr symbols_, user_types_;
@@ -126,10 +132,11 @@ class Analyzer {
   define::PropertyAST::Property last_prop_;
   // used when analyzing functions
   define::TypePtr cur_ret_;
-  // used when analyzing/evaluating imports
-  std::size_t in_import_;
-  // used when evaluating enumerations
-  std::string last_enum_name_;
+  // used when analyzing structures
+  define::TypePair last_arg_info_;
+  // used when analyzing/evaluating enumerations
+  define::TypePtr last_enum_type_;
+  std::string last_enum_name_, last_enum_elem_name_;
   std::uint64_t last_enum_val_;
   std::optional<std::string_view> last_id_;
   // used when evaluating 'when' statements

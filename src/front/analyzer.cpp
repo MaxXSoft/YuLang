@@ -210,6 +210,11 @@ xstl::Guard Analyzer::NewEnv(bool eval_env) {
   }
 }
 
+xstl::Guard Analyzer::EnterFunc(const TypePtr &ret) {
+  cur_ret_ = ret;
+  return xstl::Guard([this] { cur_ret_ = nullptr; });
+}
+
 std::string Analyzer::MangleFuncName(const std::string &id,
                                      const TypePtrList &args,
                                      const TypePtr &ret) {
@@ -222,18 +227,60 @@ std::string Analyzer::MangleFuncName(const std::string &id,
   return oss.str();
 }
 
-xstl::Guard Analyzer::EnterFunc(const TypePtr &ret) {
-  cur_ret_ = ret;
-  return xstl::Guard([this] { cur_ret_ = nullptr; });
+bool Analyzer::AddUserType(const Logger &log, const std::string &id,
+                           TypePtr type) {
+  if (user_types_->GetItem(id, false)) {
+    LogError(log, "type has already been defined", id);
+    return false;
+  }
+  user_types_->AddItem(id, std::move(type));
+  return true;
+}
+
+bool Analyzer::AddVarConst(const Logger &log, const std::string &id,
+                           TypePtr type, TypePtr init, bool is_var) {
+  // check if is defined
+  if (symbols_->GetItem(id, false)) {
+    LogError(log, "identifier has already been defined", id);
+    return false;
+  }
+  // check types
+  TypePtr sym_type;
+  if (type) {
+    assert(!type->IsRightValue());
+    // check if is compatible
+    if (init && !type->CanAccept(init)) {
+      LogError(log, "type mismatch when initializing", id);
+      return false;
+    }
+    sym_type = std::move(type);
+  }
+  else {
+    assert(init);
+    // check if can be deduced
+    if (init->IsVoid()) {
+      LogError(log, "initializing with invalid type", id);
+      return false;
+    }
+    // cast to left value type
+    sym_type = std::move(init);
+    if (sym_type->IsRightValue()) sym_type->GetValueType(false);
+  }
+  // add symbol info
+  if (is_var && !sym_type->IsConst()) {
+    sym_type = std::make_shared<ConstType>(std::move(sym_type));
+  }
+  symbols_->AddItem(id, std::move(sym_type));
+  return true;
 }
 
 TypePtr Analyzer::AnalyzeOn(PropertyAST &ast) {
+  // NOTE: this AST will not always be analyzed, so 'ast_type' may be null
   last_prop_ = ast.prop();
   return ast.set_ast_type(MakeVoid());
 }
 
 TypePtr Analyzer::AnalyzeOn(VarLetDefAST &ast) {
-  ast.prop()->SemaAnalyze(*this);
   for (const auto &i : ast.defs()) {
     if (!i->SemaAnalyze(*this)) return nullptr;
   }
@@ -270,65 +317,184 @@ TypePtr Analyzer::AnalyzeOn(FunDefAST &ast) {
   auto type = std::make_shared<FuncType>(std::move(args), std::move(ret));
   symbols_->outer()->AddItem(id, std::move(type));
   // analyze function's body
-  if (!in_import_) {
-    if (!ast.body()->SemaAnalyze(*this)) return nullptr;
-  }
+  if (ast.body()) if (!ast.body()->SemaAnalyze(*this)) return nullptr;
   return ast.set_ast_type(MakeVoid());
 }
 
 TypePtr Analyzer::AnalyzeOn(DeclareAST &ast) {
-  //
+  auto type = ast.type()->SemaAnalyze(*this);
+  if (!type) return nullptr;
+  // check if needs to perform name mangling
+  auto id = ast.id();
+  ast.prop()->SemaAnalyze(*this);
+  if (type->IsFunction() &&
+      (last_prop_ != PropertyAST::Property::Extern ||
+       last_prop_ != PropertyAST::Property::Demangle)) {
+    auto args = *type->GetArgsType();
+    id = MangleFuncName(id, args, type->GetReturnType(args));
+  }
+  // add type info to environment
+  if (symbols_->GetItem(id, false)) {
+    return LogError(ast.logger(), "symbol has already been defined", id);
+  }
+  symbols_->AddItem(id, std::move(type));
   return ast.set_ast_type(MakeVoid());
 }
 
 TypePtr Analyzer::AnalyzeOn(TypeAliasAST &ast) {
-  //
+  auto type = ast.type()->SemaAnalyze(*this);
+  if (!type) return nullptr;
+  // add type alias to environment
+  if (!AddUserType(ast.logger(), ast.id(), std::move(type))) {
+    return nullptr;
+  }
   return ast.set_ast_type(MakeVoid());
 }
 
 TypePtr Analyzer::AnalyzeOn(StructAST &ast) {
-  //
+  TypePairList elems;
+  {
+    // create a new environment for elements
+    auto env = NewEnv(false);
+    for (const auto &i : ast.defs()) {
+      if (!i->SemaAnalyze(*this)) return nullptr;
+      elems.push_back(std::move(last_arg_info_));
+    }
+  }
+  // add user type to environment
+  auto type = std::make_shared<SturctType>(std::move(elems));
+  if (!AddUserType(ast.logger(), ast.id(), std::move(type))) {
+    return nullptr;
+  }
   return ast.set_ast_type(MakeVoid());
 }
 
 TypePtr Analyzer::AnalyzeOn(EnumAST &ast) {
-  //
+  // get type
+  auto type = ast.type() ? ast.type()->SemaAnalyze(*this)
+                         : MakePrimType(Keyword::Int32, false);
+  if (!type) return nullptr;
+  last_enum_type_ = type;
+  // get all elements
+  EnumType::ElemSet elems;
+  for (const auto &i : ast.defs()) {
+    if (!i->SemaAnalyze(*this)) return nullptr;
+    auto [_, succ] = elems.insert(last_enum_elem_name_);
+    if (!succ) {
+      return LogError(i->logger(), "conflicted enumeration element name",
+                      last_enum_elem_name_);
+    }
+  }
+  // add user type to environment
+  auto enum_type = std::make_shared<EnumType>(std::move(type),
+                                              std::move(elems));
+  if (!AddUserType(ast.logger(), ast.id(), std::move(enum_type))) {
+    return nullptr;
+  }
   return ast.set_ast_type(MakeVoid());
 }
 
 TypePtr Analyzer::AnalyzeOn(ImportAST &ast) {
-  //
+  for (const auto &i : ast.defs()) {
+    if (!i->SemaAnalyze(*this)) return nullptr;
+  }
   return ast.set_ast_type(MakeVoid());
 }
 
 TypePtr Analyzer::AnalyzeOn(VarElemAST &ast) {
-  //
+  // try to get variable type and initializer type
+  TypePtr type, init;
+  if (ast.type()) {
+    type = ast.type()->SemaAnalyze(*this);
+    if (!type) return nullptr;
+  }
+  if (ast.init()) {
+    init = ast.init()->SemaAnalyze(*this);
+    if (!init) return nullptr;
+  }
+  // add symbol to environment
+  if (!AddVarConst(ast.logger(), ast.id(), std::move(type),
+                   std::move(init), true)) {
+    return nullptr;
+  }
   return ast.set_ast_type(MakeVoid());
 }
 
 TypePtr Analyzer::AnalyzeOn(LetElemAST &ast) {
-  //
+  // try to get constant type and initializer type
+  TypePtr type, init;
+  if (ast.type()) {
+    type = ast.type()->SemaAnalyze(*this);
+    if (!type) return nullptr;
+  }
+  if (ast.init()) {
+    init = ast.init()->SemaAnalyze(*this);
+    if (!init) return nullptr;
+  }
+  // add symbol to environment
+  if (!AddVarConst(ast.logger(), ast.id(), std::move(type),
+                   std::move(init), true)) {
+    return nullptr;
+  }
   return ast.set_ast_type(MakeVoid());
 }
 
 TypePtr Analyzer::AnalyzeOn(ArgElemAST &ast) {
-  //
-  return ast.set_ast_type(MakeVoid());
+  // get type
+  auto type = ast.type()->SemaAnalyze(*this);
+  if (!type) return nullptr;
+  // set last argument info (for structures)
+  last_arg_info_ = {ast.id(), type};
+  // add symbol to environment
+  assert(!type->IsConst());
+  auto const_type = std::make_shared<ConstType>(std::move(type));
+  symbols_->AddItem(ast.id(), const_type);
+  return ast.set_ast_type(std::move(const_type));
 }
 
 TypePtr Analyzer::AnalyzeOn(EnumElemAST &ast) {
-  //
+  // check type of initialization expression
+  if (ast.expr()) {
+    auto type = ast.expr()->SemaAnalyze(*this);
+    if (!type) return nullptr;
+    if (!last_enum_type_->CanAccept(type)) {
+      return LogError(ast.logger(), "invalid initialization expression");
+    }
+  }
+  // update enum info
+  last_enum_elem_name_ = ast.id();
   return ast.set_ast_type(MakeVoid());
 }
 
 TypePtr Analyzer::AnalyzeOn(BlockAST &ast) {
-  //
-  return ast.set_ast_type(MakeVoid());
+  auto env = NewEnv(false);
+  auto ret = MakeVoid();
+  for (int i = 0; i < ast.stmts().size(); ++i) {
+    auto type = ast.stmts()[i]->SemaAnalyze(*this);
+    if (!type) return nullptr;
+    if (i == ast.stmts().size() - 1) ret = std::move(type);
+  }
+  if (!ret->IsRightValue()) ret = ret->GetValueType(true);
+  return ast.set_ast_type(std::move(ret));
 }
 
 TypePtr Analyzer::AnalyzeOn(IfAST &ast) {
-  //
-  return ast.set_ast_type(MakeVoid());
+  // check condition
+  auto cond = ast.cond()->SemaAnalyze(*this);
+  if (!cond) return nullptr;
+  if (!cond->IsBool()) {
+    return LogError(ast.cond()->logger(), "condition must be a boolean");
+  }
+  // check then block
+  auto then = ast.then()->SemaAnalyze(*this);
+  if (!then) return nullptr;
+  // check else then block
+  auto else_then = ast.else_then() ? ast.else_then()->SemaAnalyze(*this)
+                                   : MakeVoid();
+  if (!else_then) return nullptr;
+  // create return value
+  auto ret = then->IsIdentical(else_then) ? then : MakeVoid();
+  return ast.set_ast_type(std::move(ret));
 }
 
 TypePtr Analyzer::AnalyzeOn(WhenAST &ast) {
@@ -367,8 +533,14 @@ TypePtr Analyzer::AnalyzeOn(BinaryAST &ast) {
 }
 
 TypePtr Analyzer::AnalyzeOn(CastAST &ast) {
-  //
-  return ast.set_ast_type(MakeVoid());
+  auto expr = ast.expr()->SemaAnalyze(*this);
+  auto type = ast.type()->SemaAnalyze(*this);
+  if (!expr || !type) return nullptr;
+  // check if is valid
+  if (!expr->CanCastTo(type)) {
+    return LogError(ast.logger(), "invalid type casting");
+  }
+  return ast.set_ast_type(type->GetValueType(true));
 }
 
 TypePtr Analyzer::AnalyzeOn(UnaryAST &ast) {
@@ -515,7 +687,7 @@ std::optional<EvalNum> Analyzer::EvalOn(VarLetDefAST &ast) {
 }
 
 std::optional<EvalNum> Analyzer::EvalOn(FunDefAST &ast) {
-  if (!in_import_) ast.body()->Eval(*this);
+  if (ast.body()) ast.body()->Eval(*this);
   return {};
 }
 
@@ -541,9 +713,7 @@ std::optional<EvalNum> Analyzer::EvalOn(EnumAST &ast) {
 }
 
 std::optional<EvalNum> Analyzer::EvalOn(ImportAST &ast) {
-  ++in_import_;
   for (const auto &i : ast.defs()) i->Eval(*this);
-  --in_import_;
   return {};
 }
 
