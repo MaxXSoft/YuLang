@@ -8,6 +8,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
+#include <optional>
 #include <cstdint>
 #include <cstddef>
 #include <cassert>
@@ -37,6 +38,8 @@ class BaseType {
   virtual bool IsUnsigned() const = 0;
   // return true if is floating point
   virtual bool IsFloat() const = 0;
+  // return true if is boolean
+  virtual bool IsBool() const = 0;
   // return true if is constant type
   virtual bool IsConst() const = 0;
   // return true if is pointer type
@@ -48,8 +51,14 @@ class BaseType {
   virtual bool CanAccept(const TypePtr &type) const = 0;
   // return true if current type can be casted to specific type
   virtual bool CanCastTo(const TypePtr &type) const = 0;
+  // return true if two types are identical
+  virtual bool IsIdentical(const TypePtr &rhs) const = 0;
   // return the size of current type
   virtual std::size_t GetSize() const = 0;
+  // return the type of arguments of a function call
+  virtual std::optional<TypePtrList> GetArgsType() const = 0;
+  // return the return type of a function call
+  virtual TypePtr GetReturnType(const TypePtrList &args) const = 0;
   // return the length of current type
   // e.g. array length, struct field number
   virtual std::size_t GetLength() const = 0;
