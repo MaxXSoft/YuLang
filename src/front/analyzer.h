@@ -109,6 +109,12 @@ class Analyzer {
  private:
   // switch to new environment
   xstl::Guard NewEnv(bool eval_env);
+  // enter a new function
+  xstl::Guard EnterFunc(const define::TypePtr &ret);
+  // perform name mangling
+  std::string MangleFuncName(const std::string &id,
+                             const define::TypePtrList &args,
+                             const define::TypePtr &ret);
 
   // symbol tables & user defined types (structs, enums, aliases)
   EnvPtr symbols_, user_types_;
@@ -116,6 +122,10 @@ class Analyzer {
   EvalEnvPtr values_;
   // evaluated enumerations
   EnumEnvPtr enum_values_;
+  // used when analyzing properties
+  define::PropertyAST::Property last_prop_;
+  // used when analyzing functions
+  define::TypePtr cur_ret_;
   // used when analyzing/evaluating imports
   std::size_t in_import_;
   // used when evaluating enumerations
