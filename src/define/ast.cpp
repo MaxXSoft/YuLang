@@ -107,7 +107,7 @@ void FunDefAST::Dump(std::ostream &os) {
     args_[i]->Dump(os);
   }
   os << ')' << std::endl;
-  body_->Dump(os);
+  if (body_) body_->Dump(os);
 }
 
 void DeclareAST::Dump(std::ostream &os) {
