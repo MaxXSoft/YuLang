@@ -107,6 +107,9 @@ class FunDefAST : public BaseAST {
   const ASTPtr &type() const { return type_; }
   const ASTPtr &body() const { return body_; }
 
+  // setters
+  void set_id(const std::string &id) { id_ = id; }
+
  private:
   std::string id_;
   ASTPtr prop_, type_, body_;
