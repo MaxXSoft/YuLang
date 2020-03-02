@@ -117,6 +117,8 @@ ASTPtr Parser::ParseFunDef(ASTPtr prop) {
   // get function body
   auto body = ParseBlock();
   if (!body) return nullptr;
+  // do not store function body if is an imported function definition
+  if (in_import_) body = nullptr;
   return MakeAST<FunDefAST>(log, std::move(prop), name, std::move(args),
                             std::move(type), std::move(body));
 }
@@ -233,6 +235,7 @@ ASTPtr Parser::ParseImport() {
   NextToken();
   // get all public/extern definitions
   ASTPtrList defs;
+  ++in_import_;
   while (!logger().error_num() && cur_token_ != Token::End) {
     auto prop = GetProp();
     if (prop != Prop::None) {
@@ -245,6 +248,7 @@ ASTPtr Parser::ParseImport() {
       NextToken();
     }
   }
+  --in_import_;
   // reset to original status
   lex_man_.SetLexer(last_lex);
   last_token_ = last_token;

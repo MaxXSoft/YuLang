@@ -17,6 +17,7 @@ class Parser {
   void Reset() {
     lexer()->Reset();
     ended_ = false;
+    in_import_ = 0;
     NextToken();
   }
 
@@ -171,6 +172,7 @@ class Parser {
   LexerManager &lex_man_;
   define::Token last_token_, cur_token_;
   bool ended_;
+  int in_import_;
 };
 
 }  // namespace yulang::front
