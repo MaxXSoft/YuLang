@@ -131,6 +131,9 @@ class DeclareAST : public BaseAST {
   const std::string &id() const { return id_; }
   const ASTPtr &type() const { return type_; }
 
+  // setters
+  void set_id(const std::string &id) { id_ = id; }
+
  private:
   std::string id_;
   ASTPtr prop_, type_;
@@ -410,15 +413,19 @@ class ForInAST : public BaseAST {
 
   // getters
   const std::string &id() const { return id_; }
+  const std::string &next_id() const { return next_id_; }
+  const std::string &last_id() const { return last_id_; }
   const ASTPtr &expr() const { return expr_; }
   const ASTPtr &body() const { return body_; }
 
   // setters
+  void set_next_id(const std::string &next_id) { next_id_ = next_id; }
+  void set_last_id(const std::string &last_id) { last_id_ = last_id; }
   void set_expr(ASTPtr expr) { expr_ = std::move(expr); }
   void set_body(ASTPtr body) { body_ = std::move(body); }
 
  private:
-  std::string id_;
+  std::string id_, next_id_, last_id_;
   ASTPtr expr_, body_;
 };
 
@@ -498,15 +505,20 @@ class BinaryAST : public BaseAST {
 
   // getters
   Operator op() const { return op_; }
+  const std::optional<std::string> &op_func_id() const {
+    return op_func_id_;
+  }
   const ASTPtr &lhs() const { return lhs_; }
   const ASTPtr &rhs() const { return rhs_; }
 
   // setters
+  void set_op_func_id(const std::string &id) { op_func_id_ = id; }
   void set_lhs(ASTPtr lhs) { lhs_ = std::move(lhs); }
   void set_rhs(ASTPtr rhs) { rhs_ = std::move(rhs); }
 
  private:
   Operator op_;
+  std::optional<std::string> op_func_id_;
   ASTPtr lhs_, rhs_;
 };
 
@@ -545,13 +557,18 @@ class UnaryAST : public BaseAST {
 
   // getters
   UnaryOp op() const { return op_; }
+  const std::optional<std::string> &op_func_id() const {
+    return op_func_id_;
+  }
   const ASTPtr &opr() const { return opr_; }
 
   // setters
+  void set_op_func_id(const std::string &id) { op_func_id_ = id; }
   void set_opr(ASTPtr opr) { opr_ = std::move(opr); }
 
  private:
   UnaryOp op_;
+  std::optional<std::string> op_func_id_;
   ASTPtr opr_;
 };
 
@@ -660,6 +677,9 @@ class IdAST : public BaseAST {
 
   // getters
   const std::string &id() const { return id_; }
+
+  // setters
+  void set_id(const std::string &id) { id_ = id; }
 
  private:
   std::string id_;
