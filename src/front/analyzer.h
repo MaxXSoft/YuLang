@@ -4,11 +4,13 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <functional>
 #include <cstdint>
 
 #include "define/ast.h"
 #include "define/type.h"
 #include "define/symbol.h"
+#include "define/token.h"
 
 namespace yulang::front {
 
@@ -21,6 +23,7 @@ class Analyzer {
     user_types_ = MakeEnv();
     values_ = MakeEvalEnv();
     enum_values_ = MakeEnumEnv();
+    in_loop_ = 0;
   }
 
   define::TypePtr AnalyzeOn(define::PropertyAST &ast);
@@ -106,14 +109,15 @@ class Analyzer {
   std::optional<define::EvalNum> EvalOn(define::RefTypeAST &ast);
 
  private:
+  using IdSetter = std::function<void(const std::string &)>;
+
   // switch to new environment
   xstl::Guard NewEnv(bool eval_env);
   // enter a new function
   xstl::Guard EnterFunc(const define::TypePtr &ret);
   // perform name mangling
   std::string MangleFuncName(const std::string &id,
-                             const define::TypePtrList &args,
-                             const define::TypePtr &ret);
+                             const define::TypePtrList &args);
   // check and add user type
   bool AddUserType(const Logger &log, const std::string &id,
                    define::TypePtr type);
@@ -121,6 +125,17 @@ class Analyzer {
   bool AddVarConst(const Logger &log, const std::string &id,
                    define::TypePtr type, define::TypePtr init,
                    bool is_var);
+  // find function type in current environment
+  // call 'id_setter' using function name
+  // print error message if not found
+  define::TypePtr FindFuncType(const Logger &log, const std::string &id,
+                               const define::TypePtrList &args,
+                               IdSetter id_setter);
+  // check if is valid operator overloading
+  // if so, return function's return type, otherwise log error
+  std::optional<define::TypePtr> CheckOpOverload(
+      const Logger &log, const std::string &op_name,
+      const define::TypePtrList &args, IdSetter id_setter);
 
   // symbol tables & user defined types (structs, enums, aliases)
   EnvPtr symbols_, user_types_;
@@ -138,9 +153,13 @@ class Analyzer {
   define::TypePtr last_enum_type_;
   std::string last_enum_name_, last_enum_elem_name_;
   std::uint64_t last_enum_val_;
-  std::optional<std::string_view> last_id_;
-  // used when evaluating 'when' statements
+  // used when analyzing/evaluating 'when' statements
+  define::TypePtr last_when_expr_type_;
   std::optional<EvalNum> last_when_expr_;
+  // used when analyzing while loop & for loop
+  std::uint64_t in_loop_;
+  // used when analyzing/evaluating identifiers
+  std::optional<std::string> last_id_;
 };
 
 }  // namespace yulang::front
