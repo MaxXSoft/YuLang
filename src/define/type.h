@@ -4,7 +4,6 @@
 #include <memory>
 #include <vector>
 #include <string>
-#include <string_view>
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
@@ -42,8 +41,12 @@ class BaseType {
   virtual bool IsBool() const = 0;
   // return true if is constant type
   virtual bool IsConst() const = 0;
+  // return true if is array type
+  virtual bool IsArray() const = 0;
   // return true if is pointer type
   virtual bool IsPointer() const = 0;
+  // return true if is reference type
+  virtual bool IsReference() const = 0;
   // return true if is function type
   virtual bool IsFunction() const = 0;
   // return true if left value which is current type
@@ -51,7 +54,7 @@ class BaseType {
   virtual bool CanAccept(const TypePtr &type) const = 0;
   // return true if current type can be casted to specific type
   virtual bool CanCastTo(const TypePtr &type) const = 0;
-  // return true if two types are identical
+  // return true if two types are identical (ignore left/right value)
   virtual bool IsIdentical(const TypePtr &rhs) const = 0;
   // return the size of current type
   virtual std::size_t GetSize() const = 0;
@@ -64,8 +67,10 @@ class BaseType {
   virtual std::size_t GetLength() const = 0;
   // return the element at specific index
   virtual const TypePtr &GetElem(std::size_t index) const = 0;
+  // return the dereferenced type of current type
+  virtual TypePtr GetDerefedType() const = 0;
   // return the identifier of current type
-  virtual std::string_view GetTypeId() const = 0;
+  virtual std::string GetTypeId() const = 0;
   // return a new type with specific value type (left/right)
   virtual TypePtr GetValueType(bool is_right) = 0;
 };
