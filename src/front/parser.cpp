@@ -467,6 +467,7 @@ ASTPtr Parser::ParseAsm() {
   std::ostringstream oss;
   while (cur_token_ == Token::String) {
     oss << lexer()->str_val() << std::endl;
+    NextToken();
   }
   // check & eat '}'
   if (!ExpectChar('}')) return nullptr;
