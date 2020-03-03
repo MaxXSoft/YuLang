@@ -31,6 +31,9 @@ class BaseType {
   virtual bool IsRightValue() const = 0;
   // return true if is void type
   virtual bool IsVoid() const = 0;
+  // return true if is basic type
+  // i.e. is primitive type, function, pointer, or their reference
+  virtual bool IsBasic() const = 0;
   // return true if is integer
   virtual bool IsInteger() const = 0;
   // return true if is unsigned
@@ -41,14 +44,14 @@ class BaseType {
   virtual bool IsBool() const = 0;
   // return true if is constant type
   virtual bool IsConst() const = 0;
+  // return true if is function type
+  virtual bool IsFunction() const = 0;
   // return true if is array type
   virtual bool IsArray() const = 0;
   // return true if is pointer type
   virtual bool IsPointer() const = 0;
   // return true if is reference type
   virtual bool IsReference() const = 0;
-  // return true if is function type
-  virtual bool IsFunction() const = 0;
   // return true if left value which is current type
   // can accept the right value which is specific type
   virtual bool CanAccept(const TypePtr &type) const = 0;
