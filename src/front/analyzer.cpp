@@ -2,6 +2,7 @@
 
 #include <type_traits>
 #include <sstream>
+#include <cmath>
 #include <cassert>
 
 #include "front/logger.h"
@@ -55,6 +56,9 @@ namespace {
 
 // table of operator's name
 const char *kOperators[] = {YULANG_OPERATORS(YULANG_EXPAND_SECOND)};
+
+// table of unary operator's name
+const char *kUnaOperators[] = {"+", "-", "!", "~", "*", "&"};
 
 // create a new int/float AST by 'EvalNum'
 inline ASTPtr MakeAST(const EvalNum &num, const Logger &log) {
@@ -305,9 +309,8 @@ std::optional<TypePtr> Analyzer::CheckOpOverload(
       id_setter(op_name);
     }
     else {
-      LogError(log, "cannot perform basic operation "
-               "between non-basic types");
-      return nullptr;
+      // no overloaded operator found
+      return {};
     }
   }
   else {
@@ -317,8 +320,7 @@ std::optional<TypePtr> Analyzer::CheckOpOverload(
   if (func_type) {
     auto func_ret = func_type->GetReturnType(args);
     if (!func_ret) {
-      LogError(log, "invalid operator overloading");
-      return nullptr;
+      return LogError(log, "invalid operator overloading");
     }
     return std::move(func_ret);
   }
@@ -673,14 +675,43 @@ TypePtr Analyzer::AnalyzeOn(WhenElemAST &ast) {
 }
 
 TypePtr Analyzer::AnalyzeOn(BinaryAST &ast) {
-  // get lhs and rhs type
+  // get lhs and rhs type & id
+  last_id_ = {};
   auto lhs = ast.lhs()->SemaAnalyze(*this);
+  auto lhs_id = last_id_;
+  last_id_ = {};
   auto rhs = ast.lhs()->SemaAnalyze(*this);
-  if (!lhs || !rhs) return nullptr;
+  auto rhs_id = last_id_;
+  last_id_ = {};
+  // handle access operator
+  if (ast.op() == Operator::Access) {
+    TypePtr ret;
+    if (lhs_id) {
+      // check if is enumeration access
+      auto enum_type = user_types_->GetItem(*lhs_id);
+      if (enum_type->IsEnum() && rhs_id && enum_type->GetElem(*rhs_id)) {
+        ret = enum_type;
+      }
+    }
+    else if (lhs && lhs->GetLength() && rhs_id) {
+      // check if is structure access
+      auto type = lhs->GetElem(*rhs_id);
+      if (type) ret = type;
+    }
+    if (ret) {
+      ret = ret->IsRightValue() ? ret : ret->GetValueType(true);
+      return ast.set_ast_type(std::move(ret));
+    }
+  }
+  if (!lhs || !rhs) {
+    return LogError(ast.logger(), "invalid lhs or rhs expression");
+  }
   // preprocess some types
   if (lhs->IsVoid() || rhs->IsVoid()) {
     return LogError(ast.logger(), "invalid operation between void types");
   }
+  if (lhs->IsReference()) lhs = lhs->GetDerefedType();
+  if (rhs->IsReference()) rhs = rhs->GetDerefedType();
   // check if operator was overloaded
   if (!lhs->IsBasic() || !rhs->IsBasic()) {
     TypePtrList args = {lhs, rhs};
@@ -688,10 +719,86 @@ TypePtr Analyzer::AnalyzeOn(BinaryAST &ast) {
     auto ret = CheckOpOverload(
         ast.logger(), op_name, args,
         [&ast](const std::string &id) { ast.set_op_func_id(id); });
-    if (ret) return *ret;
+    if (ret) return ast.set_ast_type(*ret);
   }
-  // TODO
-  return ast.set_ast_type(MakeVoid());
+  // normal binary operation
+  TypePtr ret;
+  switch (ast.op()) {
+    case Operator::Add: case Operator::Sub: {
+      if (lhs->IsPointer() || rhs->IsPointer()) {
+        // pointer operation
+        if (lhs->IsPointer() && rhs->IsInteger()) {
+          ret = lhs;
+        }
+        else if (rhs->IsPointer() && lhs->IsInteger()) {
+          ret = rhs;
+        }
+        else {
+          return LogError(ast.logger(), "invalid pointer operation");
+        }
+      }
+      // fall through
+    }
+    case Operator::Mul: case Operator::Div: case Operator::Mod: {
+      // float binary operation
+      if (lhs->IsFloat() && lhs->IsIdentical(rhs)) ret = lhs;
+      // fall through
+    }
+    case Operator::And: case Operator::Or: case Operator::Xor:
+    case Operator::Shl: case Operator::Shr: {
+      // int binary operation
+      if (lhs->IsInteger() && lhs->IsIdentical(rhs)) ret = lhs;
+      break;
+    }
+    case Operator::Less: case Operator::LessEqual:
+    case Operator::Great: case Operator::GreatEqual: {
+      // int/float binary operation
+      if ((lhs->IsInteger() || lhs->IsFloat()) && lhs->IsIdentical(rhs)) {
+        ret = MakePrimType(Keyword::Bool, true);
+      }
+      break;
+    }
+    case Operator::LogicAnd: case Operator::LogicOr: {
+      // bool binary operation
+      if (lhs->IsBool() && lhs->IsIdentical(rhs)) ret = lhs;
+      break;
+    }
+    case Operator::Equal: case Operator::NotEqual: {
+      // binary operation between all types
+      if (lhs->IsIdentical(rhs)) ret = MakePrimType(Keyword::Bool, true);
+      break;
+    }
+    case Operator::Assign: {
+      // binary operation between all types
+      if (!lhs->IsRightValue() && lhs->IsIdentical(rhs)) ret = MakeVoid();
+      break;
+    }
+    case Operator::AssAdd: case Operator::AssSub: {
+      // pointer operation
+      if (lhs->IsPointer() && rhs->IsInteger()) ret = MakeVoid();
+      // fall through
+    }
+    case Operator::AssMul: case Operator::AssDiv: case Operator::AssMod: {
+      // float binary operation
+      if (lhs->IsFloat() && lhs->IsIdentical(rhs)) ret = MakeVoid();
+      // fall through
+    }
+    case Operator::AssAnd: case Operator::AssOr: case Operator::AssXor:
+    case Operator::AssShl: case Operator::AssShr: {
+      // int binary operation
+      if (lhs->IsRightValue()) {
+        ret = nullptr;
+      }
+      else if (lhs->IsInteger() && lhs->IsIdentical(rhs)) {
+        ret = MakeVoid();
+      }
+      break;
+    }
+    default: assert(false); return nullptr;
+  }
+  if (!ret) return LogError(ast.logger(), "invalid binary operation");
+  if (!ret->IsRightValue()) ret = ret->GetValueType(true);
+  return ast.set_ast_type(std::move(ret));
 }
 
 TypePtr Analyzer::AnalyzeOn(CastAST &ast) {
@@ -711,8 +818,62 @@ TypePtr Analyzer::AnalyzeOn(CastAST &ast) {
 }
 
 TypePtr Analyzer::AnalyzeOn(UnaryAST &ast) {
-  // TODO
-  return ast.set_ast_type(MakeVoid());
+  using UnaryOp = UnaryAST::UnaryOp;
+  // get lhs and rhs type & id
+  auto opr = ast.opr()->SemaAnalyze(*this);
+  if (!opr || opr->IsVoid()) {
+    return LogError(ast.opr()->logger(), "invalid operand");
+  }
+  if (opr->IsReference()) opr = opr->GetDerefedType();
+  // check if operator was overloaded
+  // NOTE: 'sizeof' can not be overloaded
+  if (!opr->IsBasic() && ast.op() != UnaryOp::SizeOf) {
+    TypePtrList args = {opr};
+    auto op_name = kUnaOperators[static_cast<int>(ast.op())];
+    auto ret = CheckOpOverload(
+        ast.logger(), op_name, args,
+        [&ast](const std::string &id) { ast.set_op_func_id(id); });
+    if (ret) return ast.set_ast_type(*ret);
+  }
+  // normal unary operations
+  TypePtr ret;
+  switch (ast.op()) {
+    case UnaryOp::Pos: case UnaryOp::Neg: {
+      // int/float unary operation
+      if (opr->IsInteger() || opr->IsFloat()) ret = opr;
+      break;
+    }
+    case UnaryOp::LogicNot: {
+      // int/bool unary operation
+      if (opr->IsInteger() || opr->IsBool()) ret = opr;
+      break;
+    }
+    case UnaryOp::Not: {
+      // int unary operation
+      if (opr->IsInteger()) ret = opr;
+      break;
+    }
+    case UnaryOp::DeRef: {
+      // pointer unary operation
+      if (opr->IsPointer()) ret = opr->GetDerefedType();
+      break;
+    }
+    case UnaryOp::AddrOf: {
+      // left value unary operation
+      if (!opr->IsRightValue()) {
+        ret = std::make_shared<PointerType>(opr);
+      }
+      break;
+    }
+    case UnaryOp::SizeOf: {
+      ret = MakePrimType(Keyword::UInt32, true);
+      break;
+    }
+    default: assert(false); return nullptr;
+  }
+  if (!ret) return LogError(ast.logger(), "invalid unary operation");
+  if (!ret->IsRightValue()) ret = ret->GetValueType(true);
+  return ast.set_ast_type(std::move(ret));
 }
 
 TypePtr Analyzer::AnalyzeOn(IndexAST &ast) {
@@ -761,9 +922,8 @@ TypePtr Analyzer::AnalyzeOn(FunCallAST &ast) {
     type = FindFuncType(ast.expr()->logger(), *last_id_, args, id_setter);
     last_id_ = {};
   }
-  if (!type) return nullptr;
   // check function type
-  if (!type->IsFunction()) {
+  if (!type || !type->IsFunction()) {
     return LogError(ast.expr()->logger(), "calling a non-function");
   }
   // get return type
@@ -1137,7 +1297,24 @@ std::optional<EvalNum> Analyzer::EvalOn(BinaryAST &ast) {
           case Operator::Sub: return lhs - rhs;
           case Operator::Mul: DO_CALC(*);
           case Operator::Div: DO_CALC(/);
-          case Operator::Mod: DO_INT_CALC(%);
+          case Operator::Mod: {
+            if constexpr (std::is_same_v<Lhs, std::uint64_t> &&
+                          std::is_same_v<Rhs, std::uint64_t>) {
+              if (ast.ast_type()->IsUnsigned()) {
+                auto ans = static_cast<std::uint64_t>(lhs) %
+                           static_cast<std::uint64_t>(rhs);
+                return static_cast<std::uint64_t>(ans);
+              }
+              else {
+                auto ans = static_cast<std::int64_t>(lhs) %
+                           static_cast<std::int64_t>(rhs);
+                return static_cast<std::uint64_t>(ans);
+              }
+            }
+            else {
+              return std::fmod(lhs, rhs);
+            }
+          }
           case Operator::Equal: {
             return static_cast<std::uint64_t>(lhs == rhs);
           }
