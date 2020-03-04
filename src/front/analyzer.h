@@ -11,18 +11,20 @@
 #include "define/type.h"
 #include "define/symbol.h"
 #include "define/token.h"
+#include "front/eval.h"
+#include "front/logger.h"
+
+#include "xstl/guard.h"
 
 namespace yulang::front {
 
 class Analyzer {
  public:
-  Analyzer() { Reset(); }
+  Analyzer(Evaluator &eval) : eval_(eval) { Reset(); }
 
   void Reset() {
-    symbols_ = MakeEnv();
-    user_types_ = MakeEnv();
-    values_ = MakeEvalEnv();
-    enum_values_ = MakeEnumEnv();
+    symbols_ = define::MakeEnv();
+    user_types_ = define::MakeEnv();
     in_loop_ = 0;
   }
 
@@ -67,52 +69,11 @@ class Analyzer {
   define::TypePtr AnalyzeOn(define::PointerTypeAST &ast);
   define::TypePtr AnalyzeOn(define::RefTypeAST &ast);
 
-  std::optional<define::EvalNum> EvalOn(define::PropertyAST &ast);
-  std::optional<define::EvalNum> EvalOn(define::VarLetDefAST &ast);
-  std::optional<define::EvalNum> EvalOn(define::FunDefAST &ast);
-  std::optional<define::EvalNum> EvalOn(define::DeclareAST &ast);
-  std::optional<define::EvalNum> EvalOn(define::TypeAliasAST &ast);
-  std::optional<define::EvalNum> EvalOn(define::StructAST &ast);
-  std::optional<define::EvalNum> EvalOn(define::EnumAST &ast);
-  std::optional<define::EvalNum> EvalOn(define::ImportAST &ast);
-  std::optional<define::EvalNum> EvalOn(define::VarElemAST &ast);
-  std::optional<define::EvalNum> EvalOn(define::LetElemAST &ast);
-  std::optional<define::EvalNum> EvalOn(define::ArgElemAST &ast);
-  std::optional<define::EvalNum> EvalOn(define::EnumElemAST &ast);
-  std::optional<define::EvalNum> EvalOn(define::BlockAST &ast);
-  std::optional<define::EvalNum> EvalOn(define::IfAST &ast);
-  std::optional<define::EvalNum> EvalOn(define::WhenAST &ast);
-  std::optional<define::EvalNum> EvalOn(define::WhileAST &ast);
-  std::optional<define::EvalNum> EvalOn(define::ForInAST &ast);
-  std::optional<define::EvalNum> EvalOn(define::AsmAST &ast);
-  std::optional<define::EvalNum> EvalOn(define::ControlAST &ast);
-  std::optional<define::EvalNum> EvalOn(define::WhenElemAST &ast);
-  std::optional<define::EvalNum> EvalOn(define::BinaryAST &ast);
-  std::optional<define::EvalNum> EvalOn(define::CastAST &ast);
-  std::optional<define::EvalNum> EvalOn(define::UnaryAST &ast);
-  std::optional<define::EvalNum> EvalOn(define::IndexAST &ast);
-  std::optional<define::EvalNum> EvalOn(define::FunCallAST &ast);
-  std::optional<define::EvalNum> EvalOn(define::IntAST &ast);
-  std::optional<define::EvalNum> EvalOn(define::FloatAST &ast);
-  std::optional<define::EvalNum> EvalOn(define::CharAST &ast);
-  std::optional<define::EvalNum> EvalOn(define::IdAST &ast);
-  std::optional<define::EvalNum> EvalOn(define::StringAST &ast);
-  std::optional<define::EvalNum> EvalOn(define::BoolAST &ast);
-  std::optional<define::EvalNum> EvalOn(define::NullAST &ast);
-  std::optional<define::EvalNum> EvalOn(define::ValInitAST &ast);
-  std::optional<define::EvalNum> EvalOn(define::PrimTypeAST &ast);
-  std::optional<define::EvalNum> EvalOn(define::UserTypeAST &ast);
-  std::optional<define::EvalNum> EvalOn(define::FuncTypeAST &ast);
-  std::optional<define::EvalNum> EvalOn(define::VolaTypeAST &ast);
-  std::optional<define::EvalNum> EvalOn(define::ArrayTypeAST &ast);
-  std::optional<define::EvalNum> EvalOn(define::PointerTypeAST &ast);
-  std::optional<define::EvalNum> EvalOn(define::RefTypeAST &ast);
-
  private:
   using IdSetter = std::function<void(const std::string &)>;
 
   // switch to new environment
-  xstl::Guard NewEnv(bool eval_env);
+  xstl::Guard NewEnv();
   // enter a new function
   xstl::Guard EnterFunc(const define::TypePtr &ret);
   // perform name mangling
@@ -137,28 +98,24 @@ class Analyzer {
       const Logger &log, const std::string &op_name,
       const define::TypePtrList &args, IdSetter id_setter);
 
+  // evaluator
+  Evaluator &eval_;
   // symbol tables & user defined types (structs, enums, aliases)
-  EnvPtr symbols_, user_types_;
-  // evaluated values
-  EvalEnvPtr values_;
-  // evaluated enumerations
-  EnumEnvPtr enum_values_;
+  define::EnvPtr symbols_, user_types_;
   // used when analyzing properties
   define::PropertyAST::Property last_prop_;
   // used when analyzing functions
   define::TypePtr cur_ret_;
   // used when analyzing structures
   define::TypePair last_arg_info_;
-  // used when analyzing/evaluating enumerations
+  // used when analyzing enumerations
   define::TypePtr last_enum_type_;
-  std::string last_enum_name_, last_enum_elem_name_;
-  std::uint64_t last_enum_val_;
-  // used when analyzing/evaluating 'when' statements
+  std::string last_enum_elem_name_;
+  // used when analyzing 'when' statements
   define::TypePtr last_when_expr_type_;
-  std::optional<EvalNum> last_when_expr_;
   // used when analyzing while loop & for loop
   std::uint64_t in_loop_;
-  // used when analyzing/evaluating identifiers
+  // used when analyzing identifiers
   std::optional<std::string> last_id_;
 };
 
