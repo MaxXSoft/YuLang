@@ -178,6 +178,9 @@ TypePtr Analyzer::AnalyzeOn(FunDefAST &ast) {
   if (!ret->IsRightValue()) ret = ret->GetValueType(true);
   // perform function name mangling
   auto id = ast.id();
+  if (id == ".") {
+    return LogError(ast.logger(), "access operator can not be overloaded");
+  }
   ast.prop()->SemaAnalyze(*this);
   if (last_prop_ != PropertyAST::Property::Extern ||
       last_prop_ != PropertyAST::Property::Demangle) {
