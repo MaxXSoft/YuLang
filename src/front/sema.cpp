@@ -1,6 +1,7 @@
 #include "define/ast.h"
 
 #include "front/analyzer.h"
+#include "front/eval.h"
 
 using namespace yulang::define;
 using namespace yulang::front;
@@ -165,123 +166,123 @@ TypePtr RefTypeAST::SemaAnalyze(Analyzer &ana) {
   return ana.AnalyzeOn(*this);
 }
 
-std::optional<EvalNum> PropertyAST::Eval(Analyzer &ana) {
-  return ana.EvalOn(*this);
+std::optional<EvalNum> PropertyAST::Eval(Evaluator &eval) {
+  return eval.EvalOn(*this);
 }
-std::optional<EvalNum> VarLetDefAST::Eval(Analyzer &ana) {
-  return ana.EvalOn(*this);
+std::optional<EvalNum> VarLetDefAST::Eval(Evaluator &eval) {
+  return eval.EvalOn(*this);
 }
-std::optional<EvalNum> FunDefAST::Eval(Analyzer &ana) {
-  return ana.EvalOn(*this);
+std::optional<EvalNum> FunDefAST::Eval(Evaluator &eval) {
+  return eval.EvalOn(*this);
 }
-std::optional<EvalNum> DeclareAST::Eval(Analyzer &ana) {
-  return ana.EvalOn(*this);
+std::optional<EvalNum> DeclareAST::Eval(Evaluator &eval) {
+  return eval.EvalOn(*this);
 }
-std::optional<EvalNum> TypeAliasAST::Eval(Analyzer &ana) {
-  return ana.EvalOn(*this);
+std::optional<EvalNum> TypeAliasAST::Eval(Evaluator &eval) {
+  return eval.EvalOn(*this);
 }
-std::optional<EvalNum> StructAST::Eval(Analyzer &ana) {
-  return ana.EvalOn(*this);
+std::optional<EvalNum> StructAST::Eval(Evaluator &eval) {
+  return eval.EvalOn(*this);
 }
-std::optional<EvalNum> EnumAST::Eval(Analyzer &ana) {
-  return ana.EvalOn(*this);
+std::optional<EvalNum> EnumAST::Eval(Evaluator &eval) {
+  return eval.EvalOn(*this);
 }
-std::optional<EvalNum> ImportAST::Eval(Analyzer &ana) {
-  return ana.EvalOn(*this);
+std::optional<EvalNum> ImportAST::Eval(Evaluator &eval) {
+  return eval.EvalOn(*this);
 }
-std::optional<EvalNum> VarElemAST::Eval(Analyzer &ana) {
-  return ana.EvalOn(*this);
+std::optional<EvalNum> VarElemAST::Eval(Evaluator &eval) {
+  return eval.EvalOn(*this);
 }
-std::optional<EvalNum> LetElemAST::Eval(Analyzer &ana) {
-  return ana.EvalOn(*this);
+std::optional<EvalNum> LetElemAST::Eval(Evaluator &eval) {
+  return eval.EvalOn(*this);
 }
-std::optional<EvalNum> ArgElemAST::Eval(Analyzer &ana) {
-  return ana.EvalOn(*this);
+std::optional<EvalNum> ArgElemAST::Eval(Evaluator &eval) {
+  return eval.EvalOn(*this);
 }
-std::optional<EvalNum> EnumElemAST::Eval(Analyzer &ana) {
-  return ana.EvalOn(*this);
+std::optional<EvalNum> EnumElemAST::Eval(Evaluator &eval) {
+  return eval.EvalOn(*this);
 }
-std::optional<EvalNum> BlockAST::Eval(Analyzer &ana) {
-  return ana.EvalOn(*this);
+std::optional<EvalNum> BlockAST::Eval(Evaluator &eval) {
+  return eval.EvalOn(*this);
 }
-std::optional<EvalNum> IfAST::Eval(Analyzer &ana) {
-  return ana.EvalOn(*this);
+std::optional<EvalNum> IfAST::Eval(Evaluator &eval) {
+  return eval.EvalOn(*this);
 }
-std::optional<EvalNum> WhenAST::Eval(Analyzer &ana) {
-  return ana.EvalOn(*this);
+std::optional<EvalNum> WhenAST::Eval(Evaluator &eval) {
+  return eval.EvalOn(*this);
 }
-std::optional<EvalNum> WhileAST::Eval(Analyzer &ana) {
-  return ana.EvalOn(*this);
+std::optional<EvalNum> WhileAST::Eval(Evaluator &eval) {
+  return eval.EvalOn(*this);
 }
-std::optional<EvalNum> ForInAST::Eval(Analyzer &ana) {
-  return ana.EvalOn(*this);
+std::optional<EvalNum> ForInAST::Eval(Evaluator &eval) {
+  return eval.EvalOn(*this);
 }
-std::optional<EvalNum> AsmAST::Eval(Analyzer &ana) {
-  return ana.EvalOn(*this);
+std::optional<EvalNum> AsmAST::Eval(Evaluator &eval) {
+  return eval.EvalOn(*this);
 }
-std::optional<EvalNum> ControlAST::Eval(Analyzer &ana) {
-  return ana.EvalOn(*this);
+std::optional<EvalNum> ControlAST::Eval(Evaluator &eval) {
+  return eval.EvalOn(*this);
 }
-std::optional<EvalNum> WhenElemAST::Eval(Analyzer &ana) {
-  return ana.EvalOn(*this);
+std::optional<EvalNum> WhenElemAST::Eval(Evaluator &eval) {
+  return eval.EvalOn(*this);
 }
-std::optional<EvalNum> BinaryAST::Eval(Analyzer &ana) {
-  return ana.EvalOn(*this);
+std::optional<EvalNum> BinaryAST::Eval(Evaluator &eval) {
+  return eval.EvalOn(*this);
 }
-std::optional<EvalNum> CastAST::Eval(Analyzer &ana) {
-  return ana.EvalOn(*this);
+std::optional<EvalNum> CastAST::Eval(Evaluator &eval) {
+  return eval.EvalOn(*this);
 }
-std::optional<EvalNum> UnaryAST::Eval(Analyzer &ana) {
-  return ana.EvalOn(*this);
+std::optional<EvalNum> UnaryAST::Eval(Evaluator &eval) {
+  return eval.EvalOn(*this);
 }
-std::optional<EvalNum> IndexAST::Eval(Analyzer &ana) {
-  return ana.EvalOn(*this);
+std::optional<EvalNum> IndexAST::Eval(Evaluator &eval) {
+  return eval.EvalOn(*this);
 }
-std::optional<EvalNum> FunCallAST::Eval(Analyzer &ana) {
-  return ana.EvalOn(*this);
+std::optional<EvalNum> FunCallAST::Eval(Evaluator &eval) {
+  return eval.EvalOn(*this);
 }
-std::optional<EvalNum> IntAST::Eval(Analyzer &ana) {
-  return ana.EvalOn(*this);
+std::optional<EvalNum> IntAST::Eval(Evaluator &eval) {
+  return eval.EvalOn(*this);
 }
-std::optional<EvalNum> FloatAST::Eval(Analyzer &ana) {
-  return ana.EvalOn(*this);
+std::optional<EvalNum> FloatAST::Eval(Evaluator &eval) {
+  return eval.EvalOn(*this);
 }
-std::optional<EvalNum> CharAST::Eval(Analyzer &ana) {
-  return ana.EvalOn(*this);
+std::optional<EvalNum> CharAST::Eval(Evaluator &eval) {
+  return eval.EvalOn(*this);
 }
-std::optional<EvalNum> IdAST::Eval(Analyzer &ana) {
-  return ana.EvalOn(*this);
+std::optional<EvalNum> IdAST::Eval(Evaluator &eval) {
+  return eval.EvalOn(*this);
 }
-std::optional<EvalNum> StringAST::Eval(Analyzer &ana) {
-  return ana.EvalOn(*this);
+std::optional<EvalNum> StringAST::Eval(Evaluator &eval) {
+  return eval.EvalOn(*this);
 }
-std::optional<EvalNum> BoolAST::Eval(Analyzer &ana) {
-  return ana.EvalOn(*this);
+std::optional<EvalNum> BoolAST::Eval(Evaluator &eval) {
+  return eval.EvalOn(*this);
 }
-std::optional<EvalNum> NullAST::Eval(Analyzer &ana) {
-  return ana.EvalOn(*this);
+std::optional<EvalNum> NullAST::Eval(Evaluator &eval) {
+  return eval.EvalOn(*this);
 }
-std::optional<EvalNum> ValInitAST::Eval(Analyzer &ana) {
-  return ana.EvalOn(*this);
+std::optional<EvalNum> ValInitAST::Eval(Evaluator &eval) {
+  return eval.EvalOn(*this);
 }
-std::optional<EvalNum> PrimTypeAST::Eval(Analyzer &ana) {
-  return ana.EvalOn(*this);
+std::optional<EvalNum> PrimTypeAST::Eval(Evaluator &eval) {
+  return eval.EvalOn(*this);
 }
-std::optional<EvalNum> UserTypeAST::Eval(Analyzer &ana) {
-  return ana.EvalOn(*this);
+std::optional<EvalNum> UserTypeAST::Eval(Evaluator &eval) {
+  return eval.EvalOn(*this);
 }
-std::optional<EvalNum> FuncTypeAST::Eval(Analyzer &ana) {
-  return ana.EvalOn(*this);
+std::optional<EvalNum> FuncTypeAST::Eval(Evaluator &eval) {
+  return eval.EvalOn(*this);
 }
-std::optional<EvalNum> VolaTypeAST::Eval(Analyzer &ana) {
-  return ana.EvalOn(*this);
+std::optional<EvalNum> VolaTypeAST::Eval(Evaluator &eval) {
+  return eval.EvalOn(*this);
 }
-std::optional<EvalNum> ArrayTypeAST::Eval(Analyzer &ana) {
-  return ana.EvalOn(*this);
+std::optional<EvalNum> ArrayTypeAST::Eval(Evaluator &eval) {
+  return eval.EvalOn(*this);
 }
-std::optional<EvalNum> PointerTypeAST::Eval(Analyzer &ana) {
-  return ana.EvalOn(*this);
+std::optional<EvalNum> PointerTypeAST::Eval(Evaluator &eval) {
+  return eval.EvalOn(*this);
 }
-std::optional<EvalNum> RefTypeAST::Eval(Analyzer &ana) {
-  return ana.EvalOn(*this);
+std::optional<EvalNum> RefTypeAST::Eval(Evaluator &eval) {
+  return eval.EvalOn(*this);
 }
