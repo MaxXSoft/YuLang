@@ -42,6 +42,8 @@ class BaseType {
   virtual bool IsFloat() const = 0;
   // return true if is boolean
   virtual bool IsBool() const = 0;
+  // return true if is enumeration type
+  virtual bool IsEnum() const = 0;
   // return true if is constant type
   virtual bool IsConst() const = 0;
   // return true if is function type
@@ -69,7 +71,9 @@ class BaseType {
   // e.g. array length, struct field number
   virtual std::size_t GetLength() const = 0;
   // return the element at specific index
-  virtual const TypePtr &GetElem(std::size_t index) const = 0;
+  virtual TypePtr GetElem(std::size_t index) const = 0;
+  // return the element with specific name
+  virtual TypePtr GetElem(const std::string &name) const = 0;
   // return the dereferenced type of current type
   virtual TypePtr GetDerefedType() const = 0;
   // return the identifier of current type
