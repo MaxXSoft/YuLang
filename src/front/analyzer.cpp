@@ -228,15 +228,14 @@ TypePtr Analyzer::AnalyzeOn(TypeAliasAST &ast) {
 }
 
 TypePtr Analyzer::AnalyzeOn(StructAST &ast) {
+  // analyze elements
   TypePairList elems;
-  {
-    // create a new environment for elements
-    auto env = NewEnv();
-    for (const auto &i : ast.defs()) {
-      if (!i->SemaAnalyze(*this)) return nullptr;
-      elems.push_back(std::move(last_arg_info_));
-    }
+  in_struct_ = true;
+  for (const auto &i : ast.defs()) {
+    if (!i->SemaAnalyze(*this)) return nullptr;
+    elems.push_back(std::move(last_arg_info_));
   }
+  in_struct_ = false;
   // add user type to environment
   auto type = std::make_shared<SturctType>(std::move(elems));
   if (!AddUserType(ast.logger(), ast.id(), std::move(type))) {
@@ -319,13 +318,22 @@ TypePtr Analyzer::AnalyzeOn(ArgElemAST &ast) {
   // get type
   auto type = ast.type()->SemaAnalyze(*this);
   if (!type) return nullptr;
-  // set last argument info (for structures)
-  last_arg_info_ = {ast.id(), type};
-  // add symbol to environment
-  assert(!type->IsConst());
-  auto const_type = std::make_shared<ConstType>(std::move(type));
-  symbols_->AddItem(ast.id(), const_type);
-  return ast.set_ast_type(std::move(const_type));
+  if (in_struct_) {
+    // set last argument info (for structures)
+    assert(!type->IsRightValue());
+    if (type->IsReference()) {
+      return LogError(ast.logger(),
+                      "type of structure element can not be reference");
+    }
+    last_arg_info_ = {ast.id(), type};
+  }
+  else {
+    // add symbol to environment
+    assert(!type->IsConst());
+    type = std::make_shared<ConstType>(std::move(type));
+    symbols_->AddItem(ast.id(), type);
+  }
+  return ast.set_ast_type(std::move(type));
 }
 
 TypePtr Analyzer::AnalyzeOn(EnumElemAST &ast) {
