@@ -80,6 +80,17 @@ bool Analyzer::AddVarConst(const Logger &log, const std::string &id,
       LogError(log, "type mismatch when initializing", id);
       return false;
     }
+    // check for reference types
+    if (type->IsReference()) {
+      if (!init) {
+        LogError(log, "cannot define a reference "
+                 "without initialization", id);
+      }
+      else if (init->IsRightValue()) {
+        LogError(log, "reference cannot be initialized "
+                 "with a right value", id);
+      }
+    }
     sym_type = std::move(type);
   }
   else {
@@ -179,7 +190,7 @@ TypePtr Analyzer::AnalyzeOn(FunDefAST &ast) {
   // perform function name mangling
   auto id = ast.id();
   if (id == ".") {
-    return LogError(ast.logger(), "access operator can not be overloaded");
+    return LogError(ast.logger(), "access operator cannot be overloaded");
   }
   ast.prop()->SemaAnalyze(*this);
   if (last_prop_ != PropertyAST::Property::Extern ||
@@ -334,7 +345,7 @@ TypePtr Analyzer::AnalyzeOn(StructElemAST &ast) {
   assert(!type->IsRightValue());
   if (type->IsReference()) {
     return LogError(ast.logger(),
-                    "type of structure element can not be reference");
+                    "type of structure element cannot be reference");
   }
   last_struct_info_ = {ast.id(), type};
   return ast.set_ast_type(std::move(type));
@@ -664,7 +675,7 @@ TypePtr Analyzer::AnalyzeOn(UnaryAST &ast) {
   }
   if (opr->IsReference()) opr = opr->GetDerefedType();
   // check if operator was overloaded
-  // NOTE: 'sizeof' can not be overloaded
+  // NOTE: 'sizeof' cannot be overloaded
   if (!opr->IsBasic() && ast.op() != UnaryOp::SizeOf) {
     TypePtrList args = {opr};
     auto op_name = kUnaOperators[static_cast<int>(ast.op())];
