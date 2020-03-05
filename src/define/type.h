@@ -154,7 +154,9 @@ class PrimType : public BaseType {
 class StructType : public BaseType {
  public:
   StructType(TypePairList elems, const std::string &id, bool is_right)
-      : elems_(std::move(elems)), id_(id), is_right_(is_right) {}
+      : elems_(std::move(elems)), id_(id), is_right_(is_right) {
+    CalcSize();
+  }
 
   bool IsRightValue() const override { return is_right_; }
   bool IsVoid() const override { return false; }
@@ -175,6 +177,7 @@ class StructType : public BaseType {
   bool CanCastTo(const TypePtr &type) const override {
     return IsIdentical(type);
   }
+  std::size_t GetSize() const override { return size_; }
   std::optional<TypePtrList> GetArgsType() const override { return {}; }
   TypePtr GetReturnType(const TypePtrList &args) const override {
     return nullptr;
@@ -188,14 +191,16 @@ class StructType : public BaseType {
 
   bool CanAccept(const TypePtr &type) const override;
   bool IsIdentical(const TypePtr &type) const override;
-  std::size_t GetSize() const override;
   TypePtr GetElem(const std::string &name) const override;
   TypePtr GetValueType(bool is_right) const override;
 
  private:
+  void CalcSize();
+
   TypePairList elems_;
   std::string id_;
   bool is_right_;
+  std::size_t size_;
 };
 
 class EnumType : public BaseType {
@@ -518,7 +523,6 @@ class RefType : public BaseType {
   bool IsIdentical(const TypePtr &type) const override {
     return base_->IsIdentical(type);
   }
-  std::size_t GetSize() const override { return base_->GetSize(); }
   std::optional<TypePtrList> GetArgsType() const override {
     return base_->GetArgsType();
   }
@@ -539,6 +543,7 @@ class RefType : public BaseType {
     return base_->GetTypeId();
   }
 
+  std::size_t GetSize() const override;
   TypePtr GetValueType(bool is_right) const override;
 
  private:
