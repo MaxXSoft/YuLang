@@ -581,7 +581,7 @@ std::optional<EvalNum> Evaluator::EvalOn(BoolAST &ast) {
 }
 
 std::optional<EvalNum> Evaluator::EvalOn(NullAST &ast) {
-  return {};
+  return 0ull;
 }
 
 std::optional<EvalNum> Evaluator::EvalOn(ValInitAST &ast) {
