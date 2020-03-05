@@ -43,7 +43,8 @@ control   ::= "break" | "continue"  | ("return" [expr]);
 when_elem ::= expr {"," expr} block;
 
 expr      ::= binary {id binary};
-binary    ::= cast {bin_op cast};
+binary    ::= access {bin_op access};
+access    ::= cast ["." id ["(" [expr {"," expr}] ")"]];
 cast      ::= unary ["as" type];
 unary     ::= [unary_op | "sizeof"] factor;
 factor    ::= value | block     | if_else   | when
