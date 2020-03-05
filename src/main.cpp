@@ -4,6 +4,7 @@
 #include "front/lexman.h"
 #include "front/parser.h"
 #include "front/analyzer.h"
+#include "front/eval.h"
 
 using namespace std;
 using namespace yulang::front;
@@ -19,11 +20,12 @@ int main(int argc, const char *argv[]) {
   LexerManager lex_man;
   lex_man.LoadSource(argv[1]);
   Parser parser(lex_man);
-  Analyzer ana;
+  Evaluator eval;
+  Analyzer ana(eval);
   while (auto ast = parser.ParseNext()) {
-    ast->Dump(cout);
     if (!ast->SemaAnalyze(ana)) break;
-    ast->Eval(ana);
+    ast->Eval(eval);
+    ast->Dump(cout);
   }
   return lex_man.lexer()->logger().error_num();
 }
