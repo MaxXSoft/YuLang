@@ -14,7 +14,7 @@ std::size_t pointer_size = sizeof(void *);
 }  // namespace
 
 bool PrimType::CanAccept(const TypePtr &type) const {
-  if (is_right_ || IsVoid() || IsNull()) return false;
+  if (is_right_ || IsNull()) return false;
   return IsIdentical(type);
 }
 

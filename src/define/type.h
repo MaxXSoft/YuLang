@@ -273,7 +273,9 @@ class ConstType : public BaseType {
   bool IsArray() const override { return type_->IsArray(); }
   bool IsPointer() const override { return type_->IsPointer(); }
   bool IsReference() const override { return type_->IsReference(); }
-  bool CanAccept(const TypePtr &type) const override { return false; }
+  bool CanAccept(const TypePtr &type) const override {
+    return type->IsReference() ? type->CanCastTo(type) : false;
+  }
   bool CanCastTo(const TypePtr &type) const override {
     return type->IsConst() && type_->CanCastTo(type);
   }
@@ -537,7 +539,7 @@ class RefType : public BaseType {
     return base_->GetElem(name);
   }
   TypePtr GetDerefedType() const override {
-    return base_->GetDerefedType();
+    return base_;
   }
   std::string GetTypeId() const override {
     return base_->GetTypeId();

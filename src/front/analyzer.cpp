@@ -194,7 +194,7 @@ TypePtr Analyzer::AnalyzeOn(FunDefAST &ast) {
     return LogError(ast.logger(), "access operator cannot be overloaded");
   }
   ast.prop()->SemaAnalyze(*this);
-  if (last_prop_ != PropertyAST::Property::Extern ||
+  if (last_prop_ != PropertyAST::Property::Extern &&
       last_prop_ != PropertyAST::Property::Demangle) {
     id = MangleFuncName(id, args);
     ast.set_id(id);
@@ -210,7 +210,14 @@ TypePtr Analyzer::AnalyzeOn(FunDefAST &ast) {
   type = std::make_shared<ConstType>(std::move(type));
   symbols_->outer()->AddItem(id, std::move(type));
   // analyze function's body
-  if (ast.body()) if (!ast.body()->SemaAnalyze(*this)) return nullptr;
+  if (ast.body()) {
+    auto body_ret = ast.body()->SemaAnalyze(*this);
+    if (!body_ret) return nullptr;
+    if (!cur_ret_->IsVoid() && !cur_ret_->CanAccept(body_ret)) {
+      return LogError(ast.body()->logger(),
+                      "type mismatch when returning");
+    }
+  }
   return ast.set_ast_type(MakeVoid());
 }
 
@@ -221,7 +228,7 @@ TypePtr Analyzer::AnalyzeOn(DeclareAST &ast) {
   auto id = ast.id();
   ast.prop()->SemaAnalyze(*this);
   if (type->IsFunction() &&
-      (last_prop_ != PropertyAST::Property::Extern ||
+      (last_prop_ != PropertyAST::Property::Extern &&
        last_prop_ != PropertyAST::Property::Demangle)) {
     id = MangleFuncName(id, *type->GetArgsType());
     ast.set_id(id);
@@ -353,7 +360,7 @@ TypePtr Analyzer::AnalyzeOn(ArgElemAST &ast) {
                     ast.id());
   }
   // add symbol to environment
-  assert(!type->IsConst());
+  assert(!type->IsConst() || type->IsReference());
   type = std::make_shared<ConstType>(std::move(type));
   symbols_->AddItem(ast.id(), type);
   return ast.set_ast_type(std::move(type));
@@ -775,6 +782,7 @@ TypePtr Analyzer::AnalyzeOn(FunCallAST &ast) {
   // get type of arguments
   TypePtrList args;
   for (const auto &i : ast.args()) {
+    // TODO: function name mangling
     auto arg = i->SemaAnalyze(*this);
     if (!arg) return nullptr;
     args.push_back(std::move(arg));
@@ -838,10 +846,10 @@ TypePtr Analyzer::AnalyzeOn(ValInitAST &ast) {
   if (!type) return nullptr;
   assert(!type->IsRightValue());
   // check if is a valid initializer list
-  if (type->GetLength() > ast.elems().size()) {
+  if (ast.elems().size() > type->GetLength()) {
     return LogError(ast.logger(), "initializer list length exceeded");
   }
-  for (int i = 0; i < type->GetLength(); ++i) {
+  for (int i = 0; i < ast.elems().size(); ++i) {
     // get type of element
     auto elem = ast.elems()[i]->SemaAnalyze(*this);
     if (!elem) return nullptr;

@@ -498,12 +498,12 @@ void ArrayTypeAST::Dump(std::ostream &os) {
 
 void PointerTypeAST::Dump(std::ostream &os) {
   base_->Dump(os);
-  os << " *";
+  os << '*';
   if (!is_var_) os << "const";
 }
 
 void RefTypeAST::Dump(std::ostream &os) {
   base_->Dump(os);
-  os << " &";
+  os << '&';
   if (!is_var_) os << "const";
 }
