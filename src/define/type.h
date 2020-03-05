@@ -278,7 +278,7 @@ class ConstType : public BaseType {
     return type->IsConst() && type_->CanCastTo(type);
   }
   bool IsIdentical(const TypePtr &type) const override {
-    type_->IsIdentical(type);
+    return type_->IsIdentical(type);
   }
   std::size_t GetSize() const override { return type_->GetSize(); }
   std::optional<TypePtrList> GetArgsType() const override {

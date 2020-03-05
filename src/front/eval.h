@@ -76,7 +76,7 @@ class Evaluator {
   std::string last_enum_name_;
   std::uint64_t last_enum_val_;
   // used when evaluating 'when' statements
-  std::optional<EvalNum> last_when_expr_;
+  std::optional<define::EvalNum> last_when_expr_;
   // used when evaluating identifiers
   std::optional<std::string> last_id_;
 };

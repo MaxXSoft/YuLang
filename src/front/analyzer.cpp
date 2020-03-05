@@ -205,7 +205,9 @@ TypePtr Analyzer::AnalyzeOn(FunDefAST &ast) {
     return LogError(ast.logger(), "function has already been defined", id);
   }
   // add function type info to environment
-  auto type = std::make_shared<FuncType>(std::move(args), std::move(ret));
+  TypePtr type = std::make_shared<FuncType>(std::move(args), std::move(ret),
+                                            false);
+  type = std::make_shared<ConstType>(std::move(type));
   symbols_->outer()->AddItem(id, std::move(type));
   // analyze function's body
   if (ast.body()) if (!ast.body()->SemaAnalyze(*this)) return nullptr;
@@ -259,7 +261,8 @@ TypePtr Analyzer::AnalyzeOn(StructAST &ast) {
                      std::move(type)});
   }
   // add user type to environment
-  auto type = std::make_shared<StructType>(std::move(elems));
+  auto type = std::make_shared<StructType>(std::move(elems), ast.id(),
+                                           false);
   if (!AddUserType(ast.logger(), ast.id(), std::move(type))) {
     return nullptr;
   }
@@ -287,8 +290,8 @@ TypePtr Analyzer::AnalyzeOn(EnumAST &ast) {
     }
   }
   // add user type to environment
-  auto enum_type = std::make_shared<EnumType>(std::move(type),
-                                              std::move(elems));
+  auto enum_type = std::make_shared<EnumType>(
+      std::move(type), std::move(elems), ast.id(), false);
   if (!AddUserType(ast.logger(), ast.id(), std::move(enum_type))) {
     return nullptr;
   }
@@ -725,7 +728,7 @@ TypePtr Analyzer::AnalyzeOn(UnaryAST &ast) {
     case UnaryOp::AddrOf: {
       // left value unary operation
       if (!opr->IsRightValue()) {
-        ret = std::make_shared<PointerType>(opr);
+        ret = std::make_shared<PointerType>(opr, true);
       }
       break;
     }
@@ -781,7 +784,7 @@ TypePtr Analyzer::AnalyzeOn(FunCallAST &ast) {
   auto type = ast.expr()->SemaAnalyze(*this);
   if (last_id_) {
     auto id_setter = [&ast](const std::string &id) {
-      static_cast<const IdAST *>(ast.expr().get())->set_id(id);
+      static_cast<IdAST *>(ast.expr().get())->set_id(id);
     };
     type = FindFuncType(ast.expr()->logger(), *last_id_, args, id_setter);
     last_id_ = {};
@@ -818,7 +821,7 @@ TypePtr Analyzer::AnalyzeOn(IdAST &ast) {
 TypePtr Analyzer::AnalyzeOn(StringAST &ast) {
   auto u8t = MakePrimType(Keyword::UInt8, true);
   auto cu8t = std::make_shared<ConstType>(std::move(u8t));
-  auto strt = std::make_shared<PointerType>(std::move(cu8t));
+  auto strt = std::make_shared<PointerType>(std::move(cu8t), true);
   return ast.set_ast_type(std::move(strt));
 }
 
@@ -874,7 +877,8 @@ TypePtr Analyzer::AnalyzeOn(FuncTypeAST &ast) {
   auto ret = ast.ret()->SemaAnalyze(*this);
   if (!ret) return nullptr;
   // make function type
-  auto type = std::make_shared<FuncType>(std::move(args), std::move(ret));
+  auto type = std::make_shared<FuncType>(std::move(args), std::move(ret),
+                                         false);
   return ast.set_ast_type(std::move(type));
 }
 
@@ -900,7 +904,7 @@ TypePtr Analyzer::AnalyzeOn(ArrayTypeAST &ast) {
     return LogError(ast.expr()->logger(), "invalid array length");
   }
   // create array type
-  auto arr = std::make_shared<ArrayType>(std::move(base), *len_ptr);
+  auto arr = std::make_shared<ArrayType>(std::move(base), *len_ptr, false);
   return ast.set_ast_type(std::move(arr));
 }
 
@@ -909,7 +913,8 @@ TypePtr Analyzer::AnalyzeOn(PointerTypeAST &ast) {
   auto base = ast.base()->SemaAnalyze(*this);
   if (!base) return nullptr;
   if (!ast.is_var()) base = std::make_shared<ConstType>(std::move(base));
-  return ast.set_ast_type(std::make_shared<PointerType>(std::move(base)));
+  auto type = std::make_shared<PointerType>(std::move(base), false);
+  return ast.set_ast_type(std::move(type));
 }
 
 TypePtr Analyzer::AnalyzeOn(RefTypeAST &ast) {

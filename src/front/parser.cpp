@@ -602,7 +602,8 @@ ASTPtr Parser::ParseAccess() {
     if (IsTokenChar('(')) {
       NextToken();
       // get argument list
-      ASTPtrList args = {std::move(expr)};
+      ASTPtrList args;
+      args.push_back(std::move(expr));
       if (!GetExprList(args)) return nullptr;
       // generate function call
       auto id_ast = MakeAST<IdAST>(log, std::move(id));

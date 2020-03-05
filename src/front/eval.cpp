@@ -49,6 +49,10 @@ using namespace yulang::define;
 
 namespace {
 
+// helper type for the visitor
+template <typename T>
+struct AlwaysFalse : std::false_type {};
+
 // create a new int/float AST by 'EvalNum'
 inline ASTPtr MakeAST(const EvalNum &num, const Logger &log) {
   auto ast = std::visit([](auto &&arg) -> ASTPtr {
@@ -61,7 +65,7 @@ inline ASTPtr MakeAST(const EvalNum &num, const Logger &log) {
       return std::make_unique<FloatAST>(arg);
     }
     else {
-      static_assert(false);
+      static_assert(AlwaysFalse<T>::value);
       return nullptr;
     }
   }, num);
@@ -69,23 +73,16 @@ inline ASTPtr MakeAST(const EvalNum &num, const Logger &log) {
   return ast;
 }
 
-// create a new int/float/bool AST by specific value
-template <typename T>
-inline ASTPtr MakeAST(T &&value, const Logger &log) {
-  using Ty = std::decay_t<T>;
-  ASTPtr ast;
-  if constexpr (std::is_same_v<T, std::uint64_t>) {
-    ast = std::make_unique<IntAST>(value);
-  }
-  else if constexpr (std::is_same_v<T, double>) {
-    ast = std::make_unique<FloatAST>(value);
-  }
-  else if constexpr (std::is_same_v<T, bool>) {
-    ast = std::make_unique<BoolAST>(value);
-  }
-  else {
-    static_assert(false);
-  }
+// create a new int AST by value
+inline ASTPtr MakeAST(std::uint64_t value, const Logger &log) {
+  auto ast = std::make_unique<IntAST>(value);
+  ast->set_logger(log);
+  return ast;
+}
+
+// create a new bool AST by value
+inline ASTPtr MakeAST(bool value, const Logger &log) {
+  auto ast = std::make_unique<IntAST>(value);
   ast->set_logger(log);
   return ast;
 }
@@ -475,7 +472,7 @@ std::optional<EvalNum> Evaluator::EvalOn(BinaryAST &ast) {
 std::optional<EvalNum> Evaluator::EvalOn(AccessAST &ast) {
   // try to get id value of expression
   last_id_ = {};
-  auto lhs = ast.expr()->Eval(*this);
+  ast.expr()->Eval(*this);
   auto lhs_id = last_id_;
   last_id_ = {};
   // check if is enumerate

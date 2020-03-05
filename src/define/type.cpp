@@ -110,7 +110,7 @@ TypePtr EnumType::GetElem(const std::string &name) const {
 }
 
 TypePtr EnumType::GetValueType(bool is_right) const {
-  return std::make_shared<StructType>(type_, elems_, id_, is_right);
+  return std::make_shared<EnumType>(type_, elems_, id_, is_right);
 }
 
 TypePtr ConstType::GetElem(std::size_t index) const {
