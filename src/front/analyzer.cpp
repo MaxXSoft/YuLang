@@ -1,6 +1,7 @@
 #include "front/analyzer.h"
 
 #include <sstream>
+#include <unordered_set>
 #include <cmath>
 #include <cassert>
 
@@ -244,9 +245,18 @@ TypePtr Analyzer::AnalyzeOn(TypeAliasAST &ast) {
 TypePtr Analyzer::AnalyzeOn(StructAST &ast) {
   // analyze elements
   TypePairList elems;
+  std::unordered_set<std::string_view> names;
   for (const auto &i : ast.defs()) {
-    if (!i->SemaAnalyze(*this)) return nullptr;
-    elems.push_back(std::move(last_struct_info_));
+    auto type = i->SemaAnalyze(*this);
+    if (!type) return nullptr;
+    // check if name conflicted
+    auto [_, succ] = names.insert(last_struct_elem_name_);
+    if (!succ) {
+      return LogError(i->logger(), "conflicted struct element name",
+                      last_struct_elem_name_);
+    }
+    elems.push_back({std::string(last_struct_elem_name_),
+                     std::move(type)});
   }
   // add user type to environment
   auto type = std::make_shared<SturctType>(std::move(elems));
@@ -261,6 +271,10 @@ TypePtr Analyzer::AnalyzeOn(EnumAST &ast) {
   auto type = ast.type() ? ast.type()->SemaAnalyze(*this)
                          : MakePrimType(Keyword::Int32, false);
   if (!type) return nullptr;
+  if (!type->IsInteger()) {
+    return LogError(ast.logger(),
+                    "enumuration's type must be an integer type");
+  }
   last_enum_type_ = type;
   // get all elements
   EnumType::ElemSet elems;
@@ -330,6 +344,11 @@ TypePtr Analyzer::AnalyzeOn(ArgElemAST &ast) {
   // get type
   auto type = ast.type()->SemaAnalyze(*this);
   if (!type) return nullptr;
+  // check if is conflicted
+  if (symbols_->GetItem(ast.id(), false)) {
+    return LogError(ast.logger(), "argument has already been declared",
+                    ast.id());
+  }
   // add symbol to environment
   assert(!type->IsConst());
   type = std::make_shared<ConstType>(std::move(type));
@@ -347,7 +366,7 @@ TypePtr Analyzer::AnalyzeOn(StructElemAST &ast) {
     return LogError(ast.logger(),
                     "type of structure element cannot be reference");
   }
-  last_struct_info_ = {ast.id(), type};
+  last_struct_elem_name_ = ast.id();
   return ast.set_ast_type(std::move(type));
 }
 
@@ -633,7 +652,8 @@ TypePtr Analyzer::AnalyzeOn(AccessAST &ast) {
     // check if is enumeration access
     auto enum_type = user_types_->GetItem(*expr_id);
     if (enum_type->IsEnum() && enum_type->GetElem(ast.id())) {
-      ret = std::move(enum_type);
+      assert(!enum_type->IsRightValue());
+      ret = enum_type->GetValueType(true);
     }
   }
   else if (expr && expr->GetLength()) {
@@ -654,11 +674,6 @@ TypePtr Analyzer::AnalyzeOn(CastAST &ast) {
   auto expr = ast.expr()->SemaAnalyze(*this);
   auto type = ast.type()->SemaAnalyze(*this);
   if (!expr || !type) return nullptr;
-  // check if is const cast
-  auto expr_deref = expr->IsReference() ? expr->GetDerefedType() : expr;
-  if (expr_deref->IsConst() && !type->IsConst()) {
-    return LogError(ast.logger(), "const cast is not allowed");
-  }
   // check if cast is valid
   if (type->IsReference() || !expr->CanCastTo(type)) {
     return LogError(ast.logger(), "invalid type casting");
@@ -818,10 +833,7 @@ TypePtr Analyzer::AnalyzeOn(NullAST &ast) {
 TypePtr Analyzer::AnalyzeOn(ValInitAST &ast) {
   auto type = ast.type()->SemaAnalyze(*this);
   if (!type) return nullptr;
-  // create left value type of current type
-  if (type->IsRightValue()) {
-    type = type->GetValueType(false);
-  }
+  assert(!type->IsRightValue());
   // check if is a valid initializer list
   if (type->GetLength() > ast.elems().size()) {
     return LogError(ast.logger(), "initializer list length exceeded");
@@ -876,11 +888,17 @@ TypePtr Analyzer::AnalyzeOn(ArrayTypeAST &ast) {
   // get base type
   auto base = ast.base()->SemaAnalyze(*this);
   if (!base) return nullptr;
+  // check type of length expression
+  if (!ast.expr()->ast_type()->IsInteger()) {
+    return LogError(ast.expr()->logger(),
+                    "array length must be an integer");
+  }
   // try to evaluate array length
   auto val = ast.expr()->Eval(eval_);
-  if (!val) return LogError(ast.expr()->logger(), "invalid array length");
   auto len_ptr = std::get_if<std::uint64_t>(&*val);
-  assert(len_ptr);
+  if (!val || !*len_ptr) {
+    return LogError(ast.expr()->logger(), "invalid array length");
+  }
   // create array type
   auto arr = std::make_shared<ArrayType>(std::move(base), *len_ptr);
   return ast.set_ast_type(std::move(arr));
@@ -898,6 +916,9 @@ TypePtr Analyzer::AnalyzeOn(RefTypeAST &ast) {
   // get base type
   auto base = ast.base()->SemaAnalyze(*this);
   if (!base) return nullptr;
+  if (base->IsReference()) {
+    return LogError(ast.logger(), "cannot reference a reference");
+  }
   if (!ast.is_var()) base = std::make_shared<ConstType>(std::move(base));
   return ast.set_ast_type(std::make_shared<RefType>(std::move(base)));
 }

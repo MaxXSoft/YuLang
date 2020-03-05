@@ -109,7 +109,7 @@ class Analyzer {
   // used when analyzing functions
   define::TypePtr cur_ret_;
   // used when analyzing structures
-  define::TypePair last_struct_info_;
+  std::string_view last_struct_elem_name_;
   // used when analyzing enumerations
   define::TypePtr last_enum_type_;
   std::string last_enum_elem_name_;
