@@ -32,6 +32,7 @@ class Evaluator {
   std::optional<define::EvalNum> EvalOn(define::VarElemAST &ast);
   std::optional<define::EvalNum> EvalOn(define::LetElemAST &ast);
   std::optional<define::EvalNum> EvalOn(define::ArgElemAST &ast);
+  std::optional<define::EvalNum> EvalOn(define::StructElemAST &ast);
   std::optional<define::EvalNum> EvalOn(define::EnumElemAST &ast);
   std::optional<define::EvalNum> EvalOn(define::BlockAST &ast);
   std::optional<define::EvalNum> EvalOn(define::IfAST &ast);
@@ -42,6 +43,7 @@ class Evaluator {
   std::optional<define::EvalNum> EvalOn(define::ControlAST &ast);
   std::optional<define::EvalNum> EvalOn(define::WhenElemAST &ast);
   std::optional<define::EvalNum> EvalOn(define::BinaryAST &ast);
+  std::optional<define::EvalNum> EvalOn(define::AccessAST &ast);
   std::optional<define::EvalNum> EvalOn(define::CastAST &ast);
   std::optional<define::EvalNum> EvalOn(define::UnaryAST &ast);
   std::optional<define::EvalNum> EvalOn(define::IndexAST &ast);

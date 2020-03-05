@@ -242,6 +242,10 @@ std::optional<EvalNum> Evaluator::EvalOn(ArgElemAST &ast) {
   return {};
 }
 
+std::optional<EvalNum> Evaluator::EvalOn(StructElemAST &ast) {
+  return {};
+}
+
 std::optional<EvalNum> Evaluator::EvalOn(EnumElemAST &ast) {
   // check if has initial expression
   if (ast.expr()) {
@@ -388,28 +392,10 @@ std::optional<EvalNum> Evaluator::EvalOn(WhenElemAST &ast) {
 
 std::optional<EvalNum> Evaluator::EvalOn(BinaryAST &ast) {
   // evaluate rhs
-  last_id_ = {};
   auto rhs = ast.rhs()->Eval(*this);
-  if (ast.op() != Operator::Access && rhs) {
-    ast.set_rhs(MakeAST(*rhs, ast.rhs()->logger()));
-  }
+  if (rhs) ast.set_rhs(MakeAST(*rhs, ast.rhs()->logger()));
   // handle by operator
-  if (ast.op() == Operator::Access) {
-    // try to get id value of lhs
-    auto rhs_id = last_id_;
-    last_id_ = {};
-    auto lhs = ast.lhs()->Eval(*this);
-    // check if is enumerate
-    if (last_id_ && rhs_id) {
-      auto ev = enum_values_->GetItem(*last_id_);
-      if (ev) {
-        auto it = ev->find(*rhs_id);
-        if (it != ev->end()) return it->second;
-      }
-    }
-    return {};
-  }
-  else if (IsOperatorAssign(ast.op())) {
+  if (IsOperatorAssign(ast.op())) {
     // do not evaluate rhs, just return null
     return {};
   }
@@ -484,6 +470,23 @@ std::optional<EvalNum> Evaluator::EvalOn(BinaryAST &ast) {
     }
     return {};
   }
+}
+
+std::optional<EvalNum> Evaluator::EvalOn(AccessAST &ast) {
+  // try to get id value of expression
+  last_id_ = {};
+  auto lhs = ast.expr()->Eval(*this);
+  auto lhs_id = last_id_;
+  last_id_ = {};
+  // check if is enumerate
+  if (lhs_id) {
+    auto ev = enum_values_->GetItem(*lhs_id);
+    if (ev) {
+      auto it = ev->find(ast.id());
+      if (it != ev->end()) return it->second;
+    }
+  }
+  return {};
 }
 
 std::optional<EvalNum> Evaluator::EvalOn(CastAST &ast) {
