@@ -148,9 +148,9 @@ class PrimType : public BaseType {
   bool is_right_;
 };
 
-class SturctType : public BaseType {
+class StructType : public BaseType {
  public:
-  SturctType(TypePairList elems, const std::string &id, bool is_right)
+  StructType(TypePairList elems, const std::string &id, bool is_right)
       : elems_(std::move(elems)), id_(id), is_right_(is_right) {}
 
   bool IsRightValue() const override { return is_right_; }

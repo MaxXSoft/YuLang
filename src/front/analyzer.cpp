@@ -259,7 +259,7 @@ TypePtr Analyzer::AnalyzeOn(StructAST &ast) {
                      std::move(type)});
   }
   // add user type to environment
-  auto type = std::make_shared<SturctType>(std::move(elems));
+  auto type = std::make_shared<StructType>(std::move(elems));
   if (!AddUserType(ast.logger(), ast.id(), std::move(type))) {
     return nullptr;
   }
