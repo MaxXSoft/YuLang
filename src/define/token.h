@@ -25,7 +25,7 @@
   e(Less, "<", 70) e(LessEqual, "<=", 70) e(Great, ">", 70) \
   e(GreatEqual, ">=", 70) e(LogicAnd, "&&", 20) e(LogicOr, "||", 10) \
   e(LogicNot, "!", -1) e(And, "&", 50) e(Or, "|", 30) e(Not, "~", -1) \
-  e(Xor, "^", 40) e(Shl, "<<", 80) e(Shr, ">>", 80) e(Access, ".", 110) \
+  e(Xor, "^", 40) e(Shl, "<<", 80) e(Shr, ">>", 80) e(Access, ".", -1) \
   e(Assign, "=", 0) e(AssAdd, "+=", 0) e(AssSub, "-=", 0) \
   e(AssMul, "*=", 0) e(AssDiv, "/=", 0) e(AssMod, "%=", 0) \
   e(AssAnd, "&=", 0) e(AssOr, "|=", 0) e(AssXor, "^=", 0) \
