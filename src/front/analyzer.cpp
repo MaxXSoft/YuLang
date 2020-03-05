@@ -233,12 +233,10 @@ TypePtr Analyzer::AnalyzeOn(TypeAliasAST &ast) {
 TypePtr Analyzer::AnalyzeOn(StructAST &ast) {
   // analyze elements
   TypePairList elems;
-  in_struct_ = true;
   for (const auto &i : ast.defs()) {
     if (!i->SemaAnalyze(*this)) return nullptr;
-    elems.push_back(std::move(last_arg_info_));
+    elems.push_back(std::move(last_struct_info_));
   }
-  in_struct_ = false;
   // add user type to environment
   auto type = std::make_shared<SturctType>(std::move(elems));
   if (!AddUserType(ast.logger(), ast.id(), std::move(type))) {
@@ -321,21 +319,24 @@ TypePtr Analyzer::AnalyzeOn(ArgElemAST &ast) {
   // get type
   auto type = ast.type()->SemaAnalyze(*this);
   if (!type) return nullptr;
-  if (in_struct_) {
-    // set last argument info (for structures)
-    assert(!type->IsRightValue());
-    if (type->IsReference()) {
-      return LogError(ast.logger(),
-                      "type of structure element can not be reference");
-    }
-    last_arg_info_ = {ast.id(), type};
+  // add symbol to environment
+  assert(!type->IsConst());
+  type = std::make_shared<ConstType>(std::move(type));
+  symbols_->AddItem(ast.id(), type);
+  return ast.set_ast_type(std::move(type));
+}
+
+TypePtr Analyzer::AnalyzeOn(StructElemAST &ast) {
+  // get type
+  auto type = ast.type()->SemaAnalyze(*this);
+  if (!type) return nullptr;
+  // set last argument info (for structures)
+  assert(!type->IsRightValue());
+  if (type->IsReference()) {
+    return LogError(ast.logger(),
+                    "type of structure element can not be reference");
   }
-  else {
-    // add symbol to environment
-    assert(!type->IsConst());
-    type = std::make_shared<ConstType>(std::move(type));
-    symbols_->AddItem(ast.id(), type);
-  }
+  last_struct_info_ = {ast.id(), type};
   return ast.set_ast_type(std::move(type));
 }
 
@@ -508,34 +509,9 @@ TypePtr Analyzer::AnalyzeOn(WhenElemAST &ast) {
 }
 
 TypePtr Analyzer::AnalyzeOn(BinaryAST &ast) {
-  // get lhs and rhs type & id
-  last_id_ = {};
+  // get lhs and rhs type
   auto lhs = ast.lhs()->SemaAnalyze(*this);
-  auto lhs_id = last_id_;
-  last_id_ = {};
   auto rhs = ast.lhs()->SemaAnalyze(*this);
-  auto rhs_id = last_id_;
-  last_id_ = {};
-  // handle access operator
-  if (ast.op() == Operator::Access) {
-    TypePtr ret;
-    if (lhs_id) {
-      // check if is enumeration access
-      auto enum_type = user_types_->GetItem(*lhs_id);
-      if (enum_type->IsEnum() && rhs_id && enum_type->GetElem(*rhs_id)) {
-        ret = enum_type;
-      }
-    }
-    else if (lhs && lhs->GetLength() && rhs_id) {
-      // check if is structure access
-      auto type = lhs->GetElem(*rhs_id);
-      if (type) ret = type;
-    }
-    if (ret) {
-      ret = ret->IsRightValue() ? ret : ret->GetValueType(true);
-      return ast.set_ast_type(std::move(ret));
-    }
-  }
   if (!lhs || !rhs) {
     return LogError(ast.logger(), "invalid lhs or rhs expression");
   }
@@ -631,6 +607,35 @@ TypePtr Analyzer::AnalyzeOn(BinaryAST &ast) {
   }
   if (!ret) return LogError(ast.logger(), "invalid binary operation");
   if (!ret->IsRightValue()) ret = ret->GetValueType(true);
+  return ast.set_ast_type(std::move(ret));
+}
+
+TypePtr Analyzer::AnalyzeOn(AccessAST &ast) {
+  // get expression type & id
+  last_id_ = {};
+  auto expr = ast.expr()->SemaAnalyze(*this);
+  auto expr_id = last_id_;
+  last_id_ = {};
+  // handle access
+  TypePtr ret;
+  if (!expr && expr_id) {
+    // check if is enumeration access
+    auto enum_type = user_types_->GetItem(*expr_id);
+    if (enum_type->IsEnum() && enum_type->GetElem(ast.id())) {
+      ret = std::move(enum_type);
+    }
+  }
+  else if (expr && expr->GetLength()) {
+    // check if is structure access
+    auto type = expr->GetElem(ast.id());
+    if (type) ret = std::move(type);
+  }
+  // check if is error
+  if (!ret) {
+    return LogError(ast.logger(), "invalid access operation");
+  }
+  // get return type
+  ret = ret->IsRightValue() ? ret : ret->GetValueType(true);
   return ast.set_ast_type(std::move(ret));
 }
 

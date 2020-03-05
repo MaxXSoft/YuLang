@@ -39,6 +39,7 @@ class Analyzer {
   define::TypePtr AnalyzeOn(define::VarElemAST &ast);
   define::TypePtr AnalyzeOn(define::LetElemAST &ast);
   define::TypePtr AnalyzeOn(define::ArgElemAST &ast);
+  define::TypePtr AnalyzeOn(define::StructElemAST &ast);
   define::TypePtr AnalyzeOn(define::EnumElemAST &ast);
   define::TypePtr AnalyzeOn(define::BlockAST &ast);
   define::TypePtr AnalyzeOn(define::IfAST &ast);
@@ -49,6 +50,7 @@ class Analyzer {
   define::TypePtr AnalyzeOn(define::ControlAST &ast);
   define::TypePtr AnalyzeOn(define::WhenElemAST &ast);
   define::TypePtr AnalyzeOn(define::BinaryAST &ast);
+  define::TypePtr AnalyzeOn(define::AccessAST &ast);
   define::TypePtr AnalyzeOn(define::CastAST &ast);
   define::TypePtr AnalyzeOn(define::UnaryAST &ast);
   define::TypePtr AnalyzeOn(define::IndexAST &ast);
@@ -107,8 +109,7 @@ class Analyzer {
   // used when analyzing functions
   define::TypePtr cur_ret_;
   // used when analyzing structures
-  bool in_struct_;
-  define::TypePair last_arg_info_;
+  define::TypePair last_struct_info_;
   // used when analyzing enumerations
   define::TypePtr last_enum_type_;
   std::string last_enum_elem_name_;
