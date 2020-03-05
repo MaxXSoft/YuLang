@@ -206,6 +206,11 @@ void ArgElemAST::Dump(std::ostream &os) {
   os << ' ' << id_;
 }
 
+void StructElemAST::Dump(std::ostream &os) {
+  type_->Dump(os);
+  os << ' ' << id_;
+}
+
 void EnumElemAST::Dump(std::ostream &os) {
   os << id_;
   if (expr_) {
@@ -340,6 +345,12 @@ void BinaryAST::Dump(std::ostream &os) {
   else {
     os << ')';
   }
+}
+
+void AccessAST::Dump(std::ostream &os) {
+  auto inex = InExpr();
+  expr_->Dump(os);
+  os << '.' << id_;
 }
 
 void CastAST::Dump(std::ostream &os) {

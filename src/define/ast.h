@@ -282,6 +282,25 @@ class ArgElemAST : public BaseAST {
   ASTPtr type_;
 };
 
+// element of structure elements
+class StructElemAST : public BaseAST {
+ public:
+  StructElemAST(const std::string &id, ASTPtr type)
+      : id_(id), type_(std::move(type)) {}
+
+  void Dump(std::ostream &os) override;
+  TypePtr SemaAnalyze(front::Analyzer &ana) override;
+  std::optional<EvalNum> Eval(front::Evaluator &eval) override;
+
+  // getters
+  const std::string &id() const { return id_; }
+  const ASTPtr &type() const { return type_; }
+
+ private:
+  std::string id_;
+  ASTPtr type_;
+};
+
 // element of enumeration list
 class EnumElemAST : public BaseAST {
  public:
@@ -521,6 +540,24 @@ class BinaryAST : public BaseAST {
   Operator op_;
   std::optional<std::string> op_func_id_;
   ASTPtr lhs_, rhs_;
+};
+
+class AccessAST : public BaseAST {
+ public:
+  AccessAST(ASTPtr expr, const std::string &id)
+      : id_(id), expr_(std::move(expr)) {}
+
+  void Dump(std::ostream &os) override;
+  TypePtr SemaAnalyze(front::Analyzer &ana) override;
+  std::optional<EvalNum> Eval(front::Evaluator &eval) override;
+
+  // getters
+  const std::string &id() const { return id_; }
+  const ASTPtr &expr() const { return expr_; }
+
+ private:
+  std::string id_;
+  ASTPtr expr_;
 };
 
 // type casting expression
