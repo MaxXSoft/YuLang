@@ -54,7 +54,7 @@ class Parser {
     using namespace define;
     return (cur_token_ == Token::Other && lexer()->other_val() == c) ||
            (cur_token_ == Token::Id && lexer()->id_val().size() == 1 &&
-            lexer()->id_val()[0] == ':');
+            lexer()->id_val()[0] == c);
   }
 
   // check if current token is a keyword
@@ -109,6 +109,7 @@ class Parser {
   define::ASTPtr ParseVarElem();
   define::ASTPtr ParseLetElem();
   define::ASTPtr ParseArgElem();
+  define::ASTPtr ParseStructElem();
   define::ASTPtr ParseEnumElem();
 
   define::ASTPtr ParseBlock();
@@ -126,6 +127,7 @@ class Parser {
 
   define::ASTPtr ParseExpr();
   define::ASTPtr ParseBinary();
+  define::ASTPtr ParseAccess();
   define::ASTPtr ParseCast();
   define::ASTPtr ParseUnary();
   define::ASTPtr ParseFactor();
@@ -156,6 +158,8 @@ class Parser {
   define::PropertyAST::Property GetProp();
   // parse statement, returns nullptr if failed
   define::ASTPtr GetStatement(define::PropertyAST::Property prop);
+  // parse expression list, returns false if failed
+  bool GetExprList(define::ASTPtrList &args);
   // make sure current token is specific character and goto next token
   bool ExpectChar(char c);
   // make sure current token is identifier

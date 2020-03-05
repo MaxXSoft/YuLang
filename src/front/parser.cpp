@@ -163,7 +163,7 @@ ASTPtr Parser::ParseStruct(ASTPtr prop) {
   // get definitions of all fields
   ASTPtrList defs;
   while (cur_token_ == Token::Id) {
-    auto elem = ParseArgElem();
+    auto elem = ParseStructElem();
     if (!elem) return nullptr;
     defs.push_back(std::move(elem));
     // eat ','
@@ -316,6 +316,20 @@ ASTPtr Parser::ParseArgElem() {
   auto type = ParseType();
   if (!type) return nullptr;
   return MakeAST<ArgElemAST>(log, id, std::move(type));
+}
+
+ASTPtr Parser::ParseStructElem() {
+  auto log = logger();
+  // get identifier
+  if (!ExpectId()) return nullptr;
+  auto id = lexer()->id_val();
+  NextToken();
+  // check ':'
+  if (!ExpectChar(':')) return nullptr;
+  // get type
+  auto type = ParseType();
+  if (!type) return nullptr;
+  return MakeAST<StructElemAST>(log, id, std::move(type));
 }
 
 ASTPtr Parser::ParseEnumElem() {
@@ -530,7 +544,7 @@ ASTPtr Parser::ParseBinary() {
   std::stack<ASTPtr> oprs;
   std::stack<Operator> ops;
   // get the first expression
-  auto expr = ParseCast();
+  auto expr = ParseAccess();
   if (!expr) return nullptr;
   oprs.push(std::move(expr));
   // convert to postfix expression
@@ -553,7 +567,7 @@ ASTPtr Parser::ParseBinary() {
     }
     ops.push(op);
     // get next expression
-    expr = ParseCast();
+    expr = ParseAccess();
     if (!expr) return nullptr;
     oprs.push(std::move(expr));
   }
@@ -570,6 +584,36 @@ ASTPtr Parser::ParseBinary() {
                                  std::move(rhs)));
   }
   return std::move(oprs.top());
+}
+
+ASTPtr Parser::ParseAccess() {
+  auto log = logger();
+  // get expression
+  auto expr = ParseCast();
+  if (!expr) return nullptr;
+  // check if is access expression
+  while (IsTokenOperator(Operator::Access)) {
+    NextToken();
+    // get id
+    if (!ExpectId()) return nullptr;
+    auto id = lexer()->id_val();
+    NextToken();
+    // check if is a dot function call
+    if (IsTokenChar('(')) {
+      NextToken();
+      // get argument list
+      ASTPtrList args = {std::move(expr)};
+      if (!GetExprList(args)) return nullptr;
+      // generate function call
+      auto id_ast = MakeAST<IdAST>(log, std::move(id));
+      expr = MakeAST<FunCallAST>(log, std::move(id_ast), std::move(args));
+    }
+    else {
+      // just access
+      expr = MakeAST<AccessAST>(log, std::move(expr), std::move(id));
+    }
+  }
+  return expr;
 }
 
 ASTPtr Parser::ParseCast() {
@@ -674,18 +718,7 @@ ASTPtr Parser::ParseFunCall(ASTPtr expr) {
   NextToken();
   // get expression list
   ASTPtrList args;
-  if (!IsTokenChar(')')) {
-    for (;;) {
-      auto arg = ParseExpr();
-      if (!arg) return nullptr;
-      args.push_back(std::move(arg));
-      // eat ','
-      if (!IsTokenChar(',')) break;
-      NextToken();
-    }
-  }
-  // check & eat ')'
-  if (!ExpectChar(')')) return nullptr;
+  if (!GetExprList(args)) return nullptr;
   return MakeAST<FunCallAST>(log, std::move(expr), std::move(args));
 }
 
@@ -955,6 +988,22 @@ ASTPtr Parser::GetStatement(Prop prop) {
     }
   }
   return nullptr;
+}
+
+bool Parser::GetExprList(ASTPtrList &args) {
+  // get expression list
+  if (!IsTokenChar(')')) {
+    for (;;) {
+      auto arg = ParseExpr();
+      if (!arg) return false;
+      args.push_back(std::move(arg));
+      // eat ','
+      if (!IsTokenChar(',')) break;
+      NextToken();
+    }
+  }
+  // check & eat ')'
+  return ExpectChar(')');
 }
 
 bool Parser::ExpectChar(char c) {
