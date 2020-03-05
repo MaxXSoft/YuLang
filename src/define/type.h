@@ -44,6 +44,8 @@ class BaseType {
   virtual bool IsFloat() const = 0;
   // return true if is boolean
   virtual bool IsBool() const = 0;
+  // return true if is structure type
+  virtual bool IsStruct() const = 0;
   // return true if is enumeration type
   virtual bool IsEnum() const = 0;
   // return true if is constant type
@@ -118,6 +120,7 @@ class PrimType : public BaseType {
     return type_ == Type::Float32 || type_ == Type::Float64;
   }
   bool IsBool() const override { return type_ == Type::Bool; }
+  bool IsStruct() const override { return false; }
   bool IsEnum() const override { return false; }
   bool IsConst() const override { return false; }
   bool IsFunction() const override { return false; }
@@ -161,6 +164,7 @@ class StructType : public BaseType {
   bool IsUnsigned() const override { return false; }
   bool IsFloat() const override { return false; }
   bool IsBool() const override { return false; }
+  bool IsStruct() const override { return true; }
   bool IsEnum() const override { return false; }
   bool IsConst() const override { return false; }
   bool IsFunction() const override { return false; }
@@ -211,6 +215,7 @@ class EnumType : public BaseType {
   bool IsUnsigned() const override { return type_->IsUnsigned(); }
   bool IsFloat() const override { return false; }
   bool IsBool() const override { return false; }
+  bool IsStruct() const override { return false; }
   bool IsEnum() const override { return true; }
   bool IsConst() const override { return false; }
   bool IsFunction() const override { return false; }
@@ -255,6 +260,7 @@ class ConstType : public BaseType {
   bool IsUnsigned() const override { return type_->IsUnsigned(); }
   bool IsFloat() const override { return type_->IsFloat(); }
   bool IsBool() const override { return type_->IsBool(); }
+  bool IsStruct() const override { return type_->IsStruct(); }
   bool IsEnum() const override { return type_->IsEnum(); }
   bool IsConst() const override { return true; }
   bool IsFunction() const override { return type_->IsFunction(); }
@@ -306,6 +312,7 @@ class FuncType : public BaseType {
   bool IsUnsigned() const override { return false; }
   bool IsFloat() const override { return false; }
   bool IsBool() const override { return false; }
+  bool IsStruct() const override { return false; }
   bool IsEnum() const override { return false; }
   bool IsConst() const override { return false; }
   bool IsFunction() const override { return true; }
@@ -347,6 +354,7 @@ class VolaType : public BaseType {
   bool IsUnsigned() const override { return type_->IsUnsigned(); }
   bool IsFloat() const override { return type_->IsFloat(); }
   bool IsBool() const override { return type_->IsBool(); }
+  bool IsStruct() const override { return type_->IsStruct(); }
   bool IsEnum() const override { return type_->IsEnum(); }
   bool IsConst() const override { return type_->IsConst(); }
   bool IsFunction() const override { return type_->IsFunction(); }
@@ -403,6 +411,7 @@ class ArrayType : public BaseType {
   bool IsUnsigned() const override { return false; }
   bool IsFloat() const override { return false; }
   bool IsBool() const override { return false; }
+  bool IsStruct() const override { return false; }
   bool IsEnum() const override { return false; }
   bool IsConst() const override { return false; }
   bool IsFunction() const override { return false; }
@@ -449,6 +458,7 @@ class PointerType : public BaseType {
   bool IsUnsigned() const override { return false; }
   bool IsFloat() const override { return false; }
   bool IsBool() const override { return false; }
+  bool IsStruct() const override { return false; }
   bool IsEnum() const override { return false; }
   bool IsConst() const override { return false; }
   bool IsFunction() const override { return false; }
@@ -491,6 +501,7 @@ class RefType : public BaseType {
   bool IsUnsigned() const override { return base_->IsUnsigned(); }
   bool IsFloat() const override { return base_->IsFloat(); }
   bool IsBool() const override { return base_->IsBool(); }
+  bool IsStruct() const override { return base_->IsStruct(); }
   bool IsEnum() const override { return base_->IsEnum(); }
   bool IsConst() const override { return base_->IsConst(); }
   bool IsFunction() const override { return base_->IsFunction(); }

@@ -656,7 +656,7 @@ TypePtr Analyzer::AnalyzeOn(AccessAST &ast) {
       ret = enum_type->GetValueType(true);
     }
   }
-  else if (expr && expr->GetLength()) {
+  else if (expr && expr->IsStruct()) {
     // check if is structure access
     auto type = expr->GetElem(ast.id());
     if (type) ret = std::move(type);
