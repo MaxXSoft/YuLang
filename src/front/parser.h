@@ -127,13 +127,13 @@ class Parser {
 
   define::ASTPtr ParseExpr();
   define::ASTPtr ParseBinary();
-  define::ASTPtr ParseAccess();
   define::ASTPtr ParseCast();
   define::ASTPtr ParseUnary();
   define::ASTPtr ParseFactor();
 
   define::ASTPtr ParseIndex(define::ASTPtr expr);
   define::ASTPtr ParseFunCall(define::ASTPtr expr);
+  define::ASTPtr ParseAccess(define::ASTPtr expr);
 
   define::ASTPtr ParseValue();
   define::ASTPtr ParseInt();

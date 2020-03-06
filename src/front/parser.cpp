@@ -544,7 +544,7 @@ ASTPtr Parser::ParseBinary() {
   std::stack<ASTPtr> oprs;
   std::stack<Operator> ops;
   // get the first expression
-  auto expr = ParseAccess();
+  auto expr = ParseCast();
   if (!expr) return nullptr;
   oprs.push(std::move(expr));
   // convert to postfix expression
@@ -567,7 +567,7 @@ ASTPtr Parser::ParseBinary() {
     }
     ops.push(op);
     // get next expression
-    expr = ParseAccess();
+    expr = ParseCast();
     if (!expr) return nullptr;
     oprs.push(std::move(expr));
   }
@@ -584,37 +584,6 @@ ASTPtr Parser::ParseBinary() {
                                  std::move(rhs)));
   }
   return std::move(oprs.top());
-}
-
-ASTPtr Parser::ParseAccess() {
-  auto log = logger();
-  // get expression
-  auto expr = ParseCast();
-  if (!expr) return nullptr;
-  // check if is access expression
-  while (IsTokenOperator(Operator::Access)) {
-    NextToken();
-    // get id
-    if (!ExpectId()) return nullptr;
-    auto id = lexer()->id_val();
-    NextToken();
-    // check if is a dot function call
-    if (IsTokenChar('(')) {
-      NextToken();
-      // get argument list
-      ASTPtrList args;
-      args.push_back(std::move(expr));
-      if (!GetExprList(args)) return nullptr;
-      // generate function call
-      auto id_ast = MakeAST<IdAST>(log, std::move(id));
-      expr = MakeAST<FunCallAST>(log, std::move(id_ast), std::move(args));
-    }
-    else {
-      // just access
-      expr = MakeAST<AccessAST>(log, std::move(expr), std::move(id));
-    }
-  }
-  return expr;
 }
 
 ASTPtr Parser::ParseCast() {
@@ -696,6 +665,9 @@ ASTPtr Parser::ParseFactor() {
     else if (IsTokenChar('(')) {
       factor = ParseFunCall(std::move(factor));
     }
+    else if (IsTokenOperator(Operator::Access)) {
+      factor = ParseAccess(std::move(factor));
+    }
     else {
       break;
     }
@@ -721,6 +693,29 @@ ASTPtr Parser::ParseFunCall(ASTPtr expr) {
   ASTPtrList args;
   if (!GetExprList(args)) return nullptr;
   return MakeAST<FunCallAST>(log, std::move(expr), std::move(args));
+}
+
+ASTPtr Parser::ParseAccess(ASTPtr expr) {
+  auto log = logger();
+  // eat '.'
+  NextToken();
+  // get id
+  if (!ExpectId()) return nullptr;
+  auto id = lexer()->id_val();
+  NextToken();
+  // check if is a dot function call
+  if (IsTokenChar('(')) {
+    NextToken();
+    // get argument list
+    ASTPtrList args;
+    args.push_back(std::move(expr));
+    if (!GetExprList(args)) return nullptr;
+    // generate function call
+    auto id_ast = MakeAST<IdAST>(log, std::move(id));
+    return MakeAST<FunCallAST>(log, std::move(id_ast), std::move(args));
+  }
+  // just access
+  return MakeAST<AccessAST>(log, std::move(expr), std::move(id));
 }
 
 ASTPtr Parser::ParseValue() {
