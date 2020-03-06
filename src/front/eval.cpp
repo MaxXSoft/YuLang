@@ -252,12 +252,13 @@ std::optional<EvalNum> Evaluator::EvalOn(EnumElemAST &ast) {
   }
   last_enum_val_ = CastToType(last_enum_val_, ast.ast_type());
   // add to environment
-  if (auto vals = enum_values_->GetItem(last_enum_name_, false)) {
-    vals->insert({last_enum_name_, last_enum_val_++});
+  if (enum_values_->GetItem(last_enum_name_, false)) {
+    auto &val = enum_values_->AccessItem(last_enum_name_);
+    val->insert({ast.id(), last_enum_val_++});
   }
   else {
     enum_values_->AddItem(last_enum_name_,
-                          {{{last_enum_name_, last_enum_val_++}}});
+                          {{{ast.id(), last_enum_val_++}}});
   }
   return {};
 }
@@ -467,14 +468,10 @@ std::optional<EvalNum> Evaluator::EvalOn(BinaryAST &ast) {
 }
 
 std::optional<EvalNum> Evaluator::EvalOn(AccessAST &ast) {
-  // try to get id value of expression
-  last_id_ = {};
-  ast.expr()->Eval(*this);
-  auto lhs_id = last_id_;
-  last_id_ = {};
   // check if is enumerate
-  if (lhs_id) {
-    auto ev = enum_values_->GetItem(*lhs_id);
+  auto type = ast.expr()->ast_type();
+  if (type->IsEnum()) {
+    auto ev = enum_values_->GetItem(type->GetTypeId());
     if (ev) {
       auto it = ev->find(ast.id());
       if (it != ev->end()) return it->second;
@@ -489,7 +486,8 @@ std::optional<EvalNum> Evaluator::EvalOn(CastAST &ast) {
   if (!val) return {};
   ast.set_expr(MakeAST(*val, ast.expr()->logger()));
   // perform type casting
-  if (!ast.ast_type()->IsFloat() || !ast.ast_type()->IsInteger()) {
+  if (!ast.ast_type()->IsInteger() && !ast.ast_type()->IsBool() &&
+      !ast.ast_type()->IsFloat()) {
     return {};
   }
   return CastToType(*val, ast.ast_type());
@@ -562,7 +560,6 @@ std::optional<EvalNum> Evaluator::EvalOn(CharAST &ast) {
 }
 
 std::optional<EvalNum> Evaluator::EvalOn(IdAST &ast) {
-  last_id_ = ast.id();
   return values_->GetItem(ast.id());
 }
 
