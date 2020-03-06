@@ -94,22 +94,22 @@ inline bool CastToBool(const EvalNum &num) {
 
 // cast 'EvalNum' to specific type
 inline EvalNum CastToType(const EvalNum &num, const TypePtr &type) {
-  assert(type->IsInteger() || type->IsFloat());
+  assert(type->IsInteger() || type->IsBool() || type->IsFloat());
   return std::visit([&type](auto &&arg) -> EvalNum {
-    if (type->GetSize() == 1) {
+    if (type->IsBool()) {
       return static_cast<std::uint64_t>(!!arg);
     }
-    else if (type->GetSize() == 8) {
+    else if (type->GetSize() == 1) {
       auto ans = type->IsUnsigned() ? static_cast<std::uint8_t>(arg)
                                     : static_cast<std::int8_t>(arg);
       return static_cast<std::uint64_t>(ans);
     }
-    else if (type->GetSize() == 16) {
+    else if (type->GetSize() == 2) {
       auto ans = type->IsUnsigned() ? static_cast<std::uint16_t>(arg)
                                     : static_cast<std::int16_t>(arg);
       return static_cast<std::uint64_t>(ans);
     }
-    else if (type->GetSize() == 32) {
+    else if (type->GetSize() == 4) {
       if (type->IsInteger()) {
         auto ans = type->IsUnsigned() ? static_cast<std::uint32_t>(arg)
                                       : static_cast<std::int32_t>(arg);
@@ -119,7 +119,7 @@ inline EvalNum CastToType(const EvalNum &num, const TypePtr &type) {
         return static_cast<float>(arg);
       }
     }
-    else if (type->GetSize() == 64) {
+    else if (type->GetSize() == 8) {
       if (type->IsInteger()) {
         auto ans = type->IsUnsigned() ? static_cast<std::uint64_t>(arg)
                                       : static_cast<std::int64_t>(arg);
@@ -140,21 +140,18 @@ inline EvalNum CastToType(const EvalNum &num, const TypePtr &type) {
 inline std::uint64_t CastToType(std::uint64_t num, const TypePtr &type) {
   assert(type->IsInteger());
   if (type->GetSize() == 1) {
-    return !!num;
-  }
-  else if (type->GetSize() == 8) {
     return type->IsUnsigned() ? static_cast<std::uint8_t>(num)
                               : static_cast<std::int8_t>(num);
   }
-  else if (type->GetSize() == 16) {
+  else if (type->GetSize() == 2) {
     return type->IsUnsigned() ? static_cast<std::uint16_t>(num)
                               : static_cast<std::int16_t>(num);
   }
-  else if (type->GetSize() == 32) {
+  else if (type->GetSize() == 4) {
     return type->IsUnsigned() ? static_cast<std::uint32_t>(num)
                               : static_cast<std::int32_t>(num);
   }
-  else if (type->GetSize() == 64) {
+  else if (type->GetSize() == 8) {
     return type->IsUnsigned() ? static_cast<std::uint64_t>(num)
                               : static_cast<std::int64_t>(num);
   }
