@@ -814,15 +814,16 @@ TypePtr Analyzer::AnalyzeOn(FunCallAST &ast) {
     args.push_back(std::move(arg));
   }
   // get function type
-  id_status_ = IdStatus::Require;
-  auto type = ast.expr()->SemaAnalyze(*this);
-  if (id_status_ == IdStatus::Yes) {
+  // TODO: bad design
+  TypePtr type;
+  if (auto id_ptr = dynamic_cast<IdAST *>(ast.expr().get())) {
     // find function by id & update id
-    auto id_ptr = static_cast<IdAST *>(ast.expr().get());
     auto setter = [id_ptr](const std::string &id) { id_ptr->set_id(id); };
     type = FindFuncType(ast.expr()->logger(), id_ptr->id(), args, setter);
     id_ptr->set_ast_type(type);
-    id_status_ = IdStatus::None;
+  }
+  else {
+    type = ast.expr()->SemaAnalyze(*this);
   }
   // check function type
   if (!type || !type->IsFunction()) {
@@ -849,29 +850,22 @@ TypePtr Analyzer::AnalyzeOn(CharAST &ast) {
 }
 
 TypePtr Analyzer::AnalyzeOn(IdAST &ast) {
-  if (id_status_ == IdStatus::Require) {
-    // happend when analyzing function calls
-    id_status_ = IdStatus::Yes;
-    return nullptr;
-  }
-  else {
-    // try to get type from symbol environment
-    auto type = symbols_->GetItem(ast.id());
-    if (!type) {
-      // try to get mangled name from function mapping table
-      auto name = funcs_->GetItem(ast.id());
-      if (!name) {
-        return LogError(ast.logger(), "identifier has not been defined",
-                        ast.id());
-      }
-      else {
-        ast.set_id(*name);
-        type = symbols_->GetItem(*name);
-        assert(type);
-      }
+  // try to get type from symbol environment
+  auto type = symbols_->GetItem(ast.id());
+  if (!type) {
+    // try to get mangled name from function mapping table
+    auto name = funcs_->GetItem(ast.id());
+    if (!name) {
+      return LogError(ast.logger(), "identifier has not been defined",
+                      ast.id());
     }
-    return ast.set_ast_type(std::move(type));
+    else if (name) {
+      ast.set_id(*name);
+      type = symbols_->GetItem(*name);
+      assert(type);
+    }
   }
+  return ast.set_ast_type(std::move(type));
 }
 
 TypePtr Analyzer::AnalyzeOn(StringAST &ast) {

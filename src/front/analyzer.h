@@ -122,9 +122,6 @@ class Analyzer {
   define::TypePtr last_when_expr_type_;
   // used when analyzing while loop & for loop
   std::uint64_t in_loop_;
-  // used when analyzing identifiers
-  // TODO: bad design!
-  enum class IdStatus { None, Require, Yes } id_status_;
 };
 
 }  // namespace yulang::front
