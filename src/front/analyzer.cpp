@@ -103,10 +103,13 @@ bool Analyzer::AddVarConst(const Logger &log, const std::string &id,
     }
     // cast to left value type
     sym_type = std::move(init);
-    if (sym_type->IsRightValue()) sym_type->GetValueType(false);
+    if (sym_type->IsRightValue()) sym_type = sym_type->GetValueType(false);
   }
   // add symbol info
-  if (is_var && !sym_type->IsConst()) {
+  if (is_var) {
+    if (sym_type->IsConst()) sym_type = sym_type->GetDeconstedType();
+  }
+  else if (!sym_type->IsConst()) {
     sym_type = std::make_shared<ConstType>(std::move(sym_type));
   }
   symbols_->AddItem(id, std::move(sym_type));
@@ -551,9 +554,12 @@ TypePtr Analyzer::AnalyzeOn(WhenElemAST &ast) {
 TypePtr Analyzer::AnalyzeOn(BinaryAST &ast) {
   // get lhs and rhs type
   auto lhs = ast.lhs()->SemaAnalyze(*this);
-  auto rhs = ast.lhs()->SemaAnalyze(*this);
-  if (!lhs || !rhs) {
-    return LogError(ast.logger(), "invalid lhs or rhs expression");
+  auto rhs = ast.rhs()->SemaAnalyze(*this);
+  if (!lhs) {
+    return LogError(ast.lhs()->logger(), "invalid lhs expression");
+  }
+  if (!rhs) {
+    return LogError(ast.rhs()->logger(), "invalid rhs expression");
   }
   // preprocess some types
   if (lhs->IsVoid() || rhs->IsVoid()) {
@@ -585,12 +591,16 @@ TypePtr Analyzer::AnalyzeOn(BinaryAST &ast) {
         else {
           return LogError(ast.logger(), "invalid pointer operation");
         }
+        break;
       }
       // fall through
     }
     case Operator::Mul: case Operator::Div: case Operator::Mod: {
       // float binary operation
-      if (lhs->IsFloat() && lhs->IsIdentical(rhs)) ret = lhs;
+      if (lhs->IsFloat() && lhs->IsIdentical(rhs)) {
+        ret = lhs;
+        break;
+      }
       // fall through
     }
     case Operator::And: case Operator::Or: case Operator::Xor:
@@ -624,12 +634,18 @@ TypePtr Analyzer::AnalyzeOn(BinaryAST &ast) {
     }
     case Operator::AssAdd: case Operator::AssSub: {
       // pointer operation
-      if (lhs->IsPointer() && rhs->IsInteger()) ret = MakeVoid();
+      if (lhs->IsPointer() && rhs->IsInteger()) {
+        ret = MakeVoid();
+        break;
+      }
       // fall through
     }
     case Operator::AssMul: case Operator::AssDiv: case Operator::AssMod: {
       // float binary operation
-      if (lhs->IsFloat() && lhs->IsIdentical(rhs)) ret = MakeVoid();
+      if (lhs->IsFloat() && lhs->IsIdentical(rhs)) {
+        ret = MakeVoid();
+        break;
+      }
       // fall through
     }
     case Operator::AssAnd: case Operator::AssOr: case Operator::AssXor:
@@ -676,7 +692,6 @@ TypePtr Analyzer::AnalyzeOn(AccessAST &ast) {
     return LogError(ast.logger(), "invalid access operation");
   }
   // get return type
-  ret = ret->IsRightValue() ? ret : ret->GetValueType(true);
   return ast.set_ast_type(std::move(ret));
 }
 
@@ -719,7 +734,9 @@ TypePtr Analyzer::AnalyzeOn(UnaryAST &ast) {
     }
     case UnaryOp::LogicNot: {
       // int/bool unary operation
-      if (opr->IsInteger() || opr->IsBool()) ret = opr;
+      if (opr->IsInteger() || opr->IsBool()) {
+        ret = MakePrimType(Keyword::Bool, true);
+      }
       break;
     }
     case UnaryOp::Not: {
@@ -753,7 +770,7 @@ TypePtr Analyzer::AnalyzeOn(UnaryAST &ast) {
 TypePtr Analyzer::AnalyzeOn(IndexAST &ast) {
   // get type of expression
   auto expr = ast.expr()->SemaAnalyze(*this);
-  if (!expr || !expr->IsPointer() || !expr->IsArray()) {
+  if (!expr || (!expr->IsPointer() && !expr->IsArray())) {
     return LogError(ast.expr()->logger(),
                     "expression is not subscriptable");
   }
@@ -901,7 +918,9 @@ TypePtr Analyzer::AnalyzeOn(ArrayTypeAST &ast) {
   auto base = ast.base()->SemaAnalyze(*this);
   if (!base) return nullptr;
   // check type of length expression
-  if (!ast.expr()->ast_type()->IsInteger()) {
+  auto expr = ast.expr()->SemaAnalyze(*this);
+  if (!expr) return nullptr;
+  if (!expr->IsInteger()) {
     return LogError(ast.expr()->logger(),
                     "array length must be an integer");
   }
