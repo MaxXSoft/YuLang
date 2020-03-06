@@ -43,12 +43,11 @@ control   ::= "break" | "continue"  | ("return" [expr]);
 when_elem ::= expr {"," expr} block;
 
 expr      ::= binary {id binary};
-binary    ::= access {bin_op access};
-access    ::= cast ["." id ["(" [expr {"," expr}] ")"]];
+binary    ::= cast {bin_op cast};
 cast      ::= unary ["as" type];
 unary     ::= [unary_op | "sizeof"] factor;
 factor    ::= value | block     | if_else   | when
-            | index | fun_call  | "(" expr ")";
+            | index | fun_call  | access    | "(" expr ")";
 
 bin_op    ::= "+"   | "-"   | "*"   | "/"   | "%"   | "&"
             | "|"   | "^"   | "&&"  | "||"  | "<<"  | ">>"
@@ -58,6 +57,7 @@ bin_op    ::= "+"   | "-"   | "*"   | "/"   | "%"   | "&"
 unary_op  ::= "+"   | "-"   | "!"   | "~"   | "*"   | "&";
 index     ::= factor "[" expr "]";
 fun_call  ::= factor "(" [expr {"," expr}] ")";
+access    ::= factor "." id ["(" [expr {"," expr}] ")"];
 
 value     ::= INT_VAL | FLOAT_VAL | CHAR_VAL | id
             | string  | bool      | null_ptr | val_init;
