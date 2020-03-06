@@ -167,6 +167,11 @@ TypePtr FuncType::GetValueType(bool is_right) const {
   return std::make_shared<FuncType>(args_, ret_, is_right);
 }
 
+TypePtr VolaType::GetDeconstedType() const {
+  auto type = type_->GetDeconstedType();
+  return std::make_shared<VolaType>(std::move(type));
+}
+
 TypePtr VolaType::GetValueType(bool is_right) const {
   auto type = type_->GetValueType(is_right);
   return std::make_shared<VolaType>(std::move(type));
@@ -225,6 +230,11 @@ TypePtr PointerType::GetValueType(bool is_right) const {
 
 std::size_t RefType::GetSize() const {
   return pointer_size;
+}
+
+TypePtr RefType::GetDeconstedType() const {
+  auto type = base_->GetDeconstedType();
+  return std::make_shared<RefType>(std::move(type));
 }
 
 TypePtr RefType::GetValueType(bool is_right) const {

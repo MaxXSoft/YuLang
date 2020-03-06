@@ -83,6 +83,8 @@ class BaseType {
   virtual TypePtr GetElem(const std::string &name) const = 0;
   // return the dereferenced type of current type
   virtual TypePtr GetDerefedType() const = 0;
+  // return the deconsted type of current type
+  virtual TypePtr GetDeconstedType() const = 0;
   // return the identifier of current type
   virtual std::string GetTypeId() const = 0;
   // return a new type with specific value type (left/right)
@@ -138,6 +140,7 @@ class PrimType : public BaseType {
     return nullptr;
   }
   TypePtr GetDerefedType() const override { return nullptr; }
+  TypePtr GetDeconstedType() const override { return nullptr; }
 
   bool CanAccept(const TypePtr &type) const override;
   bool CanCastTo(const TypePtr &type) const override;
@@ -187,6 +190,7 @@ class StructType : public BaseType {
     return elems_[index].second;
   }
   TypePtr GetDerefedType() const override { return nullptr; }
+  TypePtr GetDeconstedType() const override { return nullptr; }
   std::string GetTypeId() const override { return id_; }
 
   bool CanAccept(const TypePtr &type) const override;
@@ -239,6 +243,7 @@ class EnumType : public BaseType {
   std::size_t GetLength() const override { return 0; }
   TypePtr GetElem(std::size_t index) const override { return nullptr; }
   TypePtr GetDerefedType() const override { return nullptr; }
+  TypePtr GetDeconstedType() const override { return nullptr; }
   std::string GetTypeId() const override { return id_; }
 
   bool CanAccept(const TypePtr &type) const override;
@@ -293,6 +298,7 @@ class ConstType : public BaseType {
   TypePtr GetDerefedType() const override {
     return type_->GetDerefedType();
   }
+  TypePtr GetDeconstedType() const override { return type_; }
   std::string GetTypeId() const override {
     return type_->GetTypeId();
   }
@@ -334,6 +340,7 @@ class FuncType : public BaseType {
     return nullptr;
   }
   TypePtr GetDerefedType() const override { return nullptr; }
+  TypePtr GetDeconstedType() const override { return nullptr; }
 
   bool CanAccept(const TypePtr &type) const override;
   bool CanCastTo(const TypePtr &type) const override;
@@ -395,10 +402,9 @@ class VolaType : public BaseType {
   TypePtr GetDerefedType() const override {
     return type_->GetDerefedType();
   }
-  std::string GetTypeId() const override {
-    return type_->GetTypeId();
-  }
+  std::string GetTypeId() const override { return type_->GetTypeId(); }
 
+  TypePtr GetDeconstedType() const override;
   TypePtr GetValueType(bool is_right) const override;
 
  private:
@@ -439,6 +445,7 @@ class ArrayType : public BaseType {
     return nullptr;
   }
   TypePtr GetDerefedType() const override { return base_; }
+  TypePtr GetDeconstedType() const override { return nullptr; }
 
   bool CanAccept(const TypePtr &type) const override;
   bool CanCastTo(const TypePtr &type) const override;
@@ -483,6 +490,7 @@ class PointerType : public BaseType {
     return nullptr;
   }
   TypePtr GetDerefedType() const override { return base_; }
+  TypePtr GetDeconstedType() const override { return nullptr; }
 
   bool CanAccept(const TypePtr &type) const override;
   bool CanCastTo(const TypePtr &type) const override;
@@ -546,6 +554,7 @@ class RefType : public BaseType {
   }
 
   std::size_t GetSize() const override;
+  TypePtr GetDeconstedType() const override;
   TypePtr GetValueType(bool is_right) const override;
 
  private:
