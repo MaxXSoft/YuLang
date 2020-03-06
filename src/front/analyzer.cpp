@@ -33,9 +33,11 @@ inline TypePtr LogError(const Logger &log, std::string_view message,
 
 xstl::Guard Analyzer::NewEnv() {
   symbols_ = MakeEnv(symbols_);
+  funcs_ = MakeFuncMap(funcs_);
   user_types_ = MakeEnv(user_types_);
   return xstl::Guard([this] {
     symbols_ = symbols_->outer();
+    funcs_ = funcs_->outer();
     user_types_ = user_types_->outer();
   });
 }
@@ -192,7 +194,7 @@ TypePtr Analyzer::AnalyzeOn(FunDefAST &ast) {
   auto func_guard = EnterFunc(ret);
   if (!ret->IsRightValue()) ret = ret->GetValueType(true);
   // perform function name mangling
-  auto id = ast.id();
+  auto id = ast.id(), org_id = id;
   if (id == ".") {
     return LogError(ast.logger(), "access operator cannot be overloaded");
   }
@@ -207,11 +209,18 @@ TypePtr Analyzer::AnalyzeOn(FunDefAST &ast) {
   if (symbols_->outer()->GetItem(id, false)) {
     return LogError(ast.logger(), "function has already been defined", id);
   }
-  // add function type info to environment
+  // add function type info to symbol environment
   TypePtr type = std::make_shared<FuncType>(std::move(args), std::move(ret),
                                             false);
   type = std::make_shared<ConstType>(std::move(type));
   symbols_->outer()->AddItem(id, std::move(type));
+  // add function type info to function mapping table
+  if (!funcs_->outer()->GetItem(org_id)) {
+    funcs_->outer()->AddItem(org_id, id);
+  }
+  else {
+    funcs_->outer()->RemoveItem(org_id);
+  }
   // analyze function's body
   if (ast.body()) {
     auto body_ret = ast.body()->SemaAnalyze(*this);
@@ -302,9 +311,13 @@ TypePtr Analyzer::AnalyzeOn(EnumAST &ast) {
   // add user type to environment
   auto enum_type = std::make_shared<EnumType>(
       std::move(type), std::move(elems), ast.id(), false);
-  if (!AddUserType(ast.logger(), ast.id(), std::move(enum_type))) {
-    return nullptr;
+  if (!AddUserType(ast.logger(), ast.id(), enum_type)) return nullptr;
+  // add enumeration right value to symbol environment
+  if (symbols_->GetItem(ast.id(), false)) {
+    return LogError(ast.logger(), "enumeration name has already been used "
+                    "by another symbol", ast.id());
   }
+  symbols_->AddItem(ast.id(), enum_type->GetValueType(true));
   return ast.set_ast_type(MakeVoid());
 }
 
@@ -394,7 +407,7 @@ TypePtr Analyzer::AnalyzeOn(EnumElemAST &ast) {
   }
   // update enum info
   last_enum_elem_name_ = ast.id();
-  return ast.set_ast_type(MakeVoid());
+  return ast.set_ast_type(last_enum_type_);
 }
 
 TypePtr Analyzer::AnalyzeOn(BlockAST &ast) {
@@ -668,24 +681,20 @@ TypePtr Analyzer::AnalyzeOn(BinaryAST &ast) {
 
 TypePtr Analyzer::AnalyzeOn(AccessAST &ast) {
   // get expression type & id
-  last_id_ = {};
   auto expr = ast.expr()->SemaAnalyze(*this);
-  auto expr_id = last_id_;
-  last_id_ = {};
   // handle access
   TypePtr ret;
-  if (!expr && expr_id) {
-    // check if is enumeration access
-    auto enum_type = user_types_->GetItem(*expr_id);
-    if (enum_type->IsEnum() && enum_type->GetElem(ast.id())) {
-      assert(!enum_type->IsRightValue());
-      ret = enum_type->GetValueType(true);
+  if (expr) {
+    if (expr->IsEnum() && expr->GetElem(ast.id())) {
+      // check if is enumeration access
+      assert(expr->IsRightValue());
+      ret = std::move(expr);
     }
-  }
-  else if (expr && expr->IsStruct()) {
-    // check if is structure access
-    auto type = expr->GetElem(ast.id());
-    if (type) ret = std::move(type);
+    else if (expr->IsStruct()) {
+      // check if is structure access
+      auto type = expr->GetElem(ast.id());
+      if (type) ret = std::move(type);
+    }
   }
   // check if is error
   if (!ret) {
@@ -805,14 +814,15 @@ TypePtr Analyzer::AnalyzeOn(FunCallAST &ast) {
     args.push_back(std::move(arg));
   }
   // get function type
-  last_id_ = {};
+  id_status_ = IdStatus::Require;
   auto type = ast.expr()->SemaAnalyze(*this);
-  if (last_id_) {
-    auto id_setter = [&ast](const std::string &id) {
-      static_cast<IdAST *>(ast.expr().get())->set_id(id);
-    };
-    type = FindFuncType(ast.expr()->logger(), *last_id_, args, id_setter);
-    last_id_ = {};
+  if (id_status_ == IdStatus::Yes) {
+    // find function by id & update id
+    auto id_ptr = static_cast<IdAST *>(ast.expr().get());
+    auto setter = [id_ptr](const std::string &id) { id_ptr->set_id(id); };
+    type = FindFuncType(ast.expr()->logger(), id_ptr->id(), args, setter);
+    id_ptr->set_ast_type(type);
+    id_status_ = IdStatus::None;
   }
   // check function type
   if (!type || !type->IsFunction()) {
@@ -839,8 +849,29 @@ TypePtr Analyzer::AnalyzeOn(CharAST &ast) {
 }
 
 TypePtr Analyzer::AnalyzeOn(IdAST &ast) {
-  last_id_ = ast.id();
-  return ast.set_ast_type(symbols_->GetItem(ast.id()));
+  if (id_status_ == IdStatus::Require) {
+    // happend when analyzing function calls
+    id_status_ = IdStatus::Yes;
+    return nullptr;
+  }
+  else {
+    // try to get type from symbol environment
+    auto type = symbols_->GetItem(ast.id());
+    if (!type) {
+      // try to get mangled name from function mapping table
+      auto name = funcs_->GetItem(ast.id());
+      if (!name) {
+        return LogError(ast.logger(), "identifier has not been defined",
+                        ast.id());
+      }
+      else {
+        ast.set_id(*name);
+        type = symbols_->GetItem(*name);
+        assert(type);
+      }
+    }
+    return ast.set_ast_type(std::move(type));
+  }
 }
 
 TypePtr Analyzer::AnalyzeOn(StringAST &ast) {

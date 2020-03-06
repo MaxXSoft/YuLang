@@ -24,6 +24,7 @@ class Analyzer {
 
   void Reset() {
     symbols_ = define::MakeEnv();
+    funcs_ = define::MakeFuncMap();
     user_types_ = define::MakeEnv();
     in_loop_ = 0;
   }
@@ -104,6 +105,10 @@ class Analyzer {
   Evaluator &eval_;
   // symbol tables & user defined types (structs, enums, aliases)
   define::EnvPtr symbols_, user_types_;
+  // function mapping table stores mappings of original function name
+  // to mangled function name, if there is multiple overloaded functions,
+  // the specific item with the original function name will be removed
+  define::FuncMapPtr funcs_;
   // used when analyzing properties
   define::PropertyAST::Property last_prop_;
   // used when analyzing functions
@@ -118,7 +123,8 @@ class Analyzer {
   // used when analyzing while loop & for loop
   std::uint64_t in_loop_;
   // used when analyzing identifiers
-  std::optional<std::string> last_id_;
+  // TODO: bad design!
+  enum class IdStatus { None, Require, Yes } id_status_;
 };
 
 }  // namespace yulang::front
