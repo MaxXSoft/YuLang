@@ -1,6 +1,8 @@
 #ifndef YULANG_BACK_IRBUILDER_H_
 #define YULANG_BACK_IRBUILDER_H_
 
+#include <cstddef>
+
 #include "back/ir.h"
 #include "define/ast.h"
 
@@ -54,6 +56,8 @@ class IRBuilderInterface {
   virtual IRPtr GenerateOn(define::PointerTypeAST &ast) = 0;
   virtual IRPtr GenerateOn(define::RefTypeAST &ast) = 0;
 
+  // get the size of pointer
+  virtual std::size_t GetPointerSize() const = 0;
   // dump IRs in current builder
   virtual void Dump(std::ostream &os) = 0;
 };
