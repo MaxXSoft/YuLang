@@ -808,16 +808,15 @@ TypePtr Analyzer::AnalyzeOn(FunCallAST &ast) {
   // get type of arguments
   TypePtrList args;
   for (const auto &i : ast.args()) {
-    // TODO: function name mangling
     auto arg = i->SemaAnalyze(*this);
     if (!arg) return nullptr;
     args.push_back(std::move(arg));
   }
   // get function type
-  // TODO: bad design
   TypePtr type;
-  if (auto id_ptr = dynamic_cast<IdAST *>(ast.expr().get())) {
+  if (ast.expr()->IsId()) {
     // find function by id & update id
+    auto id_ptr = static_cast<IdAST *>(ast.expr().get());
     auto setter = [id_ptr](const std::string &id) { id_ptr->set_id(id); };
     type = FindFuncType(ast.expr()->logger(), id_ptr->id(), args, setter);
     id_ptr->set_ast_type(type);
