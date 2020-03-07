@@ -198,6 +198,9 @@ class StructType : public BaseType {
   TypePtr GetElem(const std::string &name) const override;
   TypePtr GetValueType(bool is_right) const override;
 
+  // setters
+  void set_elems(TypePairList elems) { elems_ = std::move(elems); }
+
  private:
   void CalcSize();
 
