@@ -13,7 +13,7 @@ class IRInterface {
   virtual ~IRInterface() = default;
 
   // get the exact value of current IR
-  virtual const std::any value() const = 0;
+  virtual std::any value() const = 0;
 };
 
 using IRPtr = std::shared_ptr<IRInterface>;
