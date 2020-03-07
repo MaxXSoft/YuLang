@@ -228,10 +228,6 @@ TypePtr PointerType::GetValueType(bool is_right) const {
   return std::make_shared<PointerType>(base_, is_right);
 }
 
-std::size_t RefType::GetSize() const {
-  return pointer_size;
-}
-
 TypePtr RefType::GetDeconstedType() const {
   auto type = base_->GetDeconstedType();
   return std::make_shared<RefType>(std::move(type));
@@ -240,4 +236,8 @@ TypePtr RefType::GetDeconstedType() const {
 TypePtr RefType::GetValueType(bool is_right) const {
   auto type = base_->GetValueType(is_right);
   return std::make_shared<RefType>(std::move(type));
+}
+
+void SetPointerSize(std::size_t size) {
+  pointer_size = size;
 }

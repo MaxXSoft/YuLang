@@ -533,6 +533,9 @@ class RefType : public BaseType {
   bool IsIdentical(const TypePtr &type) const override {
     return base_->IsIdentical(type);
   }
+  std::size_t GetSize() const override {
+    base_->GetSize();
+  }
   std::optional<TypePtrList> GetArgsType() const override {
     return base_->GetArgsType();
   }
@@ -553,7 +556,6 @@ class RefType : public BaseType {
     return base_->GetTypeId();
   }
 
-  std::size_t GetSize() const override;
   TypePtr GetDeconstedType() const override;
   TypePtr GetValueType(bool is_right) const override;
 
@@ -587,6 +589,9 @@ inline TypePtr MakePrimType(Keyword key, bool is_right) {
 inline TypePtr MakeVoid() {
   return std::make_shared<PrimType>(PrimType::Type::Void, true);
 }
+
+// set the size of pointers
+void SetPointerSize(std::size_t size);
 
 }  // namespace yulang::define
 
