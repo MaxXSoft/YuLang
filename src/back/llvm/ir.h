@@ -5,7 +5,7 @@
 
 #include "back/ir.h"
 
-namespace yulang::back {
+namespace yulang::back::ll {
 
 // wrapper of 'llvm::Value *'
 class LLVMIR : public IRInterface {
@@ -28,6 +28,6 @@ inline llvm::Value *LLVMCast(const IRPtr &ir) {
   return IRCast<llvm::Value *>(ir);
 }
 
-}  // namespace yulang::back
+}  // namespace yulang::back::ll
 
 #endif  // YULANG_BACK_LLVM_IR_H_
