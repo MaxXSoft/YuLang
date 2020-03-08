@@ -537,7 +537,7 @@ class RefType : public BaseType {
     return base_->IsIdentical(type);
   }
   std::size_t GetSize() const override {
-    base_->GetSize();
+    return base_->GetSize();
   }
   std::optional<TypePtrList> GetArgsType() const override {
     return base_->GetArgsType();

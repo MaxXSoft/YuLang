@@ -69,7 +69,7 @@ TypePtr PrimType::GetValueType(bool is_right) const {
 }
 
 void StructType::CalcSize() {
-  std::size_t sum = 0, max_base_size = 0;
+  std::size_t sum = 0, max_base_size = 1;
   for (const auto &[_, t] : elems_) {
     sum += t->GetSize();
     // update 'max_base_size'
@@ -150,7 +150,10 @@ TypePtr FuncType::GetReturnType(const TypePtrList &args) const {
   if (args_.size() != args.size()) return nullptr;
   for (int i = 0; i < args_.size(); ++i) {
     if (!args_[i]->IsIdentical(args[i])) return nullptr;
-    if (args_[i]->IsReference() && args[i]->IsRightValue()) return nullptr;
+    if (args_[i]->IsReference() && !args[i]->IsReference() &&
+        args[i]->IsRightValue()) {
+      return nullptr;
+    }
   }
   return ret_;
 }
