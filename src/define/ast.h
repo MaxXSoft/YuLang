@@ -38,6 +38,8 @@ class BaseAST {
 
   // return true if current AST is an identifier
   virtual bool IsId() const = 0;
+  // return true if current AST is a literal value
+  virtual bool IsLiteral() const = 0;
 
   // dump the content of AST to output stream
   virtual void Dump(std::ostream &os) = 0;
@@ -74,6 +76,7 @@ class PropertyAST : public BaseAST {
   PropertyAST(Property prop) : prop_(prop) {}
 
   bool IsId() const override { return false; }
+  bool IsLiteral() const override { return false; }
 
   void Dump(std::ostream &os) override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
@@ -94,6 +97,7 @@ class VarLetDefAST : public BaseAST {
       : prop_(std::move(prop)), defs_(std::move(defs)) {}
 
   bool IsId() const override { return false; }
+  bool IsLiteral() const override { return false; }
 
   void Dump(std::ostream &os) override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
@@ -118,6 +122,7 @@ class FunDefAST : public BaseAST {
         body_(std::move(body)), args_(std::move(args)) {}
 
   bool IsId() const override { return false; }
+  bool IsLiteral() const override { return false; }
 
   void Dump(std::ostream &os) override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
@@ -147,6 +152,7 @@ class DeclareAST : public BaseAST {
       : id_(id), prop_(std::move(prop)), type_(std::move(type)) {}
 
   bool IsId() const override { return false; }
+  bool IsLiteral() const override { return false; }
 
   void Dump(std::ostream &os) override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
@@ -173,6 +179,7 @@ class TypeAliasAST : public BaseAST {
       : id_(id), prop_(std::move(prop)), type_(std::move(type)) {}
 
   bool IsId() const override { return false; }
+  bool IsLiteral() const override { return false; }
 
   void Dump(std::ostream &os) override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
@@ -196,6 +203,7 @@ class StructAST : public BaseAST {
       : id_(id), prop_(std::move(prop)), defs_(std::move(defs)) {}
 
   bool IsId() const override { return false; }
+  bool IsLiteral() const override { return false; }
 
   void Dump(std::ostream &os) override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
@@ -221,6 +229,7 @@ class EnumAST : public BaseAST {
         defs_(std::move(defs)) {}
 
   bool IsId() const override { return false; }
+  bool IsLiteral() const override { return false; }
 
   void Dump(std::ostream &os) override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
@@ -245,6 +254,7 @@ class ImportAST : public BaseAST {
   ImportAST(ASTPtrList defs) : defs_(std::move(defs)) {}
 
   bool IsId() const override { return false; }
+  bool IsLiteral() const override { return false; }
 
   void Dump(std::ostream &os) override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
@@ -265,6 +275,7 @@ class VarElemAST : public BaseAST {
       : id_(id), type_(std::move(type)), init_(std::move(init)) {}
 
   bool IsId() const override { return false; }
+  bool IsLiteral() const override { return false; }
 
   void Dump(std::ostream &os) override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
@@ -288,6 +299,7 @@ class LetElemAST : public BaseAST {
       : id_(id), type_(std::move(type)), init_(std::move(init)) {}
 
   bool IsId() const override { return false; }
+  bool IsLiteral() const override { return false; }
 
   void Dump(std::ostream &os) override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
@@ -314,6 +326,7 @@ class ArgElemAST : public BaseAST {
       : id_(id), type_(std::move(type)) {}
 
   bool IsId() const override { return false; }
+  bool IsLiteral() const override { return false; }
 
   void Dump(std::ostream &os) override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
@@ -336,6 +349,7 @@ class StructElemAST : public BaseAST {
       : id_(id), type_(std::move(type)) {}
 
   bool IsId() const override { return false; }
+  bool IsLiteral() const override { return false; }
 
   void Dump(std::ostream &os) override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
@@ -358,6 +372,7 @@ class EnumElemAST : public BaseAST {
       : id_(id), expr_(std::move(expr)) {}
 
   bool IsId() const override { return false; }
+  bool IsLiteral() const override { return false; }
 
   void Dump(std::ostream &os) override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
@@ -382,6 +397,7 @@ class BlockAST : public BaseAST {
   BlockAST(ASTPtrList stmts) : stmts_(std::move(stmts)) {}
 
   bool IsId() const override { return false; }
+  bool IsLiteral() const override { return false; }
 
   void Dump(std::ostream &os) override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
@@ -409,6 +425,7 @@ class IfAST : public BaseAST {
         else_then_(std::move(else_then)) {}
 
   bool IsId() const override { return false; }
+  bool IsLiteral() const override { return false; }
 
   void Dump(std::ostream &os) override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
@@ -439,6 +456,7 @@ class WhenAST : public BaseAST {
         elems_(std::move(elems)) {}
 
   bool IsId() const override { return false; }
+  bool IsLiteral() const override { return false; }
 
   void Dump(std::ostream &os) override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
@@ -468,6 +486,7 @@ class WhileAST : public BaseAST {
       : cond_(std::move(cond)), body_(std::move(body)) {}
 
   bool IsId() const override { return false; }
+  bool IsLiteral() const override { return false; }
 
   void Dump(std::ostream &os) override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
@@ -493,6 +512,7 @@ class ForInAST : public BaseAST {
       : id_(id), expr_(std::move(expr)), body_(std::move(body)) {}
 
   bool IsId() const override { return false; }
+  bool IsLiteral() const override { return false; }
 
   void Dump(std::ostream &os) override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
@@ -523,6 +543,7 @@ class AsmAST : public BaseAST {
   AsmAST(const std::string &asm_str) : asm_str_(asm_str) {}
 
   bool IsId() const override { return false; }
+  bool IsLiteral() const override { return false; }
 
   void Dump(std::ostream &os) override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
@@ -543,6 +564,7 @@ class ControlAST : public BaseAST {
       : type_(type), expr_(std::move(expr)) {}
 
   bool IsId() const override { return false; }
+  bool IsLiteral() const override { return false; }
 
   void Dump(std::ostream &os) override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
@@ -568,6 +590,7 @@ class WhenElemAST : public BaseAST {
       : conds_(std::move(conds)), body_(std::move(body)) {}
 
   bool IsId() const override { return false; }
+  bool IsLiteral() const override { return false; }
 
   void Dump(std::ostream &os) override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
@@ -597,6 +620,7 @@ class BinaryAST : public BaseAST {
       : op_(op), lhs_(std::move(lhs)), rhs_(std::move(rhs)) {}
 
   bool IsId() const override { return false; }
+  bool IsLiteral() const override { return false; }
 
   void Dump(std::ostream &os) override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
@@ -628,6 +652,7 @@ class AccessAST : public BaseAST {
       : id_(id), expr_(std::move(expr)) {}
 
   bool IsId() const override { return false; }
+  bool IsLiteral() const override { return false; }
 
   void Dump(std::ostream &os) override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
@@ -650,6 +675,7 @@ class CastAST : public BaseAST {
       : expr_(std::move(expr)), type_(std::move(type)) {}
 
   bool IsId() const override { return false; }
+  bool IsLiteral() const override { return false; }
 
   void Dump(std::ostream &os) override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
@@ -676,6 +702,7 @@ class UnaryAST : public BaseAST {
       : op_(op), opr_(std::move(opr)) {}
 
   bool IsId() const override { return false; }
+  bool IsLiteral() const override { return false; }
 
   void Dump(std::ostream &os) override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
@@ -706,6 +733,7 @@ class IndexAST : public BaseAST {
       : expr_(std::move(expr)), index_(std::move(index)) {}
 
   bool IsId() const override { return false; }
+  bool IsLiteral() const override { return false; }
 
   void Dump(std::ostream &os) override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
@@ -730,6 +758,7 @@ class FunCallAST : public BaseAST {
       : expr_(std::move(expr)), args_(std::move(args)) {}
 
   bool IsId() const override { return false; }
+  bool IsLiteral() const override { return false; }
 
   void Dump(std::ostream &os) override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
@@ -757,6 +786,7 @@ class IntAST : public BaseAST {
   IntAST(std::uint64_t value) : value_(value) {}
 
   bool IsId() const override { return false; }
+  bool IsLiteral() const override { return true; }
 
   void Dump(std::ostream &os) override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
@@ -776,6 +806,7 @@ class FloatAST : public BaseAST {
   FloatAST(double value) : value_(value) {}
 
   bool IsId() const override { return false; }
+  bool IsLiteral() const override { return true; }
 
   void Dump(std::ostream &os) override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
@@ -795,6 +826,7 @@ class CharAST : public BaseAST {
   CharAST(std::uint8_t c) : c_(c) {}
 
   bool IsId() const override { return false; }
+  bool IsLiteral() const override { return true; }
 
   void Dump(std::ostream &os) override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
@@ -814,6 +846,7 @@ class IdAST : public BaseAST {
   IdAST(const std::string &id) : id_(id) {}
 
   bool IsId() const override { return true; }
+  bool IsLiteral() const override { return false; }
 
   void Dump(std::ostream &os) override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
@@ -836,6 +869,7 @@ class StringAST : public BaseAST {
   StringAST(const std::string &str) : str_(str) {}
 
   bool IsId() const override { return false; }
+  bool IsLiteral() const override { return true; }
 
   void Dump(std::ostream &os) override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
@@ -855,6 +889,7 @@ class BoolAST : public BaseAST {
   BoolAST(bool value) : value_(value) {}
 
   bool IsId() const override { return false; }
+  bool IsLiteral() const override { return true; }
 
   void Dump(std::ostream &os) override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
@@ -874,6 +909,7 @@ class NullAST : public BaseAST {
   NullAST() {}
 
   bool IsId() const override { return false; }
+  bool IsLiteral() const override { return true; }
 
   void Dump(std::ostream &os) override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
@@ -888,6 +924,7 @@ class ValInitAST : public BaseAST {
       : type_(std::move(type)), elems_(std::move(elems)) {}
 
   bool IsId() const override { return false; }
+  bool IsLiteral() const override { return false; }
 
   void Dump(std::ostream &os) override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
@@ -915,6 +952,7 @@ class PrimTypeAST : public BaseAST {
   PrimTypeAST(Keyword type) : type_(type) {}
 
   bool IsId() const override { return false; }
+  bool IsLiteral() const override { return false; }
 
   void Dump(std::ostream &os) override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
@@ -934,6 +972,7 @@ class UserTypeAST : public BaseAST {
   UserTypeAST(const std::string &id) : id_(id) {}
 
   bool IsId() const override { return false; }
+  bool IsLiteral() const override { return false; }
 
   void Dump(std::ostream &os) override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
@@ -954,6 +993,7 @@ class FuncTypeAST : public BaseAST {
       : args_(std::move(args)), ret_(std::move(ret)) {}
 
   bool IsId() const override { return false; }
+  bool IsLiteral() const override { return false; }
 
   void Dump(std::ostream &os) override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
@@ -975,6 +1015,7 @@ class VolaTypeAST : public BaseAST {
   VolaTypeAST(ASTPtr type) : type_(std::move(type)) {}
 
   bool IsId() const override { return false; }
+  bool IsLiteral() const override { return false; }
 
   void Dump(std::ostream &os) override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
@@ -995,6 +1036,7 @@ class ArrayTypeAST : public BaseAST {
       : base_(std::move(base)), expr_(std::move(expr)) {}
 
   bool IsId() const override { return false; }
+  bool IsLiteral() const override { return false; }
 
   void Dump(std::ostream &os) override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
@@ -1019,6 +1061,7 @@ class PointerTypeAST : public BaseAST {
       : is_var_(is_var), base_(std::move(base)) {}
 
   bool IsId() const override { return false; }
+  bool IsLiteral() const override { return false; }
 
   void Dump(std::ostream &os) override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
@@ -1041,6 +1084,7 @@ class RefTypeAST : public BaseAST {
       : is_var_(is_var), base_(std::move(base)) {}
 
   bool IsId() const override { return false; }
+  bool IsLiteral() const override { return false; }
 
   void Dump(std::ostream &os) override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
