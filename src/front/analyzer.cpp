@@ -79,7 +79,7 @@ bool Analyzer::AddVarConst(const Logger &log, const std::string &id,
   if (type) {
     assert(!type->IsRightValue());
     // check if is compatible
-    if (init && !type->CanAccept(init)) {
+    if (init && !type->IsIdentical(init)) {
       LogError(log, "type mismatch when initializing", id);
       return false;
     }
@@ -88,10 +88,12 @@ bool Analyzer::AddVarConst(const Logger &log, const std::string &id,
       if (!init) {
         LogError(log, "cannot define a reference "
                  "without initialization", id);
+        return false;
       }
       else if (init->IsRightValue()) {
         LogError(log, "reference cannot be initialized "
                  "with a right value", id);
+        return false;
       }
     }
     sym_type = std::move(type);
@@ -264,27 +266,32 @@ TypePtr Analyzer::AnalyzeOn(TypeAliasAST &ast) {
 }
 
 TypePtr Analyzer::AnalyzeOn(StructAST &ast) {
-  // analyze elements
   TypePairList elems;
+  // create an empty struct type
+  auto type = std::make_shared<StructType>(elems, ast.id(), false);
+  if (!AddUserType(ast.logger(), ast.id(), type)) return nullptr;
+  // analyze elements
   std::unordered_set<std::string_view> names;
   for (const auto &i : ast.defs()) {
-    auto type = i->SemaAnalyze(*this);
-    if (!type) return nullptr;
+    auto elem = i->SemaAnalyze(*this);
+    if (!elem) return nullptr;
     // check if name conflicted
     auto [_, succ] = names.insert(last_struct_elem_name_);
     if (!succ) {
       return LogError(i->logger(), "conflicted struct element name",
                       last_struct_elem_name_);
     }
+    // check if is recursive type
+    if (elem->IsStruct() && elem->GetTypeId() == ast.id()) {
+      return LogError(i->logger(), "recursive type is not allowed",
+                      last_struct_elem_name_);
+    }
     elems.push_back({std::string(last_struct_elem_name_),
-                     std::move(type)});
+                     std::move(elem)});
   }
-  // add user type to environment
-  auto type = std::make_shared<StructType>(std::move(elems), ast.id(),
-                                           false);
-  if (!AddUserType(ast.logger(), ast.id(), std::move(type))) {
-    return nullptr;
-  }
+  // update struct type
+  // TODO: circular reference!
+  type->set_elems(std::move(elems));
   return ast.set_ast_type(MakeVoid());
 }
 
@@ -486,6 +493,7 @@ TypePtr Analyzer::AnalyzeOn(ForInAST &ast) {
   // get type of expression
   auto expr = ast.expr()->SemaAnalyze(*this);
   if (!expr) return nullptr;
+  if (expr->IsRightValue()) expr = expr->GetValueType(false);
   // find iterator
   TypePtrList args = {std::move(expr)};
   auto next =
