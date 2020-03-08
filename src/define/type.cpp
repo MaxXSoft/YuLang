@@ -115,12 +115,17 @@ TypePtr EnumType::GetValueType(bool is_right) const {
 
 TypePtr ConstType::GetElem(std::size_t index) const {
   auto type = type_->GetElem(index);
-  return std::make_shared<ConstType>(std::move(type));
+  return type_->IsReference()
+             ? std::move(type)
+             : std::make_shared<ConstType>(std::move(type));
 }
 
 TypePtr ConstType::GetElem(const std::string &name) const {
   auto type = type_->GetElem(name);
-  return std::make_shared<ConstType>(std::move(type));
+  if (!type) return nullptr;
+  return type_->IsReference()
+             ? std::move(type)
+             : std::make_shared<ConstType>(std::move(type));
 }
 
 TypePtr ConstType::GetValueType(bool is_right) const {
