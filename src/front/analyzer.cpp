@@ -227,7 +227,7 @@ TypePtr Analyzer::AnalyzeOn(FunDefAST &ast) {
   if (ast.body()) {
     auto body_ret = ast.body()->SemaAnalyze(*this);
     if (!body_ret) return nullptr;
-    if (!cur_ret_->IsVoid() && !cur_ret_->CanAccept(body_ret)) {
+    if (!cur_ret_->IsVoid() && !cur_ret_->IsIdentical(body_ret)) {
       return LogError(ast.body()->logger(),
                       "type mismatch when returning");
     }
@@ -545,7 +545,7 @@ TypePtr Analyzer::AnalyzeOn(ControlAST &ast) {
                                : MakeVoid();
         // check if is compatible
         assert(cur_ret_->IsVoid() || !cur_ret_->IsRightValue());
-        if (!cur_ret_->CanAccept(type)) {
+        if (!cur_ret_->IsIdentical(type)) {
           return LogError(ast.expr()->logger(),
                           "type mismatch when returning");
         }
@@ -650,7 +650,7 @@ TypePtr Analyzer::AnalyzeOn(BinaryAST &ast) {
     }
     case Operator::Assign: {
       // binary operation between all types
-      if (!lhs->IsRightValue() && lhs->IsIdentical(rhs)) ret = MakeVoid();
+      if (lhs->CanAccept(rhs)) ret = MakeVoid();
       break;
     }
     case Operator::AssAdd: case Operator::AssSub: {
@@ -672,12 +672,7 @@ TypePtr Analyzer::AnalyzeOn(BinaryAST &ast) {
     case Operator::AssAnd: case Operator::AssOr: case Operator::AssXor:
     case Operator::AssShl: case Operator::AssShr: {
       // int binary operation
-      if (lhs->IsRightValue()) {
-        ret = nullptr;
-      }
-      else if (lhs->IsInteger() && lhs->IsIdentical(rhs)) {
-        ret = MakeVoid();
-      }
+      if (lhs->IsInteger() && lhs->CanAccept(rhs)) ret = MakeVoid();
       break;
     }
     default: assert(false); return nullptr;
