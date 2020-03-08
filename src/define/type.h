@@ -282,7 +282,7 @@ class ConstType : public BaseType {
   bool IsPointer() const override { return type_->IsPointer(); }
   bool IsReference() const override { return type_->IsReference(); }
   bool CanAccept(const TypePtr &type) const override {
-    return type->IsReference() ? type->CanCastTo(type) : false;
+    return type_->IsReference() ? type_->CanAccept(type) : false;
   }
   bool CanCastTo(const TypePtr &type) const override {
     return type->IsConst() && type_->CanCastTo(type);
