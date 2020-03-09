@@ -9,6 +9,7 @@
 #include "llvm/IR/Module.h"
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/Type.h"
+#include "llvm/IR/GlobalValue.h"
 #include "llvm/IR/Value.h"
 
 #include "define/type.h"
@@ -79,10 +80,13 @@ class LLVMBuilder : public IRBuilderInterface {
   // switch to a new environment
   xstl::Guard NewEnv();
   // create new allocation in current function
-  llvm::AllocaInst *CreateAlloca(llvm::Type *type);
+  llvm::AllocaInst *CreateAlloca(const TypePtr &type);
   // create new store instruction
   void CreateStore(llvm::Value *val, llvm::Value *dst,
                    const define::TypePtr &type);
+  // create new variable/constant definition
+  void CreateVarLet(const std::string &id, const TypePtr &type,
+                    const ASTPtr &init);
 
   // generate on 'yulang::define::TypePtr'
   llvm::Type *GenerateType(const define::TypePtr &type);
@@ -98,13 +102,13 @@ class LLVMBuilder : public IRBuilderInterface {
   llvm::LLVMContext context_;
   llvm::IRBuilder<> builder_;
   std::unique_ptr<llvm::Module> module_;
-  // used when generating function definition
-  llvm::Value *ret_val_;
   // table of values & types
   xstl::NestedMapPtr<std::string, llvm::Value *> vals_;
   xstl::NestedMapPtr<std::string, llvm::Type *> types_;
   // used when generating properties
-  bool is_last_global_;
+  llvm::GlobalVariable::LinkageTypes link_;
+  // used when generating function definitions
+  llvm::Value *ret_val_;
 };
 
 }  // namespace yulang::back::ll
