@@ -126,6 +126,12 @@ ASTPtr Parser::ParseFunDef(ASTPtr prop) {
 ASTPtr Parser::ParseDeclare(ASTPtr prop) {
   auto log = logger();
   NextToken();
+  // check if is variable declaration
+  bool is_var = false;
+  if (IsTokenKeyword(Keyword::Var)) {
+    is_var = true;
+    NextToken();
+  }
   // get identifier
   if (!ExpectId()) return nullptr;
   auto id = lexer()->id_val();
@@ -134,7 +140,8 @@ ASTPtr Parser::ParseDeclare(ASTPtr prop) {
   if (!ExpectChar(':')) return nullptr;
   // get type
   auto type = ParseType();
-  return MakeAST<DeclareAST>(log, std::move(prop), id, std::move(type));
+  return MakeAST<DeclareAST>(log, std::move(prop), is_var, id,
+                             std::move(type));
 }
 
 ASTPtr Parser::ParseTypeAlias(ASTPtr prop) {

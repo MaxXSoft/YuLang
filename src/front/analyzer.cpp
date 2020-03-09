@@ -238,6 +238,10 @@ TypePtr Analyzer::AnalyzeOn(FunDefAST &ast) {
 TypePtr Analyzer::AnalyzeOn(DeclareAST &ast) {
   auto type = ast.type()->SemaAnalyze(*this);
   if (!type) return nullptr;
+  if (!ast.is_var() && !type->IsConst()) {
+    type = std::make_shared<ConstType>(std::move(type));
+    ast.type()->set_ast_type(type);
+  }
   // check if needs to perform name mangling
   auto id = ast.id();
   ast.prop()->SemaAnalyze(*this);
