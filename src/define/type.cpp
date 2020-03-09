@@ -78,6 +78,7 @@ void StructType::CalcSize() {
     if (base_size > max_base_size) max_base_size = base_size;
   }
   size_ = (((sum - 1) / max_base_size) + 1) * max_base_size;
+  base_size_ = max_base_size;
 }
 
 bool StructType::CanAccept(const TypePtr &type) const {

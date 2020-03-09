@@ -70,6 +70,8 @@ class BaseType {
   virtual bool IsIdentical(const TypePtr &type) const = 0;
   // return the size of current type
   virtual std::size_t GetSize() const = 0;
+  // return the alignment size of current type
+  virtual std::size_t GetAlignSize() const = 0;
   // return the type of arguments of a function call
   virtual std::optional<TypePtrList> GetArgsType() const = 0;
   // return the return type of a function call
@@ -130,6 +132,7 @@ class PrimType : public BaseType {
   bool IsArray() const override { return false; }
   bool IsPointer() const override { return false; }
   bool IsReference() const override { return false; }
+  std::size_t GetAlignSize() const override { return GetSize(); }
   std::optional<TypePtrList> GetArgsType() const override { return {}; }
   TypePtr GetReturnType(const TypePtrList &args) const override {
     return nullptr;
@@ -181,6 +184,7 @@ class StructType : public BaseType {
     return IsIdentical(type);
   }
   std::size_t GetSize() const override { return size_; }
+  std::size_t GetAlignSize() const override { return base_size_; }
   std::optional<TypePtrList> GetArgsType() const override { return {}; }
   TypePtr GetReturnType(const TypePtrList &args) const override {
     return nullptr;
@@ -207,7 +211,7 @@ class StructType : public BaseType {
   TypePairList elems_;
   std::string id_;
   bool is_right_;
-  std::size_t size_;
+  std::size_t size_, base_size_;
 };
 
 class EnumType : public BaseType {
@@ -239,6 +243,9 @@ class EnumType : public BaseType {
     return type_->CanCastTo(type);
   }
   std::size_t GetSize() const override { return type_->GetSize(); }
+  std::size_t GetAlignSize() const override {
+    return type_->GetAlignSize();
+  }
   std::optional<TypePtrList> GetArgsType() const override { return {}; }
   TypePtr GetReturnType(const TypePtrList &args) const override {
     return nullptr;
@@ -291,6 +298,9 @@ class ConstType : public BaseType {
     return type_->IsIdentical(type);
   }
   std::size_t GetSize() const override { return type_->GetSize(); }
+  std::size_t GetAlignSize() const override {
+    return type_->GetAlignSize();
+  }
   std::optional<TypePtrList> GetArgsType() const override {
     return type_->GetArgsType();
   }
@@ -336,6 +346,7 @@ class FuncType : public BaseType {
   bool IsArray() const override { return false; }
   bool IsPointer() const override { return false; }
   bool IsReference() const override { return false; }
+  std::size_t GetAlignSize() const override { return GetSize(); }
   std::optional<TypePtrList> GetArgsType() const override { return args_; }
   std::size_t GetLength() const override { return 0; }
   TypePtr GetElem(std::size_t index) const override { return nullptr; }
@@ -389,6 +400,9 @@ class VolaType : public BaseType {
     return type_->IsIdentical(type);
   }
   std::size_t GetSize() const override { return type_->GetSize(); }
+  std::size_t GetAlignSize() const override {
+    return type_->GetAlignSize();
+  }
   std::optional<TypePtrList> GetArgsType() const override {
     return type_->GetArgsType();
   }
@@ -438,6 +452,9 @@ class ArrayType : public BaseType {
   std::size_t GetSize() const override {
     return base_->GetSize() * len_;
   }
+  std::size_t GetAlignSize() const override {
+    base_->GetAlignSize();
+  }
   std::optional<TypePtrList> GetArgsType() const override { return {}; }
   TypePtr GetReturnType(const TypePtrList &args) const override {
     return nullptr;
@@ -483,6 +500,7 @@ class PointerType : public BaseType {
   bool IsArray() const override { return false; }
   bool IsPointer() const override { return true; }
   bool IsReference() const override { return false; }
+  std::size_t GetAlignSize() const override { return GetSize(); }
   std::optional<TypePtrList> GetArgsType() const override { return {}; }
   TypePtr GetReturnType(const TypePtrList &args) const override {
     return nullptr;
@@ -538,6 +556,9 @@ class RefType : public BaseType {
   }
   std::size_t GetSize() const override {
     return base_->GetSize();
+  }
+  std::size_t GetAlignSize() const override {
+    return base_->GetAlignSize();
   }
   std::optional<TypePtrList> GetArgsType() const override {
     return base_->GetArgsType();
