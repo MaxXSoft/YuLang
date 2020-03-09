@@ -113,6 +113,7 @@ void FunDefAST::Dump(std::ostream &os) {
 void DeclareAST::Dump(std::ostream &os) {
   prop_->Dump(os);
   os << indent;
+  if (!is_var_) os << "const ";
   type_->Dump(os);
   os << ' ' << id_ << ';' << std::endl;
 }

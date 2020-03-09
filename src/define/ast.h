@@ -148,8 +148,9 @@ class FunDefAST : public BaseAST {
 // declaration
 class DeclareAST : public BaseAST {
  public:
-  DeclareAST(ASTPtr prop, const std::string &id, ASTPtr type)
-      : id_(id), prop_(std::move(prop)), type_(std::move(type)) {}
+  DeclareAST(ASTPtr prop, bool is_var, const std::string &id, ASTPtr type)
+      : is_var_(is_var), id_(id), prop_(std::move(prop)),
+        type_(std::move(type)) {}
 
   bool IsId() const override { return false; }
   bool IsLiteral() const override { return false; }
@@ -161,6 +162,7 @@ class DeclareAST : public BaseAST {
 
   // getters
   const ASTPtr &prop() const { return prop_; }
+  bool is_var() const { return is_var_; }
   const std::string &id() const { return id_; }
   const ASTPtr &type() const { return type_; }
 
@@ -168,6 +170,7 @@ class DeclareAST : public BaseAST {
   void set_id(const std::string &id) { id_ = id; }
 
  private:
+  bool is_var_;
   std::string id_;
   ASTPtr prop_, type_;
 };
