@@ -14,7 +14,7 @@ var_def   ::= property "var" var_elem {"," var_elem};
 let_def   ::= property "let" let_elem {"," let_elem};
 fun_def   ::= property "def" [id | bin_op | unary_op]
               "(" [arg_list] ")" [":" type] block;
-declare   ::= property "declare" id ":" type;
+declare   ::= property "declare" ["var"] id ":" type;
 ty_alias  ::= visib "type" id "=" type;
 struct    ::= visib "struct" id "{" arg_list [","] "}";
 enum      ::= visib "enum" id [":" type] "{" enum_list "}";
