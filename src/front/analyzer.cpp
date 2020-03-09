@@ -252,6 +252,10 @@ TypePtr Analyzer::AnalyzeOn(DeclareAST &ast) {
     ast.set_id(id);
   }
   // add type info to environment
+  if (!symbols_->is_root() && !type->IsFunction()) {
+    return LogError(ast.logger(), "cannot declare non-function "
+                    "in function", id);
+  }
   if (symbols_->GetItem(id, false)) {
     return LogError(ast.logger(), "symbol has already been defined", id);
   }
