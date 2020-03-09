@@ -86,9 +86,9 @@ class Analyzer {
   bool AddUserType(const Logger &log, const std::string &id,
                    define::TypePtr type);
   // check and add variables/constants
-  bool AddVarConst(const Logger &log, const std::string &id,
-                   define::TypePtr type, define::TypePtr init,
-                   bool is_var);
+  define::TypePtr AddVarConst(const Logger &log, const std::string &id,
+                              define::TypePtr type, define::TypePtr init,
+                              bool is_var);
   // find function type in current environment
   // call 'id_setter' using function name
   // print error message if not found

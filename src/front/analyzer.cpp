@@ -67,12 +67,11 @@ bool Analyzer::AddUserType(const Logger &log, const std::string &id,
   return true;
 }
 
-bool Analyzer::AddVarConst(const Logger &log, const std::string &id,
-                           TypePtr type, TypePtr init, bool is_var) {
+TypePtr Analyzer::AddVarConst(const Logger &log, const std::string &id,
+                              TypePtr type, TypePtr init, bool is_var) {
   // check if is defined
   if (symbols_->GetItem(id, false)) {
-    LogError(log, "identifier has already been defined", id);
-    return false;
+    return LogError(log, "identifier has already been defined", id);
   }
   // check types
   TypePtr sym_type;
@@ -80,20 +79,17 @@ bool Analyzer::AddVarConst(const Logger &log, const std::string &id,
     assert(!type->IsRightValue());
     // check if is compatible
     if (init && !type->IsIdentical(init)) {
-      LogError(log, "type mismatch when initializing", id);
-      return false;
+      return LogError(log, "type mismatch when initializing", id);
     }
     // check for reference types
     if (type->IsReference()) {
       if (!init) {
-        LogError(log, "cannot define a reference "
-                 "without initialization", id);
-        return false;
+        return LogError(log, "cannot define a reference "
+                        "without initialization", id);
       }
       else if (init->IsRightValue()) {
-        LogError(log, "reference cannot be initialized "
-                 "with a right value", id);
-        return false;
+        return LogError(log, "reference cannot be initialized "
+                        "with a right value", id);
       }
     }
     sym_type = std::move(type);
@@ -102,8 +98,7 @@ bool Analyzer::AddVarConst(const Logger &log, const std::string &id,
     assert(init);
     // check if can be deduced
     if (init->IsVoid()) {
-      LogError(log, "initializing with invalid type", id);
-      return false;
+      return LogError(log, "initializing with invalid type", id);
     }
     // cast to left value type
     sym_type = std::move(init);
@@ -116,8 +111,8 @@ bool Analyzer::AddVarConst(const Logger &log, const std::string &id,
   else if (!sym_type->IsConst()) {
     sym_type = std::make_shared<ConstType>(std::move(sym_type));
   }
-  symbols_->AddItem(id, std::move(sym_type));
-  return true;
+  symbols_->AddItem(id, sym_type);
+  return sym_type;
 }
 
 TypePtr Analyzer::FindFuncType(const Logger &log, const std::string &id,
@@ -355,11 +350,11 @@ TypePtr Analyzer::AnalyzeOn(VarElemAST &ast) {
     if (!init) return nullptr;
   }
   // add symbol to environment
-  if (!AddVarConst(ast.logger(), ast.id(), std::move(type),
-                   std::move(init), true)) {
-    return nullptr;
-  }
-  return ast.set_ast_type(MakeVoid());
+  auto ret = AddVarConst(ast.logger(), ast.id(), std::move(type),
+                         std::move(init), true);
+  if (!ret) return nullptr;
+  ast.set_ast_type(std::move(ret));
+  return MakeVoid();
 }
 
 TypePtr Analyzer::AnalyzeOn(LetElemAST &ast) {
@@ -374,11 +369,11 @@ TypePtr Analyzer::AnalyzeOn(LetElemAST &ast) {
     if (!init) return nullptr;
   }
   // add symbol to environment
-  if (!AddVarConst(ast.logger(), ast.id(), std::move(type),
-                   std::move(init), true)) {
-    return nullptr;
-  }
-  return ast.set_ast_type(MakeVoid());
+  auto ret = AddVarConst(ast.logger(), ast.id(), std::move(type),
+                         std::move(init), true);
+  if (!ret) return nullptr;
+  ast.set_ast_type(std::move(ret));
+  return MakeVoid();
 }
 
 TypePtr Analyzer::AnalyzeOn(ArgElemAST &ast) {
