@@ -924,7 +924,12 @@ class ValInitAST : public BaseAST {
       : type_(std::move(type)), elems_(std::move(elems)) {}
 
   bool IsId() const override { return false; }
-  bool IsLiteral() const override { return false; }
+  bool IsLiteral() const override {
+    for (const auto &i : elems_) {
+      if (!i->IsLiteral()) return false;
+    }
+    return true;
+  }
 
   void Dump(std::ostream &os) override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
