@@ -516,6 +516,7 @@ TypePtr Analyzer::AnalyzeOn(ForInAST &ast) {
     type = std::make_shared<ConstType>(std::move(type));
   }
   symbols_->AddItem(ast.id(), type);
+  ast.set_id_type(std::move(type));
   // check body
   ++in_loop_;
   if (!ast.body()->SemaAnalyze(*this)) return nullptr;
