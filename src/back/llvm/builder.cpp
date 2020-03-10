@@ -3,6 +3,7 @@
 #include "llvm/IR/DerivedTypes.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/Constant.h"
+#include "llvm/IR/InlineAsm.h"
 #include "llvm/Support/raw_os_ostream.h"
 
 #include <vector>
@@ -39,6 +40,13 @@ llvm::AllocaInst *LLVMBuilder::CreateAlloca(const TypePtr &type) {
   auto alloca = builder.CreateAlloca(GenerateType(type));
   alloca->setAlignment(type->GetAlignSize());
   return alloca;
+}
+
+llvm::LoadInst *LLVMBuilder::CreateLoad(llvm::Value *val,
+                                        const TypePtr &type) {
+  auto load = builder_.CreateLoad(val);
+  load->setAlignment(type->GetAlignSize());
+  return load;
 }
 
 void LLVMBuilder::CreateStore(llvm::Value *val, llvm::Value *dst,
@@ -221,12 +229,16 @@ IRPtr LLVMBuilder::GenerateOn(FunDefAST &ast) {
         ast.type()->ast_type()->GetSize());
   }
   // generate body
+  func_exit_ = llvm::BasicBlock::Create(context_, "func_exit", func);
   auto body_ret = ast.body()->GenerateIR(*this);
   // generate return
   if (ret_val_) {
     assert(body_ret);
     CreateStore(LLVMCast(body_ret), ret_val_, ast.type()->ast_type());
   }
+  // emit 'exit' block
+  builder_.CreateBr(func_exit_);
+  builder_.SetInsertPoint(func_exit_);
   builder_.CreateRet(ret_val_);
   return nullptr;
 }
@@ -321,12 +333,11 @@ IRPtr LLVMBuilder::GenerateOn(BlockAST &ast) {
 }
 
 IRPtr LLVMBuilder::GenerateOn(IfAST &ast) {
-  // get current function
-  auto func = builder_.GetInsertBlock()->getParent();
   // create basic blocks
-  auto then_block = llvm::BasicBlock::Create(context_, "then", func);
-  auto else_block = llvm::BasicBlock::Create(context_, "else", func);
-  auto end_block = llvm::BasicBlock::Create(context_, "end_if", func);
+  auto func = builder_.GetInsertBlock()->getParent();
+  auto then_block = llvm::BasicBlock::Create(context_, "if_then", func);
+  auto else_block = llvm::BasicBlock::Create(context_, "if_else", func);
+  auto end_block = llvm::BasicBlock::Create(context_, "if_end", func);
   // create return value of if statement
   auto if_type = ast.ast_type();
   llvm::Value *if_val = nullptr;
@@ -337,17 +348,13 @@ IRPtr LLVMBuilder::GenerateOn(IfAST &ast) {
   // emit 'then' block
   builder_.SetInsertPoint(then_block);
   auto then_val = ast.then()->GenerateIR(*this);
-  if (if_val && then_val) {
-    CreateStore(LLVMCast(then_val), if_val, if_type);
-  }
+  if (if_val) CreateStore(LLVMCast(then_val), if_val, if_type);
   builder_.CreateBr(end_block);
   // emit 'else' block
   builder_.SetInsertPoint(else_block);
   if (ast.else_then()) {
     auto else_val = ast.else_then()->GenerateIR(*this);
-    if (if_val && else_val) {
-      CreateStore(LLVMCast(else_val), if_val, if_type);
-    }
+    if (if_val) CreateStore(LLVMCast(else_val), if_val, if_type);
   }
   builder_.CreateBr(end_block);
   // emit 'end' block
@@ -356,12 +363,53 @@ IRPtr LLVMBuilder::GenerateOn(IfAST &ast) {
 }
 
 IRPtr LLVMBuilder::GenerateOn(WhenAST &ast) {
-  // TODO
-  return nullptr;
+  // create basic blocks
+  auto func = builder_.GetInsertBlock()->getParent();
+  when_end_ = llvm::BasicBlock::Create(context_, "when_end", func);
+  // generate expression
+  when_expr_ = LLVMCast(ast.expr()->GenerateIR(*this));
+  // generate return value
+  auto when_type = ast.ast_type();
+  llvm::Value *when_val = nullptr;
+  if (!when_type->IsVoid()) when_val = CreateAlloca(when_type);
+  // generate elements
+  for (const auto &i : ast.elems()) {
+    auto elem = i->GenerateIR(*this);
+    if (when_val) CreateStore(LLVMCast(elem), when_val, when_type);
+  }
+  // generate else branch
+  if (ast.else_then()) {
+    auto else_val = ast.else_then()->GenerateIR(*this);
+    if (when_val) CreateStore(LLVMCast(else_val), when_val, when_type);
+  }
+  // emit 'end' block
+  builder_.CreateBr(when_end_);
+  builder_.SetInsertPoint(when_end_);
+  return when_val ? MakeLLVM(when_val) : nullptr;
 }
 
 IRPtr LLVMBuilder::GenerateOn(WhileAST &ast) {
-  // TODO
+  // create basic blocks
+  auto func = builder_.GetInsertBlock()->getParent();
+  auto cond_block = llvm::BasicBlock::Create(context_, "while_cond", func);
+  auto body_block = llvm::BasicBlock::Create(context_, "while_body", func);
+  auto end_block = llvm::BasicBlock::Create(context_, "while_end", func);
+  // add to loop info
+  break_cont_.push({end_block, cond_block});
+  // create direct branch
+  builder_.CreateBr(cond_block);
+  // emit 'cond' block
+  builder_.SetInsertPoint(cond_block);
+  auto cond = LLVMCast(ast.cond()->GenerateIR(*this));
+  builder_.CreateCondBr(cond, body_block, end_block);
+  // emit 'body' block
+  builder_.SetInsertPoint(body_block);
+  ast.body()->GenerateIR(*this);
+  builder_.CreateBr(cond_block);
+  // emit 'end' block
+  builder_.SetInsertPoint(end_block);
+  // pop the top element of break/continue stack
+  break_cont_.pop();
   return nullptr;
 }
 
@@ -371,18 +419,68 @@ IRPtr LLVMBuilder::GenerateOn(ForInAST &ast) {
 }
 
 IRPtr LLVMBuilder::GenerateOn(AsmAST &ast) {
-  // TODO
-  return nullptr;
+  auto type = llvm::FunctionType::get(builder_.getVoidTy(), false);
+  auto asm_func = llvm::InlineAsm::get(type, ast.asm_str(), "", true);
+  return MakeLLVM(builder_.CreateCall(asm_func));
 }
 
 IRPtr LLVMBuilder::GenerateOn(ControlAST &ast) {
-  // TODO
+  switch (ast.type()) {
+    case Keyword::Break: case Keyword::Continue: {
+      // generate target
+      const auto &cur = break_cont_.top();
+      auto target = ast.type() == Keyword::Break ? cur.first : cur.second;
+      // generate branch
+      builder_.CreateBr(target);
+      break;
+    }
+    case Keyword::Return: {
+      // generate return value
+      if (ast.expr()) {
+        auto val = LLVMCast(ast.expr()->GenerateIR(*this));
+        CreateStore(val, ret_val_, ast.expr()->ast_type());
+      }
+      // generate branch
+      builder_.CreateBr(func_exit_);
+      break;
+    }
+    default: assert(false); break;
+  }
   return nullptr;
 }
 
 IRPtr LLVMBuilder::GenerateOn(WhenElemAST &ast) {
-  // TODO
-  return nullptr;
+  using namespace llvm;
+  // create basic blocks
+  auto func = builder_.GetInsertBlock()->getParent();
+  auto body_block = BasicBlock::Create(context_, "case_body", func);
+  auto exit_block = BasicBlock::Create(context_, "case_exit", func);
+  // generate conditions
+  for (const auto &i : ast.conds()) {
+    // generate right hand side value
+    auto rhs = LLVMCast(i->GenerateIR(*this));
+    // generate comparison
+    Value *eq = nullptr;
+    if (i->ast_type()->IsFloat()) {
+      eq = builder_.CreateFCmpOEQ(when_expr_, rhs);
+    }
+    else {
+      eq = builder_.CreateICmpEQ(when_expr_, rhs);
+    }
+    // generate branch
+    auto next_block = BasicBlock::Create(context_, "next_cond", func);
+    builder_.CreateCondBr(eq, body_block, next_block);
+    builder_.SetInsertPoint(next_block);
+  }
+  // create branch to exit block
+  builder_.CreateBr(exit_block);
+  // generate body
+  builder_.SetInsertPoint(body_block);
+  auto ret = ast.body()->GenerateIR(*this);
+  builder_.CreateBr(when_end_);
+  // emit 'exit' block
+  builder_.SetInsertPoint(exit_block);
+  return ret;
 }
 
 IRPtr LLVMBuilder::GenerateOn(BinaryAST &ast) {
@@ -411,8 +509,16 @@ IRPtr LLVMBuilder::GenerateOn(IndexAST &ast) {
 }
 
 IRPtr LLVMBuilder::GenerateOn(FunCallAST &ast) {
-  // TODO
-  return nullptr;
+  // generate callee
+  auto callee = LLVMCast(ast.expr()->GenerateIR(*this));
+  // generate arguments
+  std::vector<llvm::Value *> args;
+  for (const auto &i : ast.args()) {
+    args.push_back(LLVMCast(i->GenerateIR(*this)));
+  }
+  // generate function call
+  auto call = builder_.CreateCall(callee, args);
+  return MakeLLVM(call);
 }
 
 IRPtr LLVMBuilder::GenerateOn(IntAST &ast) {
@@ -432,13 +538,15 @@ IRPtr LLVMBuilder::GenerateOn(CharAST &ast) {
 }
 
 IRPtr LLVMBuilder::GenerateOn(IdAST &ast) {
-  if (ast.ast_type()->IsReference()) {
-    // TODO
-    return nullptr;
+  // generate load
+  auto val = vals_->GetItem(ast.id());
+  val = CreateLoad(val, ast.ast_type());
+  // handle reference
+  if (ast.ast_type()->IsReference() && !ast.ast_type()->IsStruct()) {
+    // generate dereference
+    val = CreateLoad(val, ast.ast_type()->GetDerefedType());
   }
-  else {
-    return MakeLLVM(vals_->GetItem(ast.id()));
-  }
+  return MakeLLVM(val);
 }
 
 IRPtr LLVMBuilder::GenerateOn(StringAST &ast) {

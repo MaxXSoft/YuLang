@@ -3,6 +3,8 @@
 
 #include <memory>
 #include <string>
+#include <stack>
+#include <utility>
 
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/LLVMContext.h"
@@ -11,6 +13,7 @@
 #include "llvm/IR/Type.h"
 #include "llvm/IR/GlobalValue.h"
 #include "llvm/IR/Value.h"
+#include "llvm/IR/BasicBlock.h"
 
 #include "define/type.h"
 #include "back/irbuilder.h"
@@ -75,18 +78,24 @@ class LLVMBuilder : public IRBuilderInterface {
   void Dump(std::ostream &os) override;
 
  private:
+  // pair for storing target block of break & continue
+  using BreakCont = std::pair<llvm::BasicBlock *, llvm::BasicBlock *>;
+
   // perform initialization
   void Init();
   // switch to a new environment
   xstl::Guard NewEnv();
   // create new allocation in current function
-  llvm::AllocaInst *CreateAlloca(const TypePtr &type);
+  llvm::AllocaInst *CreateAlloca(const define::TypePtr &type);
+  // create new load instruction
+  llvm::LoadInst *CreateLoad(llvm::Value *val,
+                             const define::TypePtr &type);
   // create new store instruction
   void CreateStore(llvm::Value *val, llvm::Value *dst,
                    const define::TypePtr &type);
   // create new variable/constant definition
-  void CreateVarLet(const std::string &id, const TypePtr &type,
-                    const ASTPtr &init);
+  void CreateVarLet(const std::string &id, const define::TypePtr &type,
+                    const define::ASTPtr &init);
 
   // generate on 'yulang::define::TypePtr'
   llvm::Type *GenerateType(const define::TypePtr &type);
@@ -109,6 +118,12 @@ class LLVMBuilder : public IRBuilderInterface {
   llvm::GlobalVariable::LinkageTypes link_;
   // used when generating function definitions
   llvm::Value *ret_val_;
+  llvm::BasicBlock *func_exit_;
+  // used when generating when statements
+  llvm::BasicBlock *when_end_;
+  llvm::Value *when_expr_;
+  // used when generating loops
+  std::stack<BreakCont> break_cont_;
 };
 
 }  // namespace yulang::back::ll
