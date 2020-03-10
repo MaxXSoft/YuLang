@@ -526,17 +526,20 @@ class ForInAST : public BaseAST {
   const std::string &id() const { return id_; }
   const std::string &next_id() const { return next_id_; }
   const std::string &last_id() const { return last_id_; }
+  const TypePtr &id_type() const { return id_type_; }
   const ASTPtr &expr() const { return expr_; }
   const ASTPtr &body() const { return body_; }
 
   // setters
   void set_next_id(const std::string &next_id) { next_id_ = next_id; }
   void set_last_id(const std::string &last_id) { last_id_ = last_id; }
+  void set_id_type(const TypePtr &id_type) { id_type_ = id_type; }
   void set_expr(ASTPtr expr) { expr_ = std::move(expr); }
   void set_body(ASTPtr body) { body_ = std::move(body); }
 
  private:
   std::string id_, next_id_, last_id_;
+  TypePtr id_type_;
   ASTPtr expr_, body_;
 };
 
