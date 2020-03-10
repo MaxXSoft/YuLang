@@ -394,7 +394,7 @@ IRPtr LLVMBuilder::GenerateOn(WhileAST &ast) {
   auto cond_block = llvm::BasicBlock::Create(context_, "while_cond", func);
   auto body_block = llvm::BasicBlock::Create(context_, "while_body", func);
   auto end_block = llvm::BasicBlock::Create(context_, "while_end", func);
-  // add to loop info
+  // add to break/continue stack
   break_cont_.push({end_block, cond_block});
   // create direct branch
   builder_.CreateBr(cond_block);
@@ -414,7 +414,38 @@ IRPtr LLVMBuilder::GenerateOn(WhileAST &ast) {
 }
 
 IRPtr LLVMBuilder::GenerateOn(ForInAST &ast) {
-  // TODO
+  // get iterator function
+  // TODO: alignment?
+  auto next_func = builder_.CreateLoad(vals_->GetItem(ast.next_id()));
+  auto last_func = builder_.CreateLoad(vals_->GetItem(ast.last_id()));
+  // create new environment, insert loop variable
+  auto env = NewEnv();
+  auto loop_var = CreateAlloca(ast.id_type());
+  vals_->AddItem(ast.id(), loop_var);
+  // create basic blocks
+  auto func = builder_.GetInsertBlock()->getParent();
+  auto cond_block = llvm::BasicBlock::Create(context_, "for_cond", func);
+  auto body_block = llvm::BasicBlock::Create(context_, "for_body", func);
+  auto end_block = llvm::BasicBlock::Create(context_, "for_end", func);
+  // add to break/continue stack
+  break_cont_.push({end_block, cond_block});
+  // generate expression
+  auto expr_val = LLVMCast(ast.expr()->GenerateIR(*this));
+  builder_.CreateBr(cond_block);
+  // emit 'cond' block
+  builder_.SetInsertPoint(cond_block);
+  auto last_val = builder_.CreateCall(last_func, {expr_val});
+  builder_.CreateCondBr(last_val, end_block, body_block);
+  // emit 'body' block
+  builder_.SetInsertPoint(body_block);
+  auto new_val = builder_.CreateCall(next_func, {expr_val});
+  CreateStore(new_val, loop_var, ast.id_type());
+  ast.body()->GenerateIR(*this);
+  builder_.CreateBr(cond_block);
+  // emit 'end' block
+  builder_.SetInsertPoint(end_block);
+  // pop the top element of break/continue stack
+  break_cont_.pop();
   return nullptr;
 }
 
