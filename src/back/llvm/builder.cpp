@@ -9,6 +9,8 @@
 #include <vector>
 #include <cassert>
 
+#include "define/token.h"
+
 using namespace yulang::define;
 using namespace yulang::back;
 using namespace yulang::back::ll;
@@ -70,6 +72,54 @@ void LLVMBuilder::CreateVarLet(const std::string &id, const TypePtr &type,
       CreateStore(val, alloca, type);
     }
     vals_->AddItem(id, alloca);
+  }
+}
+
+llvm::CallInst *LLVMBuilder::CreateCall(llvm::Value *callee,
+                                        llvm::ArrayRef<llvm::Value *> args,
+                                        const TypePtrList &args_type) {
+  // TODO: handle passing/returning structures/arrays
+  auto call = builder_.CreateCall(callee, args);
+  return call;
+}
+
+llvm::Value *LLVMBuilder::CreateBinOp(Operator op, llvm::Value *lhs,
+                                      llvm::Value *rhs,
+                                      const TypePtr &lhs_ty,
+                                      const TypePtr &rhs_ty) {
+  if (IsOperatorAssign(op)) {
+    // get value
+    auto val = rhs;
+    if (op != Operator::Assign) {
+      val = CreateBinOp(GetDeAssignedOp(op), lhs, rhs, lhs_ty, rhs_ty);
+    }
+    // create assignment
+    CreateStore(val, lhs, lhs_ty);
+    return nullptr;
+  }
+  else {
+    switch (op) {
+      case Operator::Add:
+      case Operator::Sub:
+      case Operator::Mul:
+      case Operator::Div:
+      case Operator::Mod:
+      case Operator::Equal:
+      case Operator::NotEqual:
+      case Operator::Less:
+      case Operator::LessEqual:
+      case Operator::Great:
+      case Operator::GreatEqual:
+      case Operator::LogicAnd:
+      case Operator::LogicOr:
+      case Operator::And:
+      case Operator::Or:
+      case Operator::Xor:
+      case Operator::Shl:
+      case Operator::Shr:
+      default: assert(false); break;
+    }
+    // TODO
   }
 }
 
@@ -431,14 +481,15 @@ IRPtr LLVMBuilder::GenerateOn(ForInAST &ast) {
   break_cont_.push({end_block, cond_block});
   // generate expression
   auto expr_val = LLVMCast(ast.expr()->GenerateIR(*this));
+  auto expr_type = ast.expr()->ast_type();
   builder_.CreateBr(cond_block);
   // emit 'cond' block
   builder_.SetInsertPoint(cond_block);
-  auto last_val = builder_.CreateCall(last_func, {expr_val});
+  auto last_val = CreateCall(last_func, {expr_val}, {expr_type});
   builder_.CreateCondBr(last_val, end_block, body_block);
   // emit 'body' block
   builder_.SetInsertPoint(body_block);
-  auto new_val = builder_.CreateCall(next_func, {expr_val});
+  auto new_val = CreateCall(next_func, {expr_val}, {expr_type});
   CreateStore(new_val, loop_var, ast.id_type());
   ast.body()->GenerateIR(*this);
   builder_.CreateBr(cond_block);
@@ -515,8 +566,23 @@ IRPtr LLVMBuilder::GenerateOn(WhenElemAST &ast) {
 }
 
 IRPtr LLVMBuilder::GenerateOn(BinaryAST &ast) {
-  // TODO
-  return nullptr;
+  // get lhs and rhs
+  auto lhs = LLVMCast(ast.lhs()->GenerateIR(*this));
+  auto lhs_ty = ast.lhs()->ast_type();
+  auto rhs = LLVMCast(ast.rhs()->GenerateIR(*this));
+  auto rhs_ty = ast.rhs()->ast_type();
+  // try to handle operator overloading
+  auto op_func = ast.op_func_id();
+  if (op_func) {
+    // get function
+    auto callee = llvm::dyn_cast<llvm::Function>(vals_->GetItem(*op_func));
+    // generate function call
+    auto ret = CreateCall(callee, {lhs, rhs}, {lhs_ty, rhs_ty});
+    return MakeLLVM(ret);
+  }
+  // normal binary operation
+  auto val = CreateBinOp(ast.op(), lhs, rhs, lhs_ty, rhs_ty);
+  return val ? MakeLLVM(val) : nullptr;
 }
 
 IRPtr LLVMBuilder::GenerateOn(AccessAST &ast) {
@@ -544,11 +610,13 @@ IRPtr LLVMBuilder::GenerateOn(FunCallAST &ast) {
   auto callee = LLVMCast(ast.expr()->GenerateIR(*this));
   // generate arguments
   std::vector<llvm::Value *> args;
+  TypePtrList types;
   for (const auto &i : ast.args()) {
     args.push_back(LLVMCast(i->GenerateIR(*this)));
+    types.push_back(i->ast_type());
   }
   // generate function call
-  auto call = builder_.CreateCall(callee, args);
+  auto call = CreateCall(callee, args, types);
   return MakeLLVM(call);
 }
 

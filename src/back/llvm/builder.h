@@ -96,6 +96,14 @@ class LLVMBuilder : public IRBuilderInterface {
   // create new variable/constant definition
   void CreateVarLet(const std::string &id, const define::TypePtr &type,
                     const define::ASTPtr &init);
+  // create new function call
+  llvm::CallInst *CreateCall(llvm::Value *callee,
+                             llvm::ArrayRef<llvm::Value *> args,
+                             const define::TypePtrList &args_type);
+  // create binary operations
+  llvm::Value *CreateBinOp(define::Operator op, llvm::Value *lhs,
+                           llvm::Value *rhs, const define::TypePtr &lhs_ty,
+                           const define::TypePtr &rhs_ty);
 
   // generate on 'yulang::define::TypePtr'
   llvm::Type *GenerateType(const define::TypePtr &type);
