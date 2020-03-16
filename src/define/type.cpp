@@ -20,6 +20,14 @@ bool PrimType::CanAccept(const TypePtr &type) const {
 
 bool PrimType::CanCastTo(const TypePtr &type) const {
   if (IsVoid()) return false;
+  // cast between float types and pointer types is invalid
+  if (IsFloat() &&
+      (type->IsNull() || type->IsPointer() || type->IsFunction())) {
+    return false;
+  }
+  if (type->IsFloat() && (IsNull() || IsPointer() || IsFunction())) {
+    return false;
+  }
   return !type->IsReference() && type->IsBasic();
 }
 
