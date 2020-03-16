@@ -94,32 +94,119 @@ llvm::Value *LLVMBuilder::CreateBinOp(Operator op, llvm::Value *lhs,
       val = CreateBinOp(GetDeAssignedOp(op), lhs, rhs, lhs_ty, rhs_ty);
     }
     // create assignment
-    CreateStore(val, lhs, lhs_ty);
+    if (lhs_ty->IsStruct()) {
+      builder_.CreateMemCpy(lhs, lhs_ty->GetAlignSize(), rhs,
+                            rhs_ty->GetAlignSize(), lhs_ty->GetSize(),
+                            lhs_ty->IsVola());
+    }
+    else {
+      CreateStore(val, lhs, lhs_ty);
+    }
     return nullptr;
   }
   else {
     switch (op) {
-      case Operator::Add:
-      case Operator::Sub:
-      case Operator::Mul:
-      case Operator::Div:
-      case Operator::Mod:
-      case Operator::Equal:
-      case Operator::NotEqual:
-      case Operator::Less:
-      case Operator::LessEqual:
-      case Operator::Great:
-      case Operator::GreatEqual:
-      case Operator::LogicAnd:
-      case Operator::LogicOr:
-      case Operator::And:
-      case Operator::Or:
-      case Operator::Xor:
-      case Operator::Shl:
-      case Operator::Shr:
-      default: assert(false); break;
+      case Operator::Add: case Operator::Sub: {
+        llvm::Value *l = lhs, *r = rhs;
+        // check if is pointer operation
+        if (lhs_ty->IsPointer() || rhs_ty->IsPointer()) {
+          const auto &ptr_ty = lhs_ty->IsPointer() ? lhs_ty : rhs_ty;
+          auto ptr = lhs_ty->IsPointer() ? lhs : rhs;
+          auto opr = lhs_ty->IsPointer() ? rhs : lhs;
+          // calculate offset
+          // TODO: get pointer size
+          auto size = ptr_ty->GetDerefedType()->GetSize();
+          auto offset = builder_.CreateMul(opr, builder_.getInt32(size));
+          // generate lhs & rhs
+          l = ptr;
+          r = opr;
+        }
+        // generate add/sub operation
+        if (lhs_ty->IsInteger()) {
+          return op == Operator::Add ? builder_.CreateAdd(l, r)
+                                     : builder_.CreateSub(l, r);
+        }
+        else {  // IsFloat
+          return op == Operator::Add ? builder_.CreateFAdd(l, r)
+                                     : builder_.CreateFSub(l, r);
+        }
+      }
+      case Operator::Mul: {
+        return lhs_ty->IsInteger() ? builder_.CreateMul(lhs, rhs)
+                                   : builder_.CreateFMul(lhs, rhs);
+      }
+      case Operator::Div: {
+        if (lhs_ty->IsInteger()) {
+          return lhs_ty->IsUnsigned() ? builder_.CreateUDiv(lhs, rhs)
+                                      : builder_.CreateSDiv(lhs, rhs);
+        }
+        else {  // IsFloat
+          return builder_.CreateFDiv(lhs, rhs);
+        }
+      }
+      case Operator::Mod: {
+        if (lhs_ty->IsInteger()) {
+          return lhs_ty->IsUnsigned() ? builder_.CreateURem(lhs, rhs)
+                                      : builder_.CreateSRem(lhs, rhs);
+        }
+        else {  // IsFloat
+          return builder_.CreateFRem(lhs, rhs);
+        }
+      }
+      case Operator::Equal: {
+        return lhs_ty->IsFloat() ? builder_.CreateFCmpOEQ(lhs, rhs)
+                                 : builder_.CreateICmpEQ(lhs, rhs);
+      }
+      case Operator::NotEqual: {
+        return lhs_ty->IsFloat() ? builder_.CreateFCmpUNE(lhs, rhs)
+                                 : builder_.CreateICmpNE(lhs, rhs);
+      }
+      case Operator::Less: {
+        if (lhs_ty->IsInteger()) {
+          return lhs_ty->IsUnsigned() ? builder_.CreateICmpULT(lhs, rhs)
+                                      : builder_.CreateICmpSLT(lhs, rhs);
+        }
+        else {  // IsFloat
+          return builder_.CreateFCmpOLT(lhs, rhs);
+        }
+      }
+      case Operator::LessEqual: {
+        if (lhs_ty->IsInteger()) {
+          return lhs_ty->IsUnsigned() ? builder_.CreateICmpULE(lhs, rhs)
+                                      : builder_.CreateICmpSLE(lhs, rhs);
+        }
+        else {  // IsFloat
+          return builder_.CreateFCmpOLE(lhs, rhs);
+        }
+      }
+      case Operator::Great: {
+        if (lhs_ty->IsInteger()) {
+          return lhs_ty->IsUnsigned() ? builder_.CreateICmpUGT(lhs, rhs)
+                                      : builder_.CreateICmpSGT(lhs, rhs);
+        }
+        else {  // IsFloat
+          return builder_.CreateFCmpOGT(lhs, rhs);
+        }
+      }
+      case Operator::GreatEqual: {
+        if (lhs_ty->IsInteger()) {
+          return lhs_ty->IsUnsigned() ? builder_.CreateICmpUGE(lhs, rhs)
+                                      : builder_.CreateICmpSGE(lhs, rhs);
+        }
+        else {  // IsFloat
+          return builder_.CreateFCmpOGE(lhs, rhs);
+        }
+      }
+      case Operator::And: return builder_.CreateAnd(lhs, rhs);
+      case Operator::Or: return builder_.CreateOr(lhs, rhs);
+      case Operator::Xor: return builder_.CreateXor(lhs, rhs);
+      case Operator::Shl: return builder_.CreateShl(lhs, rhs);
+      case Operator::Shr: {
+        return lhs_ty->IsUnsigned() ? builder_.CreateLShr(lhs, rhs)
+                                    : builder_.CreateAShr(lhs, rhs);
+      }
+      default: assert(false); return nullptr;
     }
-    // TODO
   }
 }
 
@@ -566,13 +653,46 @@ IRPtr LLVMBuilder::GenerateOn(WhenElemAST &ast) {
 }
 
 IRPtr LLVMBuilder::GenerateOn(BinaryAST &ast) {
-  // get lhs and rhs
+  // generate lhs
   auto lhs = LLVMCast(ast.lhs()->GenerateIR(*this));
   auto lhs_ty = ast.lhs()->ast_type();
+  // get name of overloaded function
+  auto op_func = ast.op_func_id();
+  // check if is logic operator (perform short circuit)
+  if (!op_func &&
+      (ast.op() == Operator::LogicAnd || ast.op() == Operator::LogicOr)) {
+    // get current function
+    auto func = builder_.GetInsertBlock()->getParent();
+    // generate basic blocks
+    auto rhs_block = llvm::BasicBlock::Create(context_, "logic_rhs", func);
+    auto end_block = llvm::BasicBlock::Create(context_, "logic_end", func);
+    // generate result value
+    auto result = CreateAlloca(ast.ast_type());
+    if (ast.op() == Operator::LogicAnd) {
+      // generate initial value of result
+      CreateStore(builder_.getInt1(false), result, ast.ast_type());
+      // generate branch
+      builder_.CreateCondBr(lhs, rhs_block, end_block);
+    }
+    else {  // LogicOr
+      // generate initial value of result
+      CreateStore(builder_.getInt1(true), result, ast.ast_type());
+      // generate branch
+      builder_.CreateCondBr(lhs, end_block, rhs_block);
+    }
+    // emit 'rhs' block
+    builder_.SetInsertPoint(rhs_block);
+    auto rhs = LLVMCast(ast.rhs()->GenerateIR(*this));
+    CreateStore(rhs, result, ast.ast_type());
+    builder_.CreateBr(end_block);
+    // emit 'end' block
+    builder_.SetInsertPoint(end_block);
+    return MakeLLVM(CreateLoad(result, ast.ast_type()));
+  }
+  // generate rhs
   auto rhs = LLVMCast(ast.rhs()->GenerateIR(*this));
   auto rhs_ty = ast.rhs()->ast_type();
   // try to handle operator overloading
-  auto op_func = ast.op_func_id();
   if (op_func) {
     // get function
     auto callee = llvm::dyn_cast<llvm::Function>(vals_->GetItem(*op_func));
