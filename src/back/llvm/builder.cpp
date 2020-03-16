@@ -17,7 +17,28 @@ using namespace yulang::back::ll;
 
 namespace {
 
-//
+enum class TypeCategory {
+  Int, Float, Ptr
+};
+
+// get category of specific type
+// used when generating type casting
+inline TypeCategory GetTypeCategory(const TypePtr &type) {
+  if (type->IsInteger() || type->IsBool() || type->IsEnum()) {
+    return TypeCategory::Int;
+  }
+  else if (type->IsFloat()) {
+    return TypeCategory::Float;
+  }
+  else if (type->IsNull() || type->IsFunction() || type->IsArray() ||
+           type->IsPointer()) {
+    return TypeCategory::Ptr;
+  }
+  else {
+    assert(false);
+    return TypeCategory::Int;
+  }
+}
 
 }  // namespace
 
@@ -476,7 +497,7 @@ IRPtr LLVMBuilder::GenerateOn(IfAST &ast) {
   auto else_block = llvm::BasicBlock::Create(context_, "if_else", func);
   auto end_block = llvm::BasicBlock::Create(context_, "if_end", func);
   // create return value of if statement
-  auto if_type = ast.ast_type();
+  const auto &if_type = ast.ast_type();
   llvm::Value *if_val = nullptr;
   if (!if_type->IsVoid()) if_val = CreateAlloca(if_type);
   // create conditional branch
@@ -506,7 +527,7 @@ IRPtr LLVMBuilder::GenerateOn(WhenAST &ast) {
   // generate expression
   when_expr_ = LLVMCast(ast.expr()->GenerateIR(*this));
   // generate return value
-  auto when_type = ast.ast_type();
+  const auto &when_type = ast.ast_type();
   llvm::Value *when_val = nullptr;
   if (!when_type->IsVoid()) when_val = CreateAlloca(when_type);
   // generate elements
@@ -568,7 +589,7 @@ IRPtr LLVMBuilder::GenerateOn(ForInAST &ast) {
   break_cont_.push({end_block, cond_block});
   // generate expression
   auto expr_val = LLVMCast(ast.expr()->GenerateIR(*this));
-  auto expr_type = ast.expr()->ast_type();
+  const auto &expr_type = ast.expr()->ast_type();
   builder_.CreateBr(cond_block);
   // emit 'cond' block
   builder_.SetInsertPoint(cond_block);
@@ -655,7 +676,7 @@ IRPtr LLVMBuilder::GenerateOn(WhenElemAST &ast) {
 IRPtr LLVMBuilder::GenerateOn(BinaryAST &ast) {
   // generate lhs
   auto lhs = LLVMCast(ast.lhs()->GenerateIR(*this));
-  auto lhs_ty = ast.lhs()->ast_type();
+  const auto &lhs_ty = ast.lhs()->ast_type();
   // get name of overloaded function
   auto op_func = ast.op_func_id();
   // check if is logic operator (perform short circuit)
@@ -691,7 +712,7 @@ IRPtr LLVMBuilder::GenerateOn(BinaryAST &ast) {
   }
   // generate rhs
   auto rhs = LLVMCast(ast.rhs()->GenerateIR(*this));
-  auto rhs_ty = ast.rhs()->ast_type();
+  const auto &rhs_ty = ast.rhs()->ast_type();
   // try to handle operator overloading
   if (op_func) {
     // get function
@@ -711,8 +732,66 @@ IRPtr LLVMBuilder::GenerateOn(AccessAST &ast) {
 }
 
 IRPtr LLVMBuilder::GenerateOn(CastAST &ast) {
-  // TODO
-  return nullptr;
+  // generate expression
+  auto expr = LLVMCast(ast.expr()->GenerateIR(*this));
+  const auto &expr_ty = ast.expr()->ast_type();
+  const auto &type_ty = ast.type()->ast_type();
+  // check if is redundant type casting
+  if (expr_ty->IsIdentical(type_ty)) return MakeLLVM(expr);
+  // handle type casting
+  llvm::Value *ret = nullptr;
+  auto type = GenerateType(type_ty);
+  auto expr_ct = GetTypeCategory(expr_ty);
+  auto type_ct = GetTypeCategory(type_ty);
+  if (expr_ct == TypeCategory::Int && type_ct == TypeCategory::Int) {
+    // int -> int
+    if (expr_ty->GetSize() < type_ty->GetSize()) {
+      ret = expr_ty->IsUnsigned() ? builder_.CreateZExt(expr, type)
+                                  : builder_.CreateSExt(expr, type);
+    }
+    else if (expr_ty->GetSize() > type_ty->GetSize()) {
+      ret = builder_.CreateTrunc(expr, type);
+    }
+    else {
+      // do nothing
+      ret = expr;
+    }
+  }
+  else if (expr_ct == TypeCategory::Int &&
+           type_ct == TypeCategory::Float) {
+    // int -> float
+    ret = expr_ty->IsUnsigned() ? builder_.CreateUIToFP(expr, type)
+                                : builder_.CreateSIToFP(expr, type);
+  }
+  else if (expr_ct == TypeCategory::Float &&
+           type_ct == TypeCategory::Int) {
+    // float -> int
+    ret = type_ty->IsUnsigned() ? builder_.CreateFPToUI(expr, type)
+                                : builder_.CreateFPToSI(expr, type);
+  }
+  else if (expr_ct == TypeCategory::Float &&
+           type_ct == TypeCategory::Float) {
+    // float -> float
+    ret = expr_ty->GetSize() < type_ty->GetSize()
+              ? builder_.CreateFPExt(expr, type)
+              : builder_.CreateFPTrunc(expr, type);
+  }
+  else if (expr_ct == TypeCategory::Ptr && type_ct == TypeCategory::Ptr) {
+    // ptr -> ptr
+    ret = builder_.CreateBitCast(expr, type);
+  }
+  else if (expr_ct == TypeCategory::Ptr && type_ct == TypeCategory::Int) {
+    // ptr -> int
+    ret = builder_.CreatePtrToInt(expr, type);
+  }
+  else if (expr_ct == TypeCategory::Int && type_ct == TypeCategory::Ptr) {
+    // int -> ptr
+    ret = builder_.CreateIntToPtr(expr, type);
+  }
+  else {
+    assert(false);
+  }
+  return MakeLLVM(ret);
 }
 
 IRPtr LLVMBuilder::GenerateOn(UnaryAST &ast) {
@@ -741,7 +820,7 @@ IRPtr LLVMBuilder::GenerateOn(FunCallAST &ast) {
 }
 
 IRPtr LLVMBuilder::GenerateOn(IntAST &ast) {
-  auto type = ast.ast_type();
+  const auto &type = ast.ast_type();
   assert(type->IsInteger());
   llvm::APInt ai(type->GetSize() * 8, ast.value(), !type->IsUnsigned());
   return MakeLLVM(builder_.getInt(ai));
@@ -789,7 +868,7 @@ IRPtr LLVMBuilder::GenerateOn(ValInitAST &ast) {
   */
   using namespace llvm;
   // generate LLVM type
-  auto type = ast.type()->ast_type();
+  const auto &type = ast.type()->ast_type();
   auto ll_ty = GenerateType(type);
   // generate value
   Value *val = nullptr;
