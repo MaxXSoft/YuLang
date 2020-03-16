@@ -649,7 +649,7 @@ TypePtr Analyzer::AnalyzeOn(BinaryAST &ast) {
     }
     case Operator::Equal: case Operator::NotEqual: {
       // binary operation between all types except structures
-      if (!lhs->IsStruct() && lhs->IsIdentical(rhs)) {
+      if (!lhs->IsStruct() && !lhs->IsArray() && lhs->IsIdentical(rhs)) {
         ret = MakePrimType(Keyword::Bool, true);
       }
       break;
