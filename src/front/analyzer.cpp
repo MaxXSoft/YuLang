@@ -726,7 +726,7 @@ TypePtr Analyzer::AnalyzeOn(CastAST &ast) {
 
 TypePtr Analyzer::AnalyzeOn(UnaryAST &ast) {
   using UnaryOp = UnaryAST::UnaryOp;
-  // get lhs and rhs type & id
+  // get operand type
   auto opr = ast.opr()->SemaAnalyze(*this);
   if (!opr || opr->IsVoid()) {
     return LogError(ast.opr()->logger(), "invalid operand");
