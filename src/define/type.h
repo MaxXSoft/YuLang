@@ -83,6 +83,9 @@ class BaseType {
   virtual TypePtr GetElem(std::size_t index) const = 0;
   // return the element with specific name
   virtual TypePtr GetElem(const std::string &name) const = 0;
+  // return the index of element with specific name
+  virtual std::optional<std::size_t> GetElemIndex(
+      const std::string &name) const = 0;
   // return the dereferenced type of current type
   virtual TypePtr GetDerefedType() const = 0;
   // return the deconsted type of current type
@@ -142,6 +145,10 @@ class PrimType : public BaseType {
   TypePtr GetElem(const std::string &name) const override {
     return nullptr;
   }
+  std::optional<std::size_t> GetElemIndex(
+      const std::string &name) const override {
+    return {};
+  }
   TypePtr GetDerefedType() const override { return nullptr; }
   TypePtr GetDeconstedType() const override { return nullptr; }
 
@@ -200,6 +207,8 @@ class StructType : public BaseType {
   bool CanAccept(const TypePtr &type) const override;
   bool IsIdentical(const TypePtr &type) const override;
   TypePtr GetElem(const std::string &name) const override;
+  std::optional<std::size_t> GetElemIndex(
+      const std::string &name) const override;
   TypePtr GetValueType(bool is_right) const override;
 
   // setters
@@ -252,6 +261,10 @@ class EnumType : public BaseType {
   }
   std::size_t GetLength() const override { return 0; }
   TypePtr GetElem(std::size_t index) const override { return nullptr; }
+  std::optional<std::size_t> GetElemIndex(
+      const std::string &name) const override {
+    return {};
+  }
   TypePtr GetDerefedType() const override { return nullptr; }
   TypePtr GetDeconstedType() const override { return nullptr; }
   std::string GetTypeId() const override { return id_; }
@@ -308,6 +321,10 @@ class ConstType : public BaseType {
     return type_->GetReturnType(args);
   }
   std::size_t GetLength() const override { return type_->GetLength(); }
+  std::optional<std::size_t> GetElemIndex(
+      const std::string &name) const override {
+    return type_->GetElemIndex(name);
+  }
   TypePtr GetDerefedType() const override {
     return type_->GetDerefedType();
   }
@@ -352,6 +369,10 @@ class FuncType : public BaseType {
   TypePtr GetElem(std::size_t index) const override { return nullptr; }
   TypePtr GetElem(const std::string &name) const override {
     return nullptr;
+  }
+  std::optional<std::size_t> GetElemIndex(
+      const std::string &name) const override {
+    return {};
   }
   TypePtr GetDerefedType() const override { return nullptr; }
   TypePtr GetDeconstedType() const override { return nullptr; }
@@ -416,6 +437,10 @@ class VolaType : public BaseType {
   TypePtr GetElem(const std::string &name) const override {
     return type_->GetElem(name);
   }
+  std::optional<std::size_t> GetElemIndex(
+      const std::string &name) const override {
+    return type_->GetElemIndex(name);
+  }
   TypePtr GetDerefedType() const override {
     return type_->GetDerefedType();
   }
@@ -464,6 +489,10 @@ class ArrayType : public BaseType {
   TypePtr GetElem(const std::string &name) const override {
     return nullptr;
   }
+  std::optional<std::size_t> GetElemIndex(
+      const std::string &name) const override {
+    return {};
+  }
   TypePtr GetDerefedType() const override { return base_; }
   TypePtr GetDeconstedType() const override { return nullptr; }
 
@@ -509,6 +538,10 @@ class PointerType : public BaseType {
   TypePtr GetElem(std::size_t index) const override { return nullptr; }
   TypePtr GetElem(const std::string &name) const override {
     return nullptr;
+  }
+  std::optional<std::size_t> GetElemIndex(
+      const std::string &name) const override {
+    return {};
   }
   TypePtr GetDerefedType() const override { return base_; }
   TypePtr GetDeconstedType() const override { return nullptr; }
@@ -572,6 +605,10 @@ class RefType : public BaseType {
   }
   TypePtr GetElem(const std::string &name) const override {
     return base_->GetElem(name);
+  }
+  std::optional<std::size_t> GetElemIndex(
+      const std::string &name) const override {
+    return base_->GetElemIndex(name);
   }
   TypePtr GetDerefedType() const override {
     return base_;

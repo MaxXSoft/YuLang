@@ -102,6 +102,14 @@ TypePtr StructType::GetElem(const std::string &name) const {
   return nullptr;
 }
 
+std::optional<std::size_t> StructType::GetElemIndex(
+    const std::string &name) const {
+  for (std::size_t i = 0; i < elems_.size(); ++i) {
+    if (elems_[i].first == name) return i;
+  }
+  return {};
+}
+
 TypePtr StructType::GetValueType(bool is_right) const {
   return std::make_shared<StructType>(elems_, id_, is_right);
 }
