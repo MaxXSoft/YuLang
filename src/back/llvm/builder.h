@@ -85,6 +85,10 @@ class LLVMBuilder : public IRBuilderInterface {
   void Init();
   // switch to a new environment
   xstl::Guard NewEnv();
+  // automatically create load when specific value is a left value
+  llvm::Value *UseValue(llvm::Value *val, const define::TypePtr &type);
+  // automatically create load, using specific AST pointer
+  llvm::Value *UseValue(const define::ASTPtr &ast);
   // create new allocation in current function
   llvm::AllocaInst *CreateAlloca(const define::TypePtr &type);
   // create new load instruction

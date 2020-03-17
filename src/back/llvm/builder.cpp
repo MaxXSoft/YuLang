@@ -56,6 +56,19 @@ xstl::Guard LLVMBuilder::NewEnv() {
   });
 }
 
+llvm::Value *LLVMBuilder::UseValue(llvm::Value *val, const TypePtr &type) {
+  if (type->IsRightValue()) {
+    return val;
+  }
+  else {
+    return CreateLoad(val, type);
+  }
+}
+
+llvm::Value *LLVMBuilder::UseValue(const ASTPtr &ast) {
+  return UseValue(LLVMCast(ast->GenerateIR(*this)), ast->ast_type());
+}
+
 llvm::AllocaInst *LLVMBuilder::CreateAlloca(const TypePtr &type) {
   auto func = builder_.GetInsertBlock()->getParent();
   auto &entry = func->getEntryBlock();
@@ -135,9 +148,9 @@ llvm::Value *LLVMBuilder::CreateBinOp(Operator op, llvm::Value *lhs,
           auto ptr = lhs_ty->IsPointer() ? lhs : rhs;
           auto opr = lhs_ty->IsPointer() ? rhs : lhs;
           // calculate offset
-          // TODO: get pointer size
           auto size = ptr_ty->GetDerefedType()->GetSize();
-          auto offset = builder_.CreateMul(opr, builder_.getInt32(size));
+          auto ai = llvm::APInt(ptr_ty->GetSize(), size);
+          auto offset = builder_.CreateMul(opr, builder_.getInt(ai));
           // generate lhs & rhs
           l = ptr;
           r = opr;
@@ -727,8 +740,16 @@ IRPtr LLVMBuilder::GenerateOn(BinaryAST &ast) {
 }
 
 IRPtr LLVMBuilder::GenerateOn(AccessAST &ast) {
-  // TODO
-  return nullptr;
+  // generate expression
+  auto expr = LLVMCast(ast.expr()->GenerateIR(*this));
+  const auto &expr_ty = ast.expr()->ast_type();
+  assert(expr_ty->IsStruct());
+  // get index of element
+  auto index = expr_ty->GetElemIndex(ast.id());
+  assert(index);
+  // generate access operation
+  auto ptr = builder_.CreateGEP(expr, builder_.getInt32(*index));
+  return MakeLLVM(CreateLoad(ptr, ast.ast_type()));
 }
 
 IRPtr LLVMBuilder::GenerateOn(CastAST &ast) {
@@ -795,8 +816,62 @@ IRPtr LLVMBuilder::GenerateOn(CastAST &ast) {
 }
 
 IRPtr LLVMBuilder::GenerateOn(UnaryAST &ast) {
-  // TODO
-  return nullptr;
+  using UnaryOp = UnaryAST::UnaryOp;
+  // generate operand
+  auto opr = LLVMCast(ast.opr()->GenerateIR(*this));
+  const auto &opr_ty = ast.opr()->ast_type();
+  // try to handle operator overloading
+  auto op_func = ast.op_func_id();
+  if (op_func) {
+    // get function
+    auto callee = llvm::dyn_cast<llvm::Function>(vals_->GetItem(*op_func));
+    // generate function call
+    auto ret = CreateCall(callee, {opr}, {opr_ty});
+    return MakeLLVM(ret);
+  }
+  // normal unary operation
+  llvm::Value *ret = nullptr;
+  switch (ast.op()) {
+    case UnaryOp::Pos: ret = opr; break;
+    case UnaryOp::Neg: {
+      if (opr_ty->IsInteger()) {
+        auto ai = llvm::APInt(opr_ty->GetSize(), 0, !opr_ty->IsUnsigned());
+        ret = builder_.CreateSub(builder_.getInt(ai), opr);
+      }
+      else {  // IsFloat
+        auto af = opr_ty->GetSize() == 4 ? llvm::APFloat(0.f)
+                                         : llvm::APFloat(0.);
+        auto fp = llvm::ConstantFP::get(context_, af);
+        ret = builder_.CreateFSub(fp, opr);
+      }
+      break;
+    }
+    case UnaryOp::LogicNot: {
+      llvm::Value *bool_val = opr;
+      if (opr_ty->IsInteger()) {
+        auto ai = llvm::APInt(opr_ty->GetSize(), 0, !opr_ty->IsUnsigned());
+        bool_val = builder_.CreateICmpNE(opr, builder_.getInt(ai));
+      }
+      ret = builder_.CreateXor(bool_val, builder_.getInt1(true));
+      break;
+    }
+    case UnaryOp::Not: {
+      ret = builder_.CreateNot(opr);
+      break;
+    }
+    case UnaryOp::DeRef: {
+      ret = CreateLoad(opr, opr_ty->GetDerefedType());
+      break;
+    }
+    case UnaryOp::AddrOf: {
+      // ret = builder_.CreateGEP()
+      // TODO
+      break;
+    }
+    default: assert(false); break;
+  }
+  assert(ret);
+  return MakeLLVM(ret);
 }
 
 IRPtr LLVMBuilder::GenerateOn(IndexAST &ast) {
