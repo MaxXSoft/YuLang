@@ -880,8 +880,13 @@ IRPtr LLVMBuilder::GenerateOn(UnaryAST &ast) {
 }
 
 IRPtr LLVMBuilder::GenerateOn(IndexAST &ast) {
-  // TODO
-  return nullptr;
+  // generate expression
+  auto expr = LLVMCast(ast.expr()->GenerateIR(*this));
+  // generate index
+  auto index = UseValue(ast.index());
+  // generate indexing operation
+  auto ptr = builder_.CreateGEP(expr, index);
+  return MakeLLVM(ptr);
 }
 
 IRPtr LLVMBuilder::GenerateOn(FunCallAST &ast) {
