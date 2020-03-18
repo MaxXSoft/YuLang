@@ -45,6 +45,8 @@ inline TypeCategory GetTypeCategory(const TypePtr &type) {
 void LLVMBuilder::Init() {
   vals_ = xstl::MakeNestedMap<std::string, llvm::Value *>();
   types_ = xstl::MakeNestedMap<std::string, llvm::Type *>();
+  ctor_ = nullptr;
+  dtor_ = nullptr;
 }
 
 xstl::Guard LLVMBuilder::NewEnv() {
@@ -57,7 +59,7 @@ xstl::Guard LLVMBuilder::NewEnv() {
 }
 
 llvm::Value *LLVMBuilder::UseValue(llvm::Value *val, const TypePtr &type) {
-  if (type->IsRightValue()) {
+  if (type->IsRightValue() || type->IsStruct() || type->IsArray()) {
     return val;
   }
   else {
@@ -67,6 +69,28 @@ llvm::Value *LLVMBuilder::UseValue(llvm::Value *val, const TypePtr &type) {
 
 llvm::Value *LLVMBuilder::UseValue(const ASTPtr &ast) {
   return UseValue(LLVMCast(ast->GenerateIR(*this)), ast->ast_type());
+}
+
+llvm::Value *LLVMBuilder::CreateSizeValue(std::size_t val) {
+  return builder_.getIntN(GetPointerSize() * 8, val);
+}
+
+llvm::Value *LLVMBuilder::CreateSizeValue(llvm::Value *val,
+                                          const TypePtr &type) {
+  assert(type->IsInteger());
+  auto ptr_size = GetPointerSize();
+  // handle extending/truncating
+  if (type->GetSize() != ptr_size) {
+    auto size_ty = builder_.getIntNTy(ptr_size * 8);
+    if (type->GetSize() < ptr_size) {
+      val = type->IsUnsigned() ? builder_.CreateZExt(val, size_ty)
+                               : builder_.CreateSExt(val, size_ty);
+    }
+    else {
+      val = builder_.CreateTrunc(val, size_ty);
+    }
+  }
+  return val;
 }
 
 llvm::AllocaInst *LLVMBuilder::CreateAlloca(const TypePtr &type) {
@@ -88,8 +112,19 @@ llvm::LoadInst *LLVMBuilder::CreateLoad(llvm::Value *val,
 void LLVMBuilder::CreateStore(llvm::Value *val, llvm::Value *dst,
                               const TypePtr &type) {
   auto is_vola = type->IsVola();
-  auto store = builder_.CreateStore(val, dst, is_vola);
-  store->setAlignment(type->GetAlignSize());
+  if (type->IsStruct() || type->IsArray()) {
+    // generate memory copy
+    dst = builder_.CreateBitCast(dst, builder_.getInt8Ty());
+    val = builder_.CreateBitCast(val, builder_.getInt8Ty());
+    builder_.CreateMemCpy(dst, type->GetAlignSize(), val,
+                          type->GetAlignSize(), type->GetSize(),
+                          type->IsVola());
+  }
+  else {
+    // generate store instruction
+    auto store = builder_.CreateStore(val, dst, is_vola);
+    store->setAlignment(type->GetAlignSize());
+  }
 }
 
 void LLVMBuilder::CreateVarLet(const std::string &id, const TypePtr &type,
@@ -101,10 +136,7 @@ void LLVMBuilder::CreateVarLet(const std::string &id, const TypePtr &type,
   else {
     // local variables/constants
     auto alloca = CreateAlloca(type);
-    if (init) {
-      auto val = UseValue(init);
-      CreateStore(val, alloca, type);
-    }
+    if (init) CreateStore(UseValue(init), alloca, type);
     vals_->AddItem(id, alloca);
   }
 }
@@ -127,16 +159,8 @@ llvm::Value *LLVMBuilder::CreateBinOp(Operator op, llvm::Value *lhs,
     if (op != Operator::Assign) {
       val = CreateBinOp(GetDeAssignedOp(op), lhs, rhs, lhs_ty, rhs_ty);
     }
-    val = UseValue(val, rhs_ty);
     // create assignment
-    if (lhs_ty->IsStruct() || lhs_ty->IsArray()) {
-      builder_.CreateMemCpy(lhs, lhs_ty->GetAlignSize(), rhs,
-                            rhs_ty->GetAlignSize(), lhs_ty->GetSize(),
-                            lhs_ty->IsVola());
-    }
-    else {
-      CreateStore(val, lhs, lhs_ty);
-    }
+    CreateStore(UseValue(val, rhs_ty), lhs, lhs_ty);
     return nullptr;
   }
   else {
@@ -145,17 +169,18 @@ llvm::Value *LLVMBuilder::CreateBinOp(Operator op, llvm::Value *lhs,
     switch (op) {
       case Operator::Add: case Operator::Sub: {
         if (lhs_ty->IsPointer() || rhs_ty->IsPointer()) {
-          // generate pointer operation
           const auto &ptr_ty = lhs_ty->IsPointer() ? lhs_ty : rhs_ty;
+          const auto &opr_ty = lhs_ty->IsPointer() ? rhs_ty : lhs_ty;
           auto ptr = lhs_ty->IsPointer() ? lhs : rhs;
           auto opr = lhs_ty->IsPointer() ? rhs : lhs;
-          // calculate offset
-          auto size = ptr_ty->GetDerefedType()->GetSize();
-          auto ai = llvm::APInt(ptr_ty->GetSize(), size);
-          auto offset = builder_.CreateMul(opr, builder_.getInt(ai));
-          // generate lhs & rhs
-          return op == Operator::Add ? builder_.CreateAdd(ptr, offset)
-                                     : builder_.CreateSub(ptr, offset);
+          // generate index
+          auto index = CreateSizeValue(opr, opr_ty);
+          if (op == Operator::Sub) {
+            // generate negate
+            index = builder_.CreateSub(CreateSizeValue(0), index);
+          }
+          // generate pointer operation
+          return builder_.CreateGEP(ptr, index);
         }
         else if (lhs_ty->IsInteger()) {
           return op == Operator::Add ? builder_.CreateAdd(lhs, rhs)
@@ -753,7 +778,7 @@ IRPtr LLVMBuilder::GenerateOn(AccessAST &ast) {
   auto index = expr_ty->GetElemIndex(ast.id());
   assert(index);
   // generate access operation
-  auto ptr = builder_.CreateGEP(expr, builder_.getInt32(*index));
+  auto ptr = builder_.CreateGEP(expr, CreateSizeValue(*index));
   return MakeLLVM(ptr);
 }
 
@@ -882,6 +907,7 @@ IRPtr LLVMBuilder::GenerateOn(IndexAST &ast) {
   auto expr = LLVMCast(ast.expr()->GenerateIR(*this));
   // generate index
   auto index = UseValue(ast.index());
+  index = CreateSizeValue(index, ast.index()->ast_type());
   // generate indexing operation
   auto ptr = builder_.CreateGEP(expr, index);
   return MakeLLVM(ptr);
@@ -968,16 +994,15 @@ IRPtr LLVMBuilder::GenerateOn(ValInitAST &ast) {
     // create a temporary alloca
     val = CreateAlloca(type);
     // generate zero initializer
-    builder_.CreateMemSet(val, builder_.getInt8(0), type->GetSize(),
+    auto dst = builder_.CreateBitCast(val, builder_.getInt8Ty());
+    builder_.CreateMemSet(dst, builder_.getInt8(0), type->GetSize(),
                           type->GetAlignSize(), type->IsVola());
     // generate elements
     for (int i = 0; i < ast.elems().size(); ++i) {
       const auto &elem = ast.elems()[i];
-      auto ptr = builder_.CreateGEP(val, builder_.getInt32(i));
+      auto ptr = builder_.CreateGEP(val, CreateSizeValue(i));
       CreateStore(UseValue(elem), ptr, elem->ast_type());
     }
-    // create load (because 'VarInitAST' always generates right value)
-    val = CreateLoad(val, type);
   }
   return MakeLLVM(val);
 }
@@ -1019,7 +1044,7 @@ IRPtr LLVMBuilder::GenerateOn(RefTypeAST &ast) {
 
 std::size_t LLVMBuilder::GetPointerSize() const {
   // TODO
-  return 0;
+  return sizeof(void *);
 }
 
 void LLVMBuilder::Dump(std::ostream &os) {

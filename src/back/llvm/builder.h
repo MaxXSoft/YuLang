@@ -89,12 +89,19 @@ class LLVMBuilder : public IRBuilderInterface {
   llvm::Value *UseValue(llvm::Value *val, const define::TypePtr &type);
   // automatically create load, using specific AST pointer
   llvm::Value *UseValue(const define::ASTPtr &ast);
+
+  // create new value in target 'size_t' type
+  llvm::Value *CreateSizeValue(std::size_t val);
+  // create new value in target 'size_t' type by specific value
+  llvm::Value *CreateSizeValue(llvm::Value *val,
+                               const define::TypePtr &type);
   // create new allocation in current function
   llvm::AllocaInst *CreateAlloca(const define::TypePtr &type);
   // create new load instruction
   llvm::LoadInst *CreateLoad(llvm::Value *val,
                              const define::TypePtr &type);
   // create new store instruction
+  // if 'dst' is a structure or an array, generate 'memcpy'
   void CreateStore(llvm::Value *val, llvm::Value *dst,
                    const define::TypePtr &type);
   // create new variable/constant definition
@@ -126,6 +133,8 @@ class LLVMBuilder : public IRBuilderInterface {
   // table of values & types
   xstl::NestedMapPtr<std::string, llvm::Value *> vals_;
   xstl::NestedMapPtr<std::string, llvm::Type *> types_;
+  // global constructor & destructor
+  llvm::Function *ctor_, *dtor_;
   // used when generating properties
   llvm::GlobalVariable::LinkageTypes link_;
   // used when generating function definitions
