@@ -962,6 +962,10 @@ TypePtr Analyzer::AnalyzeOn(ArrayTypeAST &ast) {
   if (!val || !*len_ptr) {
     return LogError(ast.expr()->logger(), "invalid array length");
   }
+  if (*len_ptr & (1 << 63)) {
+    ast.expr()->logger().LogWarning(
+        "array length may be negative or a very large value");
+  }
   // create array type
   auto arr = std::make_shared<ArrayType>(std::move(base), *len_ptr, false);
   return ast.set_ast_type(std::move(arr));
