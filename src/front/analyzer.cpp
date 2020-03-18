@@ -609,7 +609,8 @@ TypePtr Analyzer::AnalyzeOn(BinaryAST &ast) {
         if (lhs->IsPointer() && rhs->IsInteger()) {
           ret = lhs;
         }
-        else if (rhs->IsPointer() && lhs->IsInteger()) {
+        else if (rhs->IsPointer() && lhs->IsInteger() &&
+                 ast.op() != Operator::Sub) {
           ret = rhs;
         }
         else {
@@ -698,7 +699,7 @@ TypePtr Analyzer::AnalyzeOn(AccessAST &ast) {
       assert(expr->IsRightValue());
       ret = std::move(expr);
     }
-    else if (expr->IsStruct()) {
+    else if (expr->IsStruct() && !expr->IsRightValue()) {
       // check if is structure access
       auto type = expr->GetElem(ast.id());
       if (type) ret = std::move(type);
@@ -787,7 +788,8 @@ TypePtr Analyzer::AnalyzeOn(UnaryAST &ast) {
 TypePtr Analyzer::AnalyzeOn(IndexAST &ast) {
   // get type of expression
   auto expr = ast.expr()->SemaAnalyze(*this);
-  if (!expr || (!expr->IsPointer() && !expr->IsArray())) {
+  if (!expr || (!expr->IsPointer() &&
+                !(expr->IsArray() && !expr->IsRightValue()))) {
     return LogError(ast.expr()->logger(),
                     "expression is not subscriptable");
   }
@@ -962,7 +964,7 @@ TypePtr Analyzer::AnalyzeOn(ArrayTypeAST &ast) {
   if (!val || !*len_ptr) {
     return LogError(ast.expr()->logger(), "invalid array length");
   }
-  if (*len_ptr & (1 << 63)) {
+  if (*len_ptr & (1ull << 63)) {
     ast.expr()->logger().LogWarning(
         "array length may be negative or a very large value");
   }

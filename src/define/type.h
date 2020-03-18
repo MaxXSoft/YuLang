@@ -478,7 +478,7 @@ class ArrayType : public BaseType {
     return base_->GetSize() * len_;
   }
   std::size_t GetAlignSize() const override {
-    base_->GetAlignSize();
+    return base_->GetAlignSize();
   }
   std::optional<TypePtrList> GetArgsType() const override { return {}; }
   TypePtr GetReturnType(const TypePtrList &args) const override {
