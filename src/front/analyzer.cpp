@@ -207,9 +207,8 @@ TypePtr Analyzer::AnalyzeOn(FunDefAST &ast) {
     return LogError(ast.logger(), "function has already been defined", id);
   }
   // add function type info to symbol environment
-  TypePtr type = std::make_shared<FuncType>(std::move(args), std::move(ret),
-                                            false);
-  type = std::make_shared<ConstType>(std::move(type));
+  auto type = std::make_shared<FuncType>(std::move(args), std::move(ret),
+                                         true);
   symbols_->outer()->AddItem(id, std::move(type));
   // add function type info to function mapping table
   if (!funcs_->outer()->GetItem(org_id)) {
