@@ -102,7 +102,7 @@ void LLVMBuilder::CreateVarLet(const std::string &id, const TypePtr &type,
     // local variables/constants
     auto alloca = CreateAlloca(type);
     if (init) {
-      auto val = LLVMCast(init->GenerateIR(*this));
+      auto val = UseValue(init);
       CreateStore(val, alloca, type);
     }
     vals_->AddItem(id, alloca);
@@ -127,6 +127,7 @@ llvm::Value *LLVMBuilder::CreateBinOp(Operator op, llvm::Value *lhs,
     if (op != Operator::Assign) {
       val = CreateBinOp(GetDeAssignedOp(op), lhs, rhs, lhs_ty, rhs_ty);
     }
+    val = UseValue(val, rhs_ty);
     // create assignment
     if (lhs_ty->IsStruct()) {
       builder_.CreateMemCpy(lhs, lhs_ty->GetAlignSize(), rhs,
@@ -139,6 +140,8 @@ llvm::Value *LLVMBuilder::CreateBinOp(Operator op, llvm::Value *lhs,
     return nullptr;
   }
   else {
+    lhs = UseValue(lhs, lhs_ty);
+    rhs = UseValue(rhs, rhs_ty);
     switch (op) {
       case Operator::Add: case Operator::Sub: {
         llvm::Value *l = lhs, *r = rhs;
@@ -514,7 +517,7 @@ IRPtr LLVMBuilder::GenerateOn(IfAST &ast) {
   llvm::Value *if_val = nullptr;
   if (!if_type->IsVoid()) if_val = CreateAlloca(if_type);
   // create conditional branch
-  auto cond = LLVMCast(ast.cond()->GenerateIR(*this));
+  auto cond = UseValue(ast.cond());
   builder_.CreateCondBr(cond, then_block, else_block);
   // emit 'then' block
   builder_.SetInsertPoint(then_block);
@@ -538,7 +541,7 @@ IRPtr LLVMBuilder::GenerateOn(WhenAST &ast) {
   auto func = builder_.GetInsertBlock()->getParent();
   when_end_ = llvm::BasicBlock::Create(context_, "when_end", func);
   // generate expression
-  when_expr_ = LLVMCast(ast.expr()->GenerateIR(*this));
+  when_expr_ = UseValue(ast.expr());
   // generate return value
   const auto &when_type = ast.ast_type();
   llvm::Value *when_val = nullptr;
@@ -571,7 +574,7 @@ IRPtr LLVMBuilder::GenerateOn(WhileAST &ast) {
   builder_.CreateBr(cond_block);
   // emit 'cond' block
   builder_.SetInsertPoint(cond_block);
-  auto cond = LLVMCast(ast.cond()->GenerateIR(*this));
+  auto cond = UseValue(ast.cond());
   builder_.CreateCondBr(cond, body_block, end_block);
   // emit 'body' block
   builder_.SetInsertPoint(body_block);
@@ -601,7 +604,7 @@ IRPtr LLVMBuilder::GenerateOn(ForInAST &ast) {
   // add to break/continue stack
   break_cont_.push({end_block, cond_block});
   // generate expression
-  auto expr_val = LLVMCast(ast.expr()->GenerateIR(*this));
+  auto expr_val = UseValue(ast.expr());
   const auto &expr_type = ast.expr()->ast_type();
   builder_.CreateBr(cond_block);
   // emit 'cond' block
@@ -640,7 +643,7 @@ IRPtr LLVMBuilder::GenerateOn(ControlAST &ast) {
     case Keyword::Return: {
       // generate return value
       if (ast.expr()) {
-        auto val = LLVMCast(ast.expr()->GenerateIR(*this));
+        auto val = UseValue(ast.expr());
         CreateStore(val, ret_val_, ast.expr()->ast_type());
       }
       // generate branch
@@ -661,7 +664,7 @@ IRPtr LLVMBuilder::GenerateOn(WhenElemAST &ast) {
   // generate conditions
   for (const auto &i : ast.conds()) {
     // generate right hand side value
-    auto rhs = LLVMCast(i->GenerateIR(*this));
+    auto rhs = UseValue(i);
     // generate comparison
     Value *eq = nullptr;
     if (i->ast_type()->IsFloat()) {
@@ -729,9 +732,13 @@ IRPtr LLVMBuilder::GenerateOn(BinaryAST &ast) {
   // try to handle operator overloading
   if (op_func) {
     // get function
-    auto callee = llvm::dyn_cast<llvm::Function>(vals_->GetItem(*op_func));
+    auto callee = vals_->GetItem(*op_func);
     // generate function call
-    auto ret = CreateCall(callee, {lhs, rhs}, {lhs_ty, rhs_ty});
+    llvm::ArrayRef<llvm::Value *> args = {
+      UseValue(lhs, lhs_ty),
+      UseValue(rhs, rhs_ty),
+    };
+    auto ret = CreateCall(callee, args, {lhs_ty, rhs_ty});
     return MakeLLVM(ret);
   }
   // normal binary operation
@@ -749,12 +756,12 @@ IRPtr LLVMBuilder::GenerateOn(AccessAST &ast) {
   assert(index);
   // generate access operation
   auto ptr = builder_.CreateGEP(expr, builder_.getInt32(*index));
-  return MakeLLVM(CreateLoad(ptr, ast.ast_type()));
+  return MakeLLVM(ptr);
 }
 
 IRPtr LLVMBuilder::GenerateOn(CastAST &ast) {
   // generate expression
-  auto expr = LLVMCast(ast.expr()->GenerateIR(*this));
+  auto expr = UseValue(ast.expr());
   const auto &expr_ty = ast.expr()->ast_type();
   const auto &type_ty = ast.type()->ast_type();
   // check if is redundant type casting
@@ -820,11 +827,14 @@ IRPtr LLVMBuilder::GenerateOn(UnaryAST &ast) {
   // generate operand
   auto opr = LLVMCast(ast.opr()->GenerateIR(*this));
   const auto &opr_ty = ast.opr()->ast_type();
+  // try to handle 'address of' operator
+  if (ast.op() == UnaryOp::AddrOf) return MakeLLVM(opr);
+  opr = UseValue(opr, opr_ty);
   // try to handle operator overloading
   auto op_func = ast.op_func_id();
   if (op_func) {
     // get function
-    auto callee = llvm::dyn_cast<llvm::Function>(vals_->GetItem(*op_func));
+    auto callee = vals_->GetItem(*op_func);
     // generate function call
     auto ret = CreateCall(callee, {opr}, {opr_ty});
     return MakeLLVM(ret);
@@ -863,11 +873,6 @@ IRPtr LLVMBuilder::GenerateOn(UnaryAST &ast) {
       ret = CreateLoad(opr, opr_ty->GetDerefedType());
       break;
     }
-    case UnaryOp::AddrOf: {
-      // ret = builder_.CreateGEP()
-      // TODO
-      break;
-    }
     default: assert(false); break;
   }
   assert(ret);
@@ -881,12 +886,12 @@ IRPtr LLVMBuilder::GenerateOn(IndexAST &ast) {
 
 IRPtr LLVMBuilder::GenerateOn(FunCallAST &ast) {
   // generate callee
-  auto callee = LLVMCast(ast.expr()->GenerateIR(*this));
+  auto callee = UseValue(ast.expr());
   // generate arguments
   std::vector<llvm::Value *> args;
   TypePtrList types;
   for (const auto &i : ast.args()) {
-    args.push_back(LLVMCast(i->GenerateIR(*this)));
+    args.push_back(UseValue(i));
     types.push_back(i->ast_type());
   }
   // generate function call
@@ -911,9 +916,7 @@ IRPtr LLVMBuilder::GenerateOn(CharAST &ast) {
 }
 
 IRPtr LLVMBuilder::GenerateOn(IdAST &ast) {
-  // generate load
   auto val = vals_->GetItem(ast.id());
-  val = CreateLoad(val, ast.ast_type());
   // handle reference
   if (ast.ast_type()->IsReference() && !ast.ast_type()->IsStruct()) {
     // generate dereference
