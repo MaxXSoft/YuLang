@@ -129,7 +129,7 @@ llvm::Value *LLVMBuilder::CreateBinOp(Operator op, llvm::Value *lhs,
     }
     val = UseValue(val, rhs_ty);
     // create assignment
-    if (lhs_ty->IsStruct()) {
+    if (lhs_ty->IsStruct() || lhs_ty->IsArray()) {
       builder_.CreateMemCpy(lhs, lhs_ty->GetAlignSize(), rhs,
                             rhs_ty->GetAlignSize(), lhs_ty->GetSize(),
                             lhs_ty->IsVola());
@@ -144,9 +144,8 @@ llvm::Value *LLVMBuilder::CreateBinOp(Operator op, llvm::Value *lhs,
     rhs = UseValue(rhs, rhs_ty);
     switch (op) {
       case Operator::Add: case Operator::Sub: {
-        llvm::Value *l = lhs, *r = rhs;
-        // check if is pointer operation
         if (lhs_ty->IsPointer() || rhs_ty->IsPointer()) {
+          // generate pointer operation
           const auto &ptr_ty = lhs_ty->IsPointer() ? lhs_ty : rhs_ty;
           auto ptr = lhs_ty->IsPointer() ? lhs : rhs;
           auto opr = lhs_ty->IsPointer() ? rhs : lhs;
@@ -155,17 +154,16 @@ llvm::Value *LLVMBuilder::CreateBinOp(Operator op, llvm::Value *lhs,
           auto ai = llvm::APInt(ptr_ty->GetSize(), size);
           auto offset = builder_.CreateMul(opr, builder_.getInt(ai));
           // generate lhs & rhs
-          l = ptr;
-          r = opr;
+          return op == Operator::Add ? builder_.CreateAdd(ptr, offset)
+                                     : builder_.CreateSub(ptr, offset);
         }
-        // generate add/sub operation
-        if (lhs_ty->IsInteger()) {
-          return op == Operator::Add ? builder_.CreateAdd(l, r)
-                                     : builder_.CreateSub(l, r);
+        else if (lhs_ty->IsInteger()) {
+          return op == Operator::Add ? builder_.CreateAdd(lhs, rhs)
+                                     : builder_.CreateSub(lhs, rhs);
         }
         else {  // IsFloat
-          return op == Operator::Add ? builder_.CreateFAdd(l, r)
-                                     : builder_.CreateFSub(l, r);
+          return op == Operator::Add ? builder_.CreateFAdd(lhs, rhs)
+                                     : builder_.CreateFSub(lhs, rhs);
         }
       }
       case Operator::Mul: {
@@ -943,12 +941,6 @@ IRPtr LLVMBuilder::GenerateOn(NullAST &ast) {
 }
 
 IRPtr LLVMBuilder::GenerateOn(ValInitAST &ast) {
-  /*
-    TODO:
-      when initializing struct in function, generate a private constant
-      when initializing array in function, generate several store ops
-      ...
-  */
   using namespace llvm;
   // generate LLVM type
   const auto &type = ast.type()->ast_type();
@@ -959,7 +951,7 @@ IRPtr LLVMBuilder::GenerateOn(ValInitAST &ast) {
     // generate all elements
     std::vector<Constant *> elems;
     for (const auto &i : ast.elems()) {
-      auto elem = LLVMCast(i->GenerateIR(*this));
+      auto elem = UseValue(i);
       elems.push_back(dyn_cast<Constant>(elem));
     }
     if (type->IsArray()) {
@@ -973,7 +965,19 @@ IRPtr LLVMBuilder::GenerateOn(ValInitAST &ast) {
     }
   }
   else {
-    // TODO
+    // create a temporary alloca
+    val = CreateAlloca(type);
+    // generate zero initializer
+    builder_.CreateMemSet(val, builder_.getInt8(0), type->GetSize(),
+                          type->GetAlignSize(), type->IsVola());
+    // generate elements
+    for (int i = 0; i < ast.elems().size(); ++i) {
+      const auto &elem = ast.elems()[i];
+      auto ptr = builder_.CreateGEP(val, builder_.getInt32(i));
+      CreateStore(UseValue(elem), ptr, elem->ast_type());
+    }
+    // create load (because 'VarInitAST' always generates right value)
+    val = CreateLoad(val, type);
   }
   return MakeLLVM(val);
 }
