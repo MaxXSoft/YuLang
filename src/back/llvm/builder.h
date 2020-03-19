@@ -85,6 +85,8 @@ class LLVMBuilder : public IRBuilderInterface {
   void Init();
   // switch to a new environment
   xstl::Guard NewEnv();
+  // switch to body of constructor/destructor
+  xstl::Guard EnterGlobalFunc(bool is_dtor);
   // automatically create load when specific value is a left value
   llvm::Value *UseValue(llvm::Value *val, const define::TypePtr &type);
   // automatically create load, using specific AST pointer

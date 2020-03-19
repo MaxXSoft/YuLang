@@ -58,6 +58,40 @@ xstl::Guard LLVMBuilder::NewEnv() {
   });
 }
 
+xstl::Guard LLVMBuilder::EnterGlobalFunc(bool is_dtor) {
+  using namespace llvm;
+  auto &func = is_dtor ? dtor_ : ctor_;
+  // initialize global function if it does not exit
+  if (!func) {
+    // create function
+    auto link = GlobalValue::LinkageTypes::InternalLinkage;
+    auto type = FunctionType::get(builder_.getVoidTy(), false);
+    auto name = is_dtor ? "_$dtor" : "_$ctor";
+    func = Function::Create(type, link, name, module_.get());
+    BasicBlock::Create(context_, name, func);
+    // create global ctor/dtor array
+    auto global_ty =
+        llvm::StructType::get(builder_.getInt32Ty(), type->getPointerTo(),
+                              builder_.getInt8PtrTy());
+    auto global_arr = llvm::ArrayType::get(global_ty, 1);
+    auto global_init = ConstantStruct::get(
+        global_ty, builder_.getInt32(65535), func,
+        Constant::getNullValue(builder_.getInt8PtrTy()));
+    auto global_arr_init = ConstantArray::get(global_arr, global_init);
+    auto global_link = GlobalValue::LinkageTypes::AppendingLinkage;
+    auto global_name = is_dtor ? "llvm.global_dtors" : "llvm.global_ctors";
+    new GlobalVariable(*module_, global_ty, true, global_link, global_init,
+                       global_name);
+  }
+  // get current insert point
+  auto cur_block = builder_.GetInsertBlock();
+  // switch to global function's body block
+  builder_.SetInsertPoint(&func->getBasicBlockList().back());
+  return xstl::Guard([this, cur_block] {
+    builder_.SetInsertPoint(cur_block);
+  });
+}
+
 llvm::Value *LLVMBuilder::UseValue(llvm::Value *val, const TypePtr &type) {
   if (type->IsRightValue() || type->IsStruct() || type->IsArray()) {
     return val;
@@ -129,9 +163,24 @@ void LLVMBuilder::CreateStore(llvm::Value *val, llvm::Value *dst,
 
 void LLVMBuilder::CreateVarLet(const std::string &id, const TypePtr &type,
                                const ASTPtr &init) {
+  using namespace llvm;
   if (vals_->is_root()) {
     // global variables/constants
-    // TODO
+    auto ty = GenerateType(type);
+    auto zero = ConstantAggregateZero::get(ty);
+    auto var = new GlobalVariable(*module_, ty, true, link_, zero, id);
+    if (init->IsLiteral()) {
+      // generate constant initializer
+      auto cons = dyn_cast<Constant>(LLVMCast(init->GenerateIR(*this)));
+      var->setInitializer(cons);
+    }
+    else {
+      // generate initialization instructions
+      auto ctor = EnterGlobalFunc(false);
+      CreateStore(UseValue(init), var, type);
+    }
+    // add to current environment
+    vals_->AddItem(id, var);
   }
   else {
     // local variables/constants
