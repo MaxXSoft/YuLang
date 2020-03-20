@@ -294,7 +294,8 @@ TypePtr Analyzer::AnalyzeOn(StructAST &ast) {
   // update struct type
   // TODO: circular reference!
   type->set_elems(std::move(elems));
-  return ast.set_ast_type(MakeVoid());
+  ast.set_ast_type(std::move(type));
+  return MakeVoid();
 }
 
 TypePtr Analyzer::AnalyzeOn(EnumAST &ast) {
