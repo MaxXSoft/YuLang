@@ -10,7 +10,7 @@ namespace yulang::back::ll {
 // wrapper of 'llvm::Value *'
 class LLVMIR : public IRInterface {
  public:
-  LLVMIR(llvm::Value *value) {}
+  LLVMIR(llvm::Value *value) : value_(value) {}
 
   std::any value() const override { return value_; }
 
