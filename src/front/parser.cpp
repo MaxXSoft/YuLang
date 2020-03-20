@@ -647,7 +647,7 @@ ASTPtr Parser::ParseFactor() {
     switch (lexer()->key_val()) {
       case Keyword::If: factor = ParseIfElse(); break;
       case Keyword::When: factor = ParseWhen(); break;
-      default: return LogError("invalid factor");
+      default: factor = ParseValue(); break;
     }
   }
   else if (IsTokenChar('{')) {

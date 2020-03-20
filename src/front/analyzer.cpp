@@ -101,7 +101,7 @@ TypePtr Analyzer::AddVarConst(const Logger &log, const std::string &id,
   else {
     assert(init);
     // check if can be deduced
-    if (init->IsVoid()) {
+    if (init->IsVoid() || init->IsNull()) {
       return LogError(log, "initializing with invalid type", id);
     }
     // cast to left value type
