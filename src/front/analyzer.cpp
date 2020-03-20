@@ -374,7 +374,7 @@ TypePtr Analyzer::AnalyzeOn(LetElemAST &ast) {
   }
   // add symbol to environment
   auto ret = AddVarConst(ast.logger(), ast.id(), std::move(type),
-                         std::move(init), true);
+                         std::move(init), false);
   if (!ret) return nullptr;
   ast.set_ast_type(std::move(ret));
   return MakeVoid();
