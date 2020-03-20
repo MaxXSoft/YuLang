@@ -5,9 +5,11 @@
 #include "front/parser.h"
 #include "front/analyzer.h"
 #include "front/eval.h"
+#include "back/llvm/builder.h"
 
 using namespace std;
 using namespace yulang::front;
+using namespace yulang::back::ll;
 
 namespace {
 
@@ -22,10 +24,14 @@ int main(int argc, const char *argv[]) {
   Parser parser(lex_man);
   Evaluator eval;
   Analyzer ana(eval);
+  LLVMBuilder builder(argv[1]);
   while (auto ast = parser.ParseNext()) {
     if (!ast->SemaAnalyze(ana)) break;
     ast->Eval(eval);
-    ast->Dump(cout);
+    // ast->Dump(cout);
+    ast->GenerateIR(builder);
   }
+  auto err_num = lex_man.lexer()->logger().error_num();
+  if (!err_num) builder.Dump(cout);
   return lex_man.lexer()->logger().error_num();
 }
