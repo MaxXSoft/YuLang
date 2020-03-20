@@ -169,15 +169,20 @@ void LLVMBuilder::CreateVarLet(const std::string &id, const TypePtr &type,
     auto ty = GenerateType(type);
     auto zero = ConstantAggregateZero::get(ty);
     auto var = new GlobalVariable(*module_, ty, true, link_, zero, id);
-    if (init->IsLiteral()) {
-      // generate constant initializer
-      auto cons = dyn_cast<Constant>(LLVMCast(init->GenerateIR(*this)));
-      var->setInitializer(cons);
-    }
-    else {
-      // generate initialization instructions
-      auto ctor = EnterGlobalFunc(false);
-      CreateStore(UseValue(init), var, type);
+    if (init) {
+      if (init->IsLiteral()) {
+        // generate constant initializer
+        auto cons = dyn_cast<Constant>(LLVMCast(init->GenerateIR(*this)));
+        var->setInitializer(cons);
+      }
+      else {
+        // generate initialization instructions
+        auto ctor = EnterGlobalFunc(false);
+        auto init_val = type->IsReference()
+                            ? LLVMCast(init->GenerateIR(*this))
+                            : UseValue(init);
+        CreateStore(init_val, var, type);
+      }
     }
     // add to current environment
     vals_->AddItem(id, var);
@@ -185,17 +190,34 @@ void LLVMBuilder::CreateVarLet(const std::string &id, const TypePtr &type,
   else {
     // local variables/constants
     auto alloca = CreateAlloca(type);
-    if (init) CreateStore(UseValue(init), alloca, type);
+    if (init) {
+      auto init_val = type->IsReference()
+                          ? LLVMCast(init->GenerateIR(*this))
+                          : UseValue(init);
+      CreateStore(init_val, alloca, type);
+    }
     vals_->AddItem(id, alloca);
   }
 }
 
-llvm::CallInst *LLVMBuilder::CreateCall(llvm::Value *callee,
-                                        llvm::ArrayRef<llvm::Value *> args,
-                                        const TypePtrList &args_type) {
-  // TODO: handle passing/returning structures/arrays
-  auto call = builder_.CreateCall(callee, args);
-  return call;
+llvm::Value *LLVMBuilder::CreateCall(llvm::Value *callee,
+                                     llvm::ArrayRef<llvm::Value *> args,
+                                     const TypePtr &ret) {
+  if (IsTypeRawStruct(ret)) {
+    std::vector<llvm::Value *> args_with_ret;
+    // create alloca for return value
+    auto alloca = CreateAlloca(ret);
+    // initialize real argument list
+    args_with_ret.push_back(alloca);
+    args_with_ret.insert(args_with_ret.end(), args.begin(), args.end());
+    // create call
+    builder_.CreateCall(callee, args_with_ret);
+    return alloca;
+  }
+  else {
+    auto call = builder_.CreateCall(callee, args);
+    return call;
+  }
 }
 
 llvm::Value *LLVMBuilder::CreateBinOp(Operator op, llvm::Value *lhs,
@@ -321,8 +343,11 @@ llvm::Value *LLVMBuilder::CreateBinOp(Operator op, llvm::Value *lhs,
 
 llvm::Type *LLVMBuilder::GenerateType(const TypePtr &type) {
   // dispatcher
-  if (type->IsInteger() || type->IsFloat() || type->IsBool() ||
-      type->IsVoid()) {
+  if (type->IsReference()) {
+    return GenerateRefType(type);
+  }
+  else if (type->IsInteger() || type->IsFloat() || type->IsBool() ||
+           type->IsVoid()) {
     return GeneratePrimType(type);
   }
   else if (type->IsStruct()) {
@@ -336,9 +361,6 @@ llvm::Type *LLVMBuilder::GenerateType(const TypePtr &type) {
   }
   else if (type->IsArray()) {
     return GenerateArrayType(type);
-  }
-  else if (type->IsReference()) {
-    return GenerateRefType(type);
   }
   else {
     assert(false);
@@ -418,6 +440,10 @@ llvm::Type *LLVMBuilder::GenerateRefType(const TypePtr &type) {
   return GeneratePointerType(type);
 }
 
+bool LLVMBuilder::IsTypeRawStruct(const TypePtr &type) {
+  return type->IsStruct() && !type->IsReference();
+}
+
 IRPtr LLVMBuilder::GenerateOn(PropertyAST &ast) {
   bool global = ast.prop() == PropertyAST::Property::Public ||
                 ast.prop() == PropertyAST::Property::Extern;
@@ -435,17 +461,22 @@ IRPtr LLVMBuilder::GenerateOn(VarLetDefAST &ast) {
 }
 
 IRPtr LLVMBuilder::GenerateOn(FunDefAST &ast) {
-  // TODO: handle passing/returning structures/arrays
   auto env = NewEnv();
   // get linkage type
   ast.prop()->GenerateIR(*this);
   // create function type
+  auto ret_ty = ast.type() ? ast.type()->ast_type() : MakeVoid();
+  auto is_ret_arg = IsTypeRawStruct(ret_ty);
+  auto ret = !is_ret_arg ? GenerateType(ret_ty) : builder_.getVoidTy();
   std::vector<llvm::Type *> args;
-  for (const auto &i : ast.args()) {
-    args.push_back(GenerateType(i->ast_type()));
+  if (is_ret_arg) {
+    args.push_back(GenerateType(ret_ty)->getPointerTo());
   }
-  auto ret = ast.type() ? GenerateType(ast.type()->ast_type())
-                        : builder_.getVoidTy();
+  for (const auto &i : ast.args()) {
+    auto arg = GenerateType(i->ast_type());
+    if (IsTypeRawStruct(i->ast_type())) arg = arg->getPointerTo();
+    args.push_back(arg);
+  }
   auto type = llvm::FunctionType::get(ret, args, false);
   // create function declaration
   auto func = llvm::Function::Create(type, link_, ast.id(), module_.get());
@@ -454,8 +485,9 @@ IRPtr LLVMBuilder::GenerateOn(FunDefAST &ast) {
   // generate arguments
   auto args_block = llvm::BasicBlock::Create(context_, "args", func);
   builder_.SetInsertPoint(args_block);
-  auto arg_it = func->args().begin();
   unsigned int arg_index = llvm::AttributeList::AttrIndex::FirstArgIndex;
+  auto arg_it = func->args().begin();
+  if (is_ret_arg) ret_val_ = arg_it++;
   for (const auto &i : ast.args()) {
     auto arg = LLVMCast(i->GenerateIR(*this));
     CreateStore(arg_it, arg, i->ast_type());
@@ -467,25 +499,26 @@ IRPtr LLVMBuilder::GenerateOn(FunDefAST &ast) {
     ++arg_it;
   }
   // generate return value
-  ret_val_ = !ret->isVoidTy() ? CreateAlloca(ast.type()->ast_type())
-                              : nullptr;
-  if (ast.type() && ast.type()->ast_type()->IsReference()) {
-    func->addDereferenceableAttr(
-        llvm::AttributeList::AttrIndex::ReturnIndex,
-        ast.type()->ast_type()->GetSize());
+  if (!is_ret_arg) {
+    ret_val_ = !ret_ty->IsVoid() ? CreateAlloca(ret_ty) : nullptr;
+    if (ret_ty->IsReference()) {
+      func->addDereferenceableAttr(
+          llvm::AttributeList::AttrIndex::ReturnIndex, ret_ty->GetSize());
+    }
   }
   // generate body
   func_exit_ = llvm::BasicBlock::Create(context_, "func_exit", func);
   auto body_ret = ast.body()->GenerateIR(*this);
   // generate return
-  if (ret_val_) {
+  if (!ret_ty->IsVoid()) {
     assert(body_ret);
-    CreateStore(LLVMCast(body_ret), ret_val_, ast.type()->ast_type());
+    auto val = UseValue(LLVMCast(body_ret), ast.body()->ast_type());
+    CreateStore(val, ret_val_, ret_ty);
   }
   // emit 'exit' block
   builder_.CreateBr(func_exit_);
   builder_.SetInsertPoint(func_exit_);
-  builder_.CreateRet(ret_val_);
+  builder_.CreateRet(is_ret_arg ? nullptr : ret_val_);
   return nullptr;
 }
 
@@ -677,15 +710,15 @@ IRPtr LLVMBuilder::GenerateOn(ForInAST &ast) {
   break_cont_.push({end_block, cond_block});
   // generate expression
   auto expr_val = UseValue(ast.expr());
-  const auto &expr_type = ast.expr()->ast_type();
   builder_.CreateBr(cond_block);
   // emit 'cond' block
   builder_.SetInsertPoint(cond_block);
-  auto last_val = CreateCall(last_func, {expr_val}, {expr_type});
+  auto bool_ty = MakePrimType(Keyword::Bool, true);
+  auto last_val = CreateCall(last_func, {expr_val}, bool_ty);
   builder_.CreateCondBr(last_val, end_block, body_block);
   // emit 'body' block
   builder_.SetInsertPoint(body_block);
-  auto new_val = CreateCall(next_func, {expr_val}, {expr_type});
+  auto new_val = CreateCall(next_func, {expr_val}, ast.id_type());
   CreateStore(new_val, loop_var, ast.id_type());
   ast.body()->GenerateIR(*this);
   builder_.CreateBr(cond_block);
@@ -810,7 +843,7 @@ IRPtr LLVMBuilder::GenerateOn(BinaryAST &ast) {
       UseValue(lhs, lhs_ty),
       UseValue(rhs, rhs_ty),
     };
-    auto ret = CreateCall(callee, args, {lhs_ty, rhs_ty});
+    auto ret = CreateCall(callee, args, ast.ast_type());
     return MakeLLVM(ret);
   }
   // normal binary operation
@@ -908,7 +941,7 @@ IRPtr LLVMBuilder::GenerateOn(UnaryAST &ast) {
     // get function
     auto callee = vals_->GetItem(*op_func);
     // generate function call
-    auto ret = CreateCall(callee, {opr}, {opr_ty});
+    auto ret = CreateCall(callee, {opr}, ast.ast_type());
     return MakeLLVM(ret);
   }
   // normal unary operation
@@ -967,13 +1000,11 @@ IRPtr LLVMBuilder::GenerateOn(FunCallAST &ast) {
   auto callee = UseValue(ast.expr());
   // generate arguments
   std::vector<llvm::Value *> args;
-  TypePtrList types;
   for (const auto &i : ast.args()) {
     args.push_back(UseValue(i));
-    types.push_back(i->ast_type());
   }
   // generate function call
-  auto call = CreateCall(callee, args, types);
+  auto call = CreateCall(callee, args, ast.ast_type());
   return MakeLLVM(call);
 }
 
@@ -995,8 +1026,8 @@ IRPtr LLVMBuilder::GenerateOn(CharAST &ast) {
 
 IRPtr LLVMBuilder::GenerateOn(IdAST &ast) {
   auto val = vals_->GetItem(ast.id());
-  // handle reference
-  if (ast.ast_type()->IsReference() && !ast.ast_type()->IsStruct()) {
+  // handle references
+  if (ast.ast_type()->IsReference()) {
     // generate dereference
     val = CreateLoad(val, ast.ast_type()->GetDerefedType());
   }

@@ -110,9 +110,9 @@ class LLVMBuilder : public IRBuilderInterface {
   void CreateVarLet(const std::string &id, const define::TypePtr &type,
                     const define::ASTPtr &init);
   // create new function call
-  llvm::CallInst *CreateCall(llvm::Value *callee,
-                             llvm::ArrayRef<llvm::Value *> args,
-                             const define::TypePtrList &args_type);
+  llvm::Value *CreateCall(llvm::Value *callee,
+                          llvm::ArrayRef<llvm::Value *> args,
+                          const define::TypePtr &ret);
   // create binary operations
   llvm::Value *CreateBinOp(define::Operator op, llvm::Value *lhs,
                            llvm::Value *rhs, const define::TypePtr &lhs_ty,
@@ -127,6 +127,8 @@ class LLVMBuilder : public IRBuilderInterface {
   llvm::Type *GenerateArrayType(const define::TypePtr &type);
   llvm::Type *GeneratePointerType(const define::TypePtr &type);
   llvm::Type *GenerateRefType(const define::TypePtr &type);
+  // check if type is a raw struct (not a reference of struct)
+  bool IsTypeRawStruct(const define::TypePtr &type);
 
   // LLVM stuffs
   llvm::LLVMContext context_;
