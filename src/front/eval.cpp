@@ -58,11 +58,15 @@ inline ASTPtr MakeAST(const EvalNum &num, const Logger &log) {
   auto ast = std::visit([](auto &&arg) -> ASTPtr {
     using T = std::decay_t<decltype(arg)>;
     if constexpr (std::is_same_v<T, std::uint64_t>) {
-      return std::make_unique<IntAST>(arg);
+      auto ast = std::make_unique<IntAST>(arg);
+      ast->set_ast_type(MakePrimType(Keyword::Int32, true));
+      return ast;
     }
     else if constexpr (std::is_same_v<T, float> ||
                        std::is_same_v<T, double>) {
-      return std::make_unique<FloatAST>(arg);
+      auto ast = std::make_unique<FloatAST>(arg);
+      ast->set_ast_type(MakePrimType(Keyword::Float64, true));
+      return ast;
     }
     else {
       static_assert(AlwaysFalse<T>::value);
@@ -77,13 +81,15 @@ inline ASTPtr MakeAST(const EvalNum &num, const Logger &log) {
 inline ASTPtr MakeAST(std::uint64_t value, const Logger &log) {
   auto ast = std::make_unique<IntAST>(value);
   ast->set_logger(log);
+  ast->set_ast_type(MakePrimType(Keyword::Int32, true));
   return ast;
 }
 
 // create a new bool AST by value
 inline ASTPtr MakeAST(bool value, const Logger &log) {
-  auto ast = std::make_unique<IntAST>(value);
+  auto ast = std::make_unique<BoolAST>(value);
   ast->set_logger(log);
+  ast->set_ast_type(MakePrimType(Keyword::Bool, true));
   return ast;
 }
 
