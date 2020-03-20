@@ -73,15 +73,15 @@ xstl::Guard LLVMBuilder::EnterGlobalFunc(bool is_dtor) {
     auto global_ty =
         llvm::StructType::get(builder_.getInt32Ty(), type->getPointerTo(),
                               builder_.getInt8PtrTy());
-    auto global_arr = llvm::ArrayType::get(global_ty, 1);
+    auto global_arr_ty = llvm::ArrayType::get(global_ty, 1);
     auto global_init = ConstantStruct::get(
         global_ty, builder_.getInt32(65535), func,
         Constant::getNullValue(builder_.getInt8PtrTy()));
-    auto global_arr_init = ConstantArray::get(global_arr, global_init);
+    auto global_arr_init = ConstantArray::get(global_arr_ty, global_init);
     auto global_link = GlobalValue::LinkageTypes::AppendingLinkage;
     auto global_name = is_dtor ? "llvm.global_dtors" : "llvm.global_ctors";
-    new GlobalVariable(*module_, global_ty, true, global_link, global_init,
-                       global_name);
+    new GlobalVariable(*module_, global_arr_ty, true, global_link,
+                       global_arr_init, global_name);
   }
   // get current insert point
   auto cur_block = builder_.GetInsertBlock();
@@ -240,7 +240,6 @@ llvm::Value *LLVMBuilder::CreateBinOp(Operator op, llvm::Value *lhs,
     switch (op) {
       case Operator::Add: case Operator::Sub: {
         if (lhs_ty->IsPointer() || rhs_ty->IsPointer()) {
-          const auto &ptr_ty = lhs_ty->IsPointer() ? lhs_ty : rhs_ty;
           const auto &opr_ty = lhs_ty->IsPointer() ? rhs_ty : lhs_ty;
           auto ptr = lhs_ty->IsPointer() ? lhs : rhs;
           auto opr = lhs_ty->IsPointer() ? rhs : lhs;
