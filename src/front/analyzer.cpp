@@ -87,9 +87,13 @@ TypePtr Analyzer::AddVarConst(const Logger &log, const std::string &id,
         return LogError(log, "cannot define a reference "
                         "without initialization", id);
       }
-      else if (init->IsRightValue()) {
+      if (init->IsRightValue()) {
         return LogError(log, "reference cannot be initialized "
                         "with a right value", id);
+      }
+      if (init->IsConst() && !type->GetDerefedType()->IsConst()) {
+        return LogError(log, "variable reference cannot be initialized "
+                        "with a constant", id);
       }
     }
     sym_type = std::move(type);
