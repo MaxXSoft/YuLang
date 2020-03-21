@@ -53,44 +53,47 @@ namespace {
 template <typename T>
 struct AlwaysFalse : std::false_type {};
 
-// create a new int/float AST by 'EvalNum'
-inline ASTPtr MakeAST(const EvalNum &num, const Logger &log) {
-  auto ast = std::visit([](auto &&arg) -> ASTPtr {
-    using T = std::decay_t<decltype(arg)>;
-    if constexpr (std::is_same_v<T, std::uint64_t>) {
-      auto ast = std::make_unique<IntAST>(arg);
-      ast->set_ast_type(MakePrimType(Keyword::Int32, true));
-      return ast;
-    }
-    else if constexpr (std::is_same_v<T, float> ||
-                       std::is_same_v<T, double>) {
-      auto ast = std::make_unique<FloatAST>(arg);
-      ast->set_ast_type(MakePrimType(Keyword::Float64, true));
-      return ast;
+// create a new AST by 'EvalNum'
+inline ASTPtr MakeAST(const EvalNum &num, const ASTPtr &ast) {
+  const auto &type = ast->ast_type();
+  ASTPtr ret;
+  // handle by type of 'ast'
+  if (type->IsInteger() || type->IsEnum()) {
+    // generate int AST
+    auto val = std::get_if<std::uint64_t>(&num);
+    assert(val);
+    ret = std::make_unique<IntAST>(*val);
+  }
+  else if (type->IsFloat()) {
+    // generate float AST
+    if (type->GetSize() == 4) {
+      auto val = std::get_if<float>(&num);
+      assert(val);
+      ret = std::make_unique<FloatAST>(*val);
     }
     else {
-      static_assert(AlwaysFalse<T>::value);
-      return nullptr;
+      auto val = std::get_if<double>(&num);
+      assert(val);
+      ret = std::make_unique<FloatAST>(*val);
     }
-  }, num);
-  ast->set_logger(log);
-  return ast;
-}
-
-// create a new int AST by value
-inline ASTPtr MakeAST(std::uint64_t value, const Logger &log) {
-  auto ast = std::make_unique<IntAST>(value);
-  ast->set_logger(log);
-  ast->set_ast_type(MakePrimType(Keyword::Int32, true));
-  return ast;
-}
-
-// create a new bool AST by value
-inline ASTPtr MakeAST(bool value, const Logger &log) {
-  auto ast = std::make_unique<BoolAST>(value);
-  ast->set_logger(log);
-  ast->set_ast_type(MakePrimType(Keyword::Bool, true));
-  return ast;
+  }
+  else if (type->IsBool()) {
+    // generate bool AST
+    auto val = std::get_if<std::uint64_t>(&num);
+    assert(val);
+    ret = std::make_unique<BoolAST>(*val);
+  }
+  else if (type->IsNull()) {
+    // generate null AST
+    ret = std::make_unique<NullAST>();
+  }
+  else {
+    assert(false);
+  }
+  // set additional information
+  ret->set_logger(ast->logger());
+  ret->set_ast_type(type);
+  return ret;
 }
 
 // cast 'EvalNum' to boolean
@@ -229,7 +232,7 @@ std::optional<EvalNum> Evaluator::EvalOn(VarElemAST &ast) {
   // evaluate initial value
   auto val = ast.init()->Eval(*this);
   // update AST
-  if (val) ast.set_init(MakeAST(*val, ast.logger()));
+  if (val) ast.set_init(MakeAST(*val, ast.init()));
   return {};
 }
 
@@ -242,7 +245,7 @@ std::optional<EvalNum> Evaluator::EvalOn(LetElemAST &ast) {
   // add to environment
   values_->AddItem(ast.id(), val);
   // update AST
-  ast.set_init(MakeAST(*val, ast.logger()));
+  ast.set_init(MakeAST(*val, ast.init()));
   return {};
 }
 
@@ -262,7 +265,7 @@ std::optional<EvalNum> Evaluator::EvalOn(EnumElemAST &ast) {
     assert(num);
     last_enum_val_ = *num;
     // update AST
-    ast.set_expr(MakeAST(*num, ast.logger()));
+    ast.set_expr(MakeAST(*num, ast.expr()));
   }
   last_enum_val_ = CastToType(last_enum_val_, ast.ast_type());
   // add to environment
@@ -285,7 +288,7 @@ std::optional<EvalNum> Evaluator::EvalOn(BlockAST &ast) {
     auto val = ast.stmts()[i]->Eval(*this);
     if (val) {
       // update current statement
-      ast.set_stmt(i, MakeAST(*val, ast.stmts()[i]->logger()));
+      ast.set_stmt(i, MakeAST(*val, ast.stmts()[i]));
     }
     else {
       valid = false;
@@ -298,23 +301,23 @@ std::optional<EvalNum> Evaluator::EvalOn(BlockAST &ast) {
 
 std::optional<EvalNum> Evaluator::EvalOn(IfAST &ast) {
   // evaluate condition
-  bool cond_val;
+  std::uint64_t cond_val;
   auto cond = ast.cond()->Eval(*this);
   if (cond) {
     // get value of condition
     cond_val = CastToBool(*cond);
     // update condition
-    ast.set_cond(MakeAST(cond_val, ast.cond()->logger()));
+    ast.set_cond(MakeAST(cond_val, ast.cond()));
   }
   // evaluate & update true/false part
   auto then_val = ast.then()->Eval(*this);
   if (then_val) {
-    ast.set_then(MakeAST(*then_val, ast.then()->logger()));
+    ast.set_then(MakeAST(*then_val, ast.then()));
   }
   auto else_val = ast.else_then() ? ast.else_then()->Eval(*this)
                                   : std::nullopt;
   if (else_val) {
-    ast.set_else_then(MakeAST(*else_val, ast.else_then()->logger()));
+    ast.set_else_then(MakeAST(*else_val, ast.else_then()));
   }
   // return expression's value
   if (!cond) return {};
@@ -327,7 +330,7 @@ std::optional<EvalNum> Evaluator::EvalOn(WhenAST &ast) {
   // evaluate expression
   last_when_expr_ = ast.expr()->Eval(*this);
   if (last_when_expr_) {
-    ast.set_expr(MakeAST(*last_when_expr_, ast.expr()->logger()));
+    ast.set_expr(MakeAST(*last_when_expr_, ast.expr()));
   }
   // evaluate elements
   std::optional<EvalNum> ret;
@@ -339,7 +342,7 @@ std::optional<EvalNum> Evaluator::EvalOn(WhenAST &ast) {
   auto else_val = ast.else_then() ? ast.else_then()->Eval(*this)
                                   : std::nullopt;
   if (else_val) {
-    ast.set_else_then(MakeAST(*else_val, ast.else_then()->logger()));
+    ast.set_else_then(MakeAST(*else_val, ast.else_then()));
   }
   // return expression's value
   if (!last_when_expr_) return {};
@@ -349,20 +352,20 @@ std::optional<EvalNum> Evaluator::EvalOn(WhenAST &ast) {
 std::optional<EvalNum> Evaluator::EvalOn(WhileAST &ast) {
   // evaluate condition
   auto cond = ast.cond()->Eval(*this);
-  if (cond) ast.set_cond(MakeAST(*cond, ast.cond()->logger()));
+  if (cond) ast.set_cond(MakeAST(*cond, ast.cond()));
   // evaluate body
   auto body = ast.body()->Eval(*this);
-  if (body) ast.set_body(MakeAST(*body, ast.body()->logger()));
+  if (body) ast.set_body(MakeAST(*body, ast.body()));
   return {};
 }
 
 std::optional<EvalNum> Evaluator::EvalOn(ForInAST &ast) {
   // evaluate expression
   auto expr = ast.expr()->Eval(*this);
-  if (expr) ast.set_expr(MakeAST(*expr, ast.expr()->logger()));
+  if (expr) ast.set_expr(MakeAST(*expr, ast.expr()));
   // evaluate body
   auto body = ast.body()->Eval(*this);
-  if (body) ast.set_body(MakeAST(*body, ast.body()->logger()));
+  if (body) ast.set_body(MakeAST(*body, ast.body()));
   return {};
 }
 
@@ -374,7 +377,7 @@ std::optional<EvalNum> Evaluator::EvalOn(ControlAST &ast) {
   // evaluate expression
   if (ast.expr()) {
     auto expr = ast.expr()->Eval(*this);
-    if (expr) ast.set_expr(MakeAST(*expr, ast.expr()->logger()));
+    if (expr) ast.set_expr(MakeAST(*expr, ast.expr()));
   }
   return {};
 }
@@ -386,7 +389,7 @@ std::optional<EvalNum> Evaluator::EvalOn(WhenElemAST &ast) {
     auto val = ast.conds()[i]->Eval(*this);
     if (val) {
       // update condition
-      ast.set_cond(i, MakeAST(*val, ast.conds()[i]->logger()));
+      ast.set_cond(i, MakeAST(*val, ast.conds()[i]));
       // check if valid
       if (last_when_expr_ && CheckEqual(*val, *last_when_expr_)) {
         valid = true;
@@ -395,14 +398,14 @@ std::optional<EvalNum> Evaluator::EvalOn(WhenElemAST &ast) {
   }
   // evaluate body
   auto body = ast.body()->Eval(*this);
-  if (body) ast.set_body(MakeAST(*body, ast.body()->logger()));
+  if (body) ast.set_body(MakeAST(*body, ast.body()));
   return valid ? body : std::nullopt;
 }
 
 std::optional<EvalNum> Evaluator::EvalOn(BinaryAST &ast) {
   // evaluate rhs
   auto rhs = ast.rhs()->Eval(*this);
-  if (rhs) ast.set_rhs(MakeAST(*rhs, ast.rhs()->logger()));
+  if (rhs) ast.set_rhs(MakeAST(*rhs, ast.rhs()));
   // handle by operator
   if (IsOperatorAssign(ast.op())) {
     // do not evaluate rhs, just return null
@@ -411,7 +414,7 @@ std::optional<EvalNum> Evaluator::EvalOn(BinaryAST &ast) {
   else {
     // evaluate & update lhs
     auto lhs = ast.lhs()->Eval(*this);
-    if (lhs) ast.set_lhs(MakeAST(*lhs, ast.lhs()->logger()));
+    if (lhs) ast.set_lhs(MakeAST(*lhs, ast.lhs()));
     // calculate result
     if (lhs && rhs) {
       return std::visit([&ast](auto &&lhs, auto &&rhs) -> EvalNum {
@@ -498,7 +501,7 @@ std::optional<EvalNum> Evaluator::EvalOn(CastAST &ast) {
   // evaluate & update expression
   auto val = ast.expr()->Eval(*this);
   if (!val) return {};
-  ast.set_expr(MakeAST(*val, ast.expr()->logger()));
+  ast.set_expr(MakeAST(*val, ast.expr()));
   // perform type casting
   if (!ast.ast_type()->IsInteger() && !ast.ast_type()->IsBool() &&
       !ast.ast_type()->IsFloat()) {
@@ -512,7 +515,7 @@ std::optional<EvalNum> Evaluator::EvalOn(UnaryAST &ast) {
   // evaluate & update operand
   auto val = ast.opr()->Eval(*this);
   if (val && ast.op() != UnaryOp::AddrOf) {
-    ast.set_opr(MakeAST(*val, ast.opr()->logger()));
+    ast.set_opr(MakeAST(*val, ast.opr()));
   }
   // caluate the value of AST
   if (ast.op() == UnaryOp::SizeOf) {
@@ -547,7 +550,7 @@ std::optional<EvalNum> Evaluator::EvalOn(IndexAST &ast) {
   ast.expr()->Eval(*this);
   // evaluate & update index
   auto val = ast.index()->Eval(*this);
-  if (val) ast.set_index(MakeAST(*val, ast.index()->logger()));
+  if (val) ast.set_index(MakeAST(*val, ast.index()));
   return {};
 }
 
@@ -557,7 +560,7 @@ std::optional<EvalNum> Evaluator::EvalOn(FunCallAST &ast) {
   // evaluate & update arguments
   for (int i = 0; i < ast.args().size(); ++i) {
     auto val = ast.args()[i]->Eval(*this);
-    if (val) ast.set_arg(i, MakeAST(*val, ast.args()[i]->logger()));
+    if (val) ast.set_arg(i, MakeAST(*val, ast.args()[i]));
   }
   return {};
 }
@@ -596,7 +599,7 @@ std::optional<EvalNum> Evaluator::EvalOn(ValInitAST &ast) {
   for (int i = 0; i < ast.elems().size(); ++i) {
     auto val = ast.elems()[i]->Eval(*this);
     if (val) {
-      ast.set_elem(i, MakeAST(*val, ast.elems()[i]->logger()));
+      ast.set_elem(i, MakeAST(*val, ast.elems()[i]));
     }
   }
   return {};
@@ -621,7 +624,7 @@ std::optional<EvalNum> Evaluator::EvalOn(VolaTypeAST &ast) {
 std::optional<EvalNum> Evaluator::EvalOn(ArrayTypeAST &ast) {
   // evaluate expression
   auto expr = ast.expr()->Eval(*this);
-  if (expr) ast.set_expr(MakeAST(*expr, ast.expr()->logger()));
+  if (expr) ast.set_expr(MakeAST(*expr, ast.expr()));
   return {};
 }
 
