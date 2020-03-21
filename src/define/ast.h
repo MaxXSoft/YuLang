@@ -290,6 +290,9 @@ class VarElemAST : public BaseAST {
   const ASTPtr &type() const { return type_; }
   const ASTPtr &init() const { return init_; }
 
+  // setters
+  void set_init(ASTPtr init) { init_ = std::move(init); }
+
  private:
   std::string id_;
   ASTPtr type_, init_;

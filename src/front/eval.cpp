@@ -224,10 +224,18 @@ std::optional<EvalNum> Evaluator::EvalOn(ImportAST &ast) {
 }
 
 std::optional<EvalNum> Evaluator::EvalOn(VarElemAST &ast) {
+  // do not evaluate reference
+  if (ast.ast_type()->IsReference()) return {};
+  // evaluate initial value
+  auto val = ast.init()->Eval(*this);
+  // update AST
+  if (val) ast.set_init(MakeAST(*val, ast.logger()));
   return {};
 }
 
 std::optional<EvalNum> Evaluator::EvalOn(LetElemAST &ast) {
+  // do not evaluate reference
+  if (ast.ast_type()->IsReference()) return {};
   // evaluate initial value
   auto val = ast.init()->Eval(*this);
   if (!val) return {};
@@ -235,7 +243,7 @@ std::optional<EvalNum> Evaluator::EvalOn(LetElemAST &ast) {
   values_->AddItem(ast.id(), val);
   // update AST
   ast.set_init(MakeAST(*val, ast.logger()));
-  return val;
+  return {};
 }
 
 std::optional<EvalNum> Evaluator::EvalOn(ArgElemAST &ast) {
@@ -503,7 +511,9 @@ std::optional<EvalNum> Evaluator::EvalOn(UnaryAST &ast) {
   using UnaryOp = UnaryAST::UnaryOp;
   // evaluate & update operand
   auto val = ast.opr()->Eval(*this);
-  if (val) ast.set_opr(MakeAST(*val, ast.opr()->logger()));
+  if (val && ast.op() != UnaryOp::AddrOf) {
+    ast.set_opr(MakeAST(*val, ast.opr()->logger()));
+  }
   // caluate the value of AST
   if (ast.op() == UnaryOp::SizeOf) {
     return static_cast<std::uint64_t>(ast.ast_type()->GetSize());
