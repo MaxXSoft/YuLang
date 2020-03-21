@@ -268,6 +268,6 @@ TypePtr RefType::GetValueType(bool is_right) const {
   return std::make_shared<RefType>(std::move(type));
 }
 
-void SetPointerSize(std::size_t size) {
+void yulang::define::SetPointerSize(std::size_t size) {
   pointer_size = size;
 }

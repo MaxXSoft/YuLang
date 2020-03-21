@@ -212,7 +212,10 @@ class StructType : public BaseType {
   TypePtr GetValueType(bool is_right) const override;
 
   // setters
-  void set_elems(TypePairList elems) { elems_ = std::move(elems); }
+  void set_elems(TypePairList elems) {
+    elems_ = std::move(elems);
+    CalcSize();
+  }
 
  private:
   void CalcSize();
