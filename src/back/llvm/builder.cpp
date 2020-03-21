@@ -93,7 +93,10 @@ xstl::Guard LLVMBuilder::EnterGlobalFunc(bool is_dtor) {
 }
 
 llvm::Value *LLVMBuilder::UseValue(llvm::Value *val, const TypePtr &type) {
-  if (type->IsRightValue() || type->IsStruct() || type->IsArray()) {
+  if (type->IsStruct() || type->IsArray()) {
+    return val;
+  }
+  else if (type->IsRightValue() && !type->IsReference()) {
     return val;
   }
   else {
@@ -146,10 +149,10 @@ llvm::LoadInst *LLVMBuilder::CreateLoad(llvm::Value *val,
 void LLVMBuilder::CreateStore(llvm::Value *val, llvm::Value *dst,
                               const TypePtr &type) {
   auto is_vola = type->IsVola();
-  if (type->IsStruct() || type->IsArray()) {
+  if (!type->IsReference() && (type->IsStruct() || type->IsArray())) {
     // generate memory copy
-    dst = builder_.CreateBitCast(dst, builder_.getInt8Ty());
-    val = builder_.CreateBitCast(val, builder_.getInt8Ty());
+    dst = builder_.CreateBitCast(dst, builder_.getInt8PtrTy());
+    val = builder_.CreateBitCast(val, builder_.getInt8PtrTy());
     builder_.CreateMemCpy(dst, type->GetAlignSize(), val,
                           type->GetAlignSize(), type->GetSize(),
                           type->IsVola());
@@ -250,7 +253,7 @@ llvm::Value *LLVMBuilder::CreateBinOp(Operator op, llvm::Value *lhs,
             index = builder_.CreateSub(CreateSizeValue(0), index);
           }
           // generate pointer operation
-          return builder_.CreateGEP(ptr, index);
+          return builder_.CreateInBoundsGEP(ptr, index);
         }
         else if (lhs_ty->IsInteger()) {
           return op == Operator::Add ? builder_.CreateAdd(lhs, rhs)
@@ -361,6 +364,9 @@ llvm::Type *LLVMBuilder::GenerateType(const TypePtr &type) {
   else if (type->IsArray()) {
     return GenerateArrayType(type);
   }
+  else if (type->IsPointer()) {
+    return GeneratePointerType(type);
+  }
   else {
     assert(false);
   }
@@ -447,7 +453,7 @@ IRPtr LLVMBuilder::GenerateOn(PropertyAST &ast) {
   bool global = ast.prop() == PropertyAST::Property::Public ||
                 ast.prop() == PropertyAST::Property::Extern;
   link_ = global ? llvm::GlobalValue::LinkageTypes::ExternalLinkage
-                 : llvm::GlobalValue::LinkageTypes::PrivateLinkage;
+                 : llvm::GlobalValue::LinkageTypes::InternalLinkage;
   return nullptr;
 }
 
@@ -517,26 +523,26 @@ IRPtr LLVMBuilder::GenerateOn(FunDefAST &ast) {
   // emit 'exit' block
   builder_.CreateBr(func_exit_);
   builder_.SetInsertPoint(func_exit_);
-  builder_.CreateRet(is_ret_arg ? nullptr : ret_val_);
+  builder_.CreateRet(is_ret_arg ? nullptr : UseValue(ret_val_, ret_ty));
   return nullptr;
 }
 
 IRPtr LLVMBuilder::GenerateOn(DeclareAST &ast) {
   using namespace llvm;
   // get linkage type
-  ast.prop()->GenerateIR(*this);
+  auto link = llvm::GlobalValue::LinkageTypes::ExternalLinkage;
   // get type of declaration
   auto type = GenerateType(ast.type()->ast_type());
   Value *val = nullptr;
   if (ast.type()->ast_type()->IsFunction()) {
     // function declaration
     auto func_ty = dyn_cast<FunctionType>(type->getPointerElementType());
-    val = Function::Create(func_ty, link_, ast.id(), module_.get());
+    val = Function::Create(func_ty, link, ast.id(), module_.get());
   }
   else {
     assert(vals_->is_root());
     // external global variable
-    auto var = new GlobalVariable(*module_, type, false, link_,
+    auto var = new GlobalVariable(*module_, type, false, link,
                                   nullptr, ast.id());
     var->setAlignment(ast.type()->ast_type()->GetAlignSize());
     val = var;
@@ -552,7 +558,8 @@ IRPtr LLVMBuilder::GenerateOn(TypeAliasAST &ast) {
 }
 
 IRPtr LLVMBuilder::GenerateOn(StructAST &ast) {
-  // do nothing
+  // generate struct definition in current type environment
+  GenerateType(ast.ast_type());
   return nullptr;
 }
 
@@ -859,7 +866,8 @@ IRPtr LLVMBuilder::GenerateOn(AccessAST &ast) {
   auto index = expr_ty->GetElemIndex(ast.id());
   assert(index);
   // generate access operation
-  auto ptr = builder_.CreateGEP(expr, CreateSizeValue(*index));
+  auto ptr = builder_.CreateInBoundsGEP(
+      expr, {builder_.getInt32(0), builder_.getInt32(*index)});
   return MakeLLVM(ptr);
 }
 
@@ -990,7 +998,13 @@ IRPtr LLVMBuilder::GenerateOn(IndexAST &ast) {
   auto index = UseValue(ast.index());
   index = CreateSizeValue(index, ast.index()->ast_type());
   // generate indexing operation
-  auto ptr = builder_.CreateGEP(expr, index);
+  llvm::Value *ptr = nullptr;
+  if (ast.expr()->ast_type()->IsArray()) {
+    ptr = builder_.CreateInBoundsGEP(expr, {CreateSizeValue(0), index});
+  }
+  else {
+    ptr = builder_.CreateInBoundsGEP(expr, index);
+  }
   return MakeLLVM(ptr);
 }
 
@@ -1073,13 +1087,15 @@ IRPtr LLVMBuilder::GenerateOn(ValInitAST &ast) {
     // create a temporary alloca
     val = CreateAlloca(type);
     // generate zero initializer
-    auto dst = builder_.CreateBitCast(val, builder_.getInt8Ty());
+    auto dst = builder_.CreateBitCast(val, builder_.getInt8PtrTy());
     builder_.CreateMemSet(dst, builder_.getInt8(0), type->GetSize(),
                           type->GetAlignSize(), type->IsVola());
     // generate elements
     for (int i = 0; i < ast.elems().size(); ++i) {
       const auto &elem = ast.elems()[i];
-      auto ptr = builder_.CreateGEP(val, CreateSizeValue(i));
+      // auto type = GenerateType(elem->ast_type());
+      auto ptr = builder_.CreateInBoundsGEP(
+          val, {builder_.getInt32(0), builder_.getInt32(i)});
       CreateStore(UseValue(elem), ptr, elem->ast_type());
     }
   }
