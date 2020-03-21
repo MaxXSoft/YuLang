@@ -308,7 +308,7 @@ class ConstType : public BaseType {
     return type_->IsReference() ? type_->CanAccept(type) : false;
   }
   bool CanCastTo(const TypePtr &type) const override {
-    return type->IsConst() && type_->CanCastTo(type);
+    return type_->CanCastTo(type);
   }
   bool IsIdentical(const TypePtr &type) const override {
     return type_->IsIdentical(type);

@@ -151,7 +151,7 @@ TypePtr ConstType::GetValueType(bool is_right) const {
 }
 
 bool FuncType::CanAccept(const TypePtr &type) const {
-  return !is_right_ && (IsIdentical(type) || type->IsNull());
+  return !is_right_ && IsIdentical(type);
 }
 
 bool FuncType::CanCastTo(const TypePtr &type) const {
@@ -232,10 +232,17 @@ TypePtr ArrayType::GetValueType(bool is_right) const {
 }
 
 bool PointerType::CanAccept(const TypePtr &type) const {
-  return !is_right_ && (IsIdentical(type) || type->IsNull());
+  if (!type->IsPointer()) return false;
+  if (!base_->IsConst() && type->GetDerefedType()->IsConst()) return false;
+  return !is_right_ && base_->IsIdentical(type->GetDerefedType());
 }
 
 bool PointerType::CanCastTo(const TypePtr &type) const {
+  // const cast is invalid
+  if (type->IsPointer() && base_->IsConst() &&
+      !type->GetDerefedType()->IsConst()) {
+    return false;
+  }
   return !type->IsReference() && type->IsBasic();
 }
 
