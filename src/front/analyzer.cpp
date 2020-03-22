@@ -525,6 +525,7 @@ TypePtr Analyzer::AnalyzeOn(ForInAST &ast) {
     return LogError(ast.expr()->logger(), "invalid iterator");
   }
   // create loop variable
+  if (type->IsRightValue()) type = type->GetValueType(false);
   if (!type->IsConst()) {
     type = std::make_shared<ConstType>(std::move(type));
   }
