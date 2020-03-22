@@ -61,6 +61,8 @@ xstl::Guard LLVMBuilder::NewEnv() {
 xstl::Guard LLVMBuilder::EnterGlobalFunc(bool is_dtor) {
   using namespace llvm;
   auto &func = is_dtor ? dtor_ : ctor_;
+  // get current insert point
+  auto cur_block = builder_.GetInsertBlock();
   // initialize global function if it does not exit
   if (!func) {
     // create function
@@ -68,7 +70,13 @@ xstl::Guard LLVMBuilder::EnterGlobalFunc(bool is_dtor) {
     auto type = FunctionType::get(builder_.getVoidTy(), false);
     auto name = is_dtor ? "_$dtor" : "_$ctor";
     func = Function::Create(type, link, name, module_.get());
-    BasicBlock::Create(context_, name, func);
+    // create basic blocks
+    auto entry_block = BasicBlock::Create(context_, "entry", func);
+    auto exit_block = BasicBlock::Create(context_, "exit", func);
+    builder_.SetInsertPoint(entry_block);
+    builder_.CreateBr(exit_block);
+    builder_.SetInsertPoint(exit_block);
+    builder_.CreateRet(nullptr);
     // create global ctor/dtor array
     auto global_ty =
         llvm::StructType::get(builder_.getInt32Ty(), type->getPointerTo(),
@@ -83,17 +91,16 @@ xstl::Guard LLVMBuilder::EnterGlobalFunc(bool is_dtor) {
     new GlobalVariable(*module_, global_arr_ty, true, global_link,
                        global_arr_init, global_name);
   }
-  // get current insert point
-  auto cur_block = builder_.GetInsertBlock();
   // switch to global function's body block
-  builder_.SetInsertPoint(&func->getBasicBlockList().back());
+  auto &entry = func->getEntryBlock();
+  builder_.SetInsertPoint(&entry, entry.begin());
   return xstl::Guard([this, cur_block] {
     builder_.SetInsertPoint(cur_block);
   });
 }
 
 llvm::Value *LLVMBuilder::UseValue(llvm::Value *val, const TypePtr &type) {
-  if (type->IsStruct() || type->IsArray()) {
+  if (type->IsStruct()) {
     return val;
   }
   else if (type->IsRightValue() && !type->IsReference()) {
@@ -149,7 +156,7 @@ llvm::LoadInst *LLVMBuilder::CreateLoad(llvm::Value *val,
 void LLVMBuilder::CreateStore(llvm::Value *val, llvm::Value *dst,
                               const TypePtr &type) {
   auto is_vola = type->IsVola();
-  if (!type->IsReference() && (type->IsStruct() || type->IsArray())) {
+  if (!type->IsReference() && type->IsStruct()) {
     // generate memory copy
     dst = builder_.CreateBitCast(dst, builder_.getInt8PtrTy());
     val = builder_.CreateBitCast(val, builder_.getInt8PtrTy());
@@ -173,18 +180,16 @@ void LLVMBuilder::CreateVarLet(const std::string &id, const TypePtr &type,
     auto zero = ConstantAggregateZero::get(ty);
     auto var = new GlobalVariable(*module_, ty, true, link_, zero, id);
     if (init) {
-      if (init->IsLiteral()) {
+      if (init->IsLiteral() || type->IsReference()) {
         // generate constant initializer
         auto cons = dyn_cast<Constant>(LLVMCast(init->GenerateIR(*this)));
+        assert(cons);
         var->setInitializer(cons);
       }
       else {
         // generate initialization instructions
         auto ctor = EnterGlobalFunc(false);
-        auto init_val = type->IsReference()
-                            ? LLVMCast(init->GenerateIR(*this))
-                            : UseValue(init);
-        CreateStore(init_val, var, type);
+        CreateStore(UseValue(init), var, type);
       }
     }
     // add to current environment
@@ -230,11 +235,14 @@ llvm::Value *LLVMBuilder::CreateBinOp(Operator op, llvm::Value *lhs,
   if (IsOperatorAssign(op)) {
     // get value
     auto val = rhs;
+    // create assignment
     if (op != Operator::Assign) {
       val = CreateBinOp(GetDeAssignedOp(op), lhs, rhs, lhs_ty, rhs_ty);
+      CreateStore(val, lhs, lhs_ty);
     }
-    // create assignment
-    CreateStore(UseValue(val, rhs_ty), lhs, lhs_ty);
+    else {
+      CreateStore(UseValue(val, rhs_ty), lhs, lhs_ty);
+    }
     return nullptr;
   }
   else {
@@ -469,6 +477,9 @@ IRPtr LLVMBuilder::GenerateOn(FunDefAST &ast) {
   auto env = NewEnv();
   // get linkage type
   ast.prop()->GenerateIR(*this);
+  if (!ast.body()) {
+    link_ = llvm::GlobalValue::LinkageTypes::ExternalLinkage;
+  }
   // create function type
   auto ret_ty = ast.type() ? ast.type()->ast_type() : MakeVoid();
   auto is_ret_arg = IsTypeRawStruct(ret_ty);
@@ -517,13 +528,23 @@ IRPtr LLVMBuilder::GenerateOn(FunDefAST &ast) {
   // generate return
   if (!ret_ty->IsVoid()) {
     assert(body_ret);
-    auto val = UseValue(LLVMCast(body_ret), ast.body()->ast_type());
+    auto val = LLVMCast(body_ret);
+    if (!ret_ty->IsReference()) {
+      val = UseValue(val, ast.body()->ast_type());
+    }
     CreateStore(val, ret_val_, ret_ty);
   }
   // emit 'exit' block
   builder_.CreateBr(func_exit_);
   builder_.SetInsertPoint(func_exit_);
-  builder_.CreateRet(is_ret_arg ? nullptr : UseValue(ret_val_, ret_ty));
+  if (is_ret_arg) {
+    builder_.CreateRet(nullptr);
+  }
+  else {
+    auto val = UseValue(ret_val_, ret_ty);
+    if (ret_ty->IsStruct()) val = CreateLoad(val, ret_ty);
+    builder_.CreateRet(val);
+  }
   return nullptr;
 }
 
@@ -611,8 +632,15 @@ IRPtr LLVMBuilder::GenerateOn(BlockAST &ast) {
   // generate statements
   IRPtr ret;
   for (int i = 0; i < ast.stmts().size(); ++i) {
-    auto ir = ast.stmts()[i]->GenerateIR(*this);
-    if (i == ast.stmts().size() - 1) ret = ir;
+    const auto &stmt = ast.stmts()[i];
+    auto ir = stmt->GenerateIR(*this);
+    if (i == ast.stmts().size() - 1 && ir) {
+      llvm::Value *val = LLVMCast(ir);
+      if (!stmt->ast_type()->IsReference()) {
+        val = UseValue(val, stmt->ast_type());
+      }
+      ret = MakeLLVM(val);
+    }
   }
   return ret;
 }
@@ -644,6 +672,7 @@ IRPtr LLVMBuilder::GenerateOn(IfAST &ast) {
   builder_.CreateBr(end_block);
   // emit 'end' block
   builder_.SetInsertPoint(end_block);
+  if (if_val) if_val = CreateLoad(if_val, if_type);
   return if_val ? MakeLLVM(if_val) : nullptr;
 }
 
@@ -670,6 +699,7 @@ IRPtr LLVMBuilder::GenerateOn(WhenAST &ast) {
   // emit 'end' block
   builder_.CreateBr(when_end_);
   builder_.SetInsertPoint(when_end_);
+  if (when_val) when_val = CreateLoad(when_val, when_type);
   return when_val ? MakeLLVM(when_val) : nullptr;
 }
 
@@ -701,8 +731,8 @@ IRPtr LLVMBuilder::GenerateOn(WhileAST &ast) {
 IRPtr LLVMBuilder::GenerateOn(ForInAST &ast) {
   // get iterator function
   // TODO: alignment?
-  auto next_func = builder_.CreateLoad(vals_->GetItem(ast.next_id()));
-  auto last_func = builder_.CreateLoad(vals_->GetItem(ast.last_id()));
+  auto next_func = vals_->GetItem(ast.next_id());
+  auto last_func = vals_->GetItem(ast.last_id());
   // create new environment, insert loop variable
   auto env = NewEnv();
   auto loop_var = CreateAlloca(ast.id_type());
@@ -873,9 +903,10 @@ IRPtr LLVMBuilder::GenerateOn(AccessAST &ast) {
 
 IRPtr LLVMBuilder::GenerateOn(CastAST &ast) {
   // generate expression
-  auto expr = UseValue(ast.expr());
+  auto expr = LLVMCast(ast.expr()->GenerateIR(*this));
   const auto &expr_ty = ast.expr()->ast_type();
   const auto &type_ty = ast.type()->ast_type();
+  if (!expr_ty->IsArray()) expr = UseValue(expr, expr_ty);
   // check if is redundant type casting
   if (expr_ty->IsIdentical(type_ty)) return MakeLLVM(expr);
   // handle type casting
@@ -957,8 +988,8 @@ IRPtr LLVMBuilder::GenerateOn(UnaryAST &ast) {
     case UnaryOp::Pos: ret = opr; break;
     case UnaryOp::Neg: {
       if (opr_ty->IsInteger()) {
-        auto ai = llvm::APInt(opr_ty->GetSize(), 0, !opr_ty->IsUnsigned());
-        ret = builder_.CreateSub(builder_.getInt(ai), opr);
+        auto zero = builder_.getIntN(opr_ty->GetSize() * 8, 0);
+        ret = builder_.CreateSub(zero, opr);
       }
       else {  // IsFloat
         auto af = opr_ty->GetSize() == 4 ? llvm::APFloat(0.f)
@@ -971,8 +1002,8 @@ IRPtr LLVMBuilder::GenerateOn(UnaryAST &ast) {
     case UnaryOp::LogicNot: {
       llvm::Value *bool_val = opr;
       if (opr_ty->IsInteger()) {
-        auto ai = llvm::APInt(opr_ty->GetSize(), 0, !opr_ty->IsUnsigned());
-        bool_val = builder_.CreateICmpNE(opr, builder_.getInt(ai));
+        auto zero = builder_.getIntN(opr_ty->GetSize() * 8, 0);
+        bool_val = builder_.CreateICmpNE(opr, zero);
       }
       ret = builder_.CreateXor(bool_val, builder_.getInt1(true));
       break;
@@ -992,20 +1023,22 @@ IRPtr LLVMBuilder::GenerateOn(UnaryAST &ast) {
 }
 
 IRPtr LLVMBuilder::GenerateOn(IndexAST &ast) {
+  const auto &expr_type = ast.expr()->ast_type();
   // generate expression
   auto expr = LLVMCast(ast.expr()->GenerateIR(*this));
+  if (!expr_type->IsArray()) expr = UseValue(expr, expr_type);
   // generate index
   auto index = UseValue(ast.index());
   index = CreateSizeValue(index, ast.index()->ast_type());
   // generate indexing operation
-  llvm::Value *ptr = nullptr;
+  llvm::Value *val = nullptr;
   if (ast.expr()->ast_type()->IsArray()) {
-    ptr = builder_.CreateInBoundsGEP(expr, {CreateSizeValue(0), index});
+    val = builder_.CreateInBoundsGEP(expr, {CreateSizeValue(0), index});
   }
   else {
-    ptr = builder_.CreateInBoundsGEP(expr, index);
+    val = builder_.CreateInBoundsGEP(expr, index);
   }
-  return MakeLLVM(ptr);
+  return MakeLLVM(val);
 }
 
 IRPtr LLVMBuilder::GenerateOn(FunCallAST &ast) {
@@ -1066,12 +1099,19 @@ IRPtr LLVMBuilder::GenerateOn(ValInitAST &ast) {
   auto ll_ty = GenerateType(type);
   // generate value
   Value *val = nullptr;
-  if (ast.IsLiteral()) {
+  if (vals_->is_root() && ast.IsLiteral()) {
     // generate all elements
     std::vector<Constant *> elems;
-    for (const auto &i : ast.elems()) {
-      auto elem = UseValue(i);
-      elems.push_back(dyn_cast<Constant>(elem));
+    for (int i = 0; i < type->GetLength(); ++i) {
+      llvm::Value *cur = nullptr;
+      if (i < ast.elems().size()) {
+        cur = UseValue(ast.elems()[i]);
+      }
+      else {
+        auto elem_ty = GenerateType(type->GetElem(i));
+        cur = llvm::ConstantAggregateZero::get(elem_ty);
+      }
+      elems.push_back(dyn_cast<Constant>(cur));
     }
     if (type->IsArray()) {
       // generate array constant
@@ -1093,11 +1133,12 @@ IRPtr LLVMBuilder::GenerateOn(ValInitAST &ast) {
     // generate elements
     for (int i = 0; i < ast.elems().size(); ++i) {
       const auto &elem = ast.elems()[i];
-      // auto type = GenerateType(elem->ast_type());
       auto ptr = builder_.CreateInBoundsGEP(
           val, {builder_.getInt32(0), builder_.getInt32(i)});
       CreateStore(UseValue(elem), ptr, elem->ast_type());
     }
+    // generate load
+    if (type->IsArray()) val = CreateLoad(val, type);
   }
   return MakeLLVM(val);
 }
