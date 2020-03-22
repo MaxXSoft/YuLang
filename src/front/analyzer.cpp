@@ -225,9 +225,16 @@ TypePtr Analyzer::AnalyzeOn(FunDefAST &ast) {
   if (ast.body()) {
     auto body_ret = ast.body()->SemaAnalyze(*this);
     if (!body_ret) return nullptr;
-    if (!cur_ret_->IsVoid() && !cur_ret_->IsIdentical(body_ret)) {
-      return LogError(ast.body()->logger(),
-                      "type mismatch when returning");
+    if (!cur_ret_->IsVoid()) {
+      if (!cur_ret_->IsIdentical(body_ret)) {
+        return LogError(ast.body()->logger(),
+                        "type mismatch when returning");
+      }
+      if (cur_ret_->IsReference() && !body_ret->IsReference() &&
+          body_ret->IsRightValue()) {
+        return LogError(ast.body()->logger(),
+                        "returning right value but left value required");
+      }
     }
   }
   return ast.set_ast_type(MakeVoid());
@@ -391,7 +398,9 @@ TypePtr Analyzer::AnalyzeOn(ArgElemAST &ast) {
   }
   // add symbol to environment
   assert(!type->IsConst() || type->IsReference());
-  type = std::make_shared<ConstType>(std::move(type));
+  if (!type->IsReference()) {
+    type = std::make_shared<ConstType>(std::move(type));
+  }
   symbols_->AddItem(ast.id(), type);
   return ast.set_ast_type(std::move(type));
 }
