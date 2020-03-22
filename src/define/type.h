@@ -582,13 +582,16 @@ class RefType : public BaseType {
   bool IsPointer() const override { return base_->IsPointer(); }
   bool IsReference() const override { return true; }
   bool CanAccept(const TypePtr &type) const override {
-    return base_->CanAccept(type);
+    return base_->CanAccept(type->IsReference() ? type->GetDerefedType()
+                                                : type);
   }
   bool CanCastTo(const TypePtr &type) const override {
-    return base_->CanCastTo(type);
+    return base_->CanCastTo(type->IsReference() ? type->GetDerefedType()
+                                                : type);
   }
   bool IsIdentical(const TypePtr &type) const override {
-    return base_->IsIdentical(type);
+    return base_->IsIdentical(type->IsReference() ? type->GetDerefedType()
+                                                  : type);
   }
   std::size_t GetSize() const override {
     return base_->GetSize();
