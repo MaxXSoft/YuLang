@@ -173,9 +173,11 @@ TypePtr FuncType::GetReturnType(const TypePtrList &args) const {
   for (int i = 0; i < args_.size(); ++i) {
     if (!args_[i]->IsIdentical(args[i])) return nullptr;
     if (args_[i]->IsReference()) {
+      // check referencing right value
       if (!args[i]->IsReference() && args[i]->IsRightValue()) {
         return nullptr;
       }
+      // check reference's const cast
       if (args[i]->IsConst() && !args_[i]->GetDerefedType()->IsConst()) {
         return nullptr;
       }
