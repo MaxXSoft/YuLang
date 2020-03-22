@@ -153,6 +153,7 @@ ASTPtr Parser::ParseTypeAlias(ASTPtr prop) {
   NextToken();
   // check & eat '='
   if (!IsTokenOperator(Operator::Assign)) return LogError("expected '='");
+  NextToken();
   // get type
   auto type = ParseType();
   return MakeAST<TypeAliasAST>(log, std::move(prop), id, std::move(type));
