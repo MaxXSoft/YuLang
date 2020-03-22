@@ -229,10 +229,12 @@ std::optional<EvalNum> Evaluator::EvalOn(ImportAST &ast) {
 std::optional<EvalNum> Evaluator::EvalOn(VarElemAST &ast) {
   // do not evaluate reference
   if (ast.ast_type()->IsReference()) return {};
-  // evaluate initial value
-  auto val = ast.init()->Eval(*this);
-  // update AST
-  if (val) ast.set_init(MakeAST(*val, ast.init()));
+  if (ast.init()) {
+    // evaluate initial value
+    auto val = ast.init()->Eval(*this);
+    // update AST
+    if (val) ast.set_init(MakeAST(*val, ast.init()));
+  }
   return {};
 }
 
