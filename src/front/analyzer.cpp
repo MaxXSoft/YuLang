@@ -857,6 +857,8 @@ TypePtr Analyzer::AnalyzeOn(FunCallAST &ast) {
   if (!ret) {
     return LogError(ast.expr()->logger(), "invalid function call");
   }
+  // generate right value
+  if (!ret->IsRightValue()) ret = ret->GetValueType(true);
   return ast.set_ast_type(std::move(ret));
 }
 
