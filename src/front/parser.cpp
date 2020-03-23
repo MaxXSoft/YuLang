@@ -976,11 +976,10 @@ ASTPtr Parser::GetStatement(Prop prop) {
     default:;
   }
   // parse type, struct, enum and import
-  if (IsTokenKeyword(Keyword::Type) || IsTokenKeyword(Keyword::Struct) ||
-      IsTokenKeyword(Keyword::Enum) || IsTokenKeyword(Keyword::Import)) {
+  if (!IsTokenKeyword(Keyword::Def) && !IsTokenKeyword(Keyword::Declare)) {
     if (prop == Prop::Extern || prop == Prop::Demangle) {
-      logger().LogWarning("type aliases, structures, enumerates and "
-                          "import cannot be 'extern', try using 'public'");
+      logger().LogWarning("only function definition and declaration"
+                          "can be 'extern', try using 'public'");
       prop_ast = MakeAST<PropertyAST>(Prop::Public);
     }
     switch (lexer()->key_val()) {
