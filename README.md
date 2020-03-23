@@ -10,8 +10,8 @@ line      ::= stmt {";" stmt} [";"];
 stmt      ::= var_def   | let_def | fun_def | declare
             | ty_alias  | struct  | enum    | import;
 
-var_def   ::= property "var" var_elem {"," var_elem};
-let_def   ::= property "let" let_elem {"," let_elem};
+var_def   ::= visib "var" var_elem {"," var_elem};
+let_def   ::= visib "let" let_elem {"," let_elem};
 fun_def   ::= property "def" [id | bin_op | unary_op]
               "(" [arg_list] ")" [":" type] block;
 declare   ::= property "declare" ["var"] id ":" type;
