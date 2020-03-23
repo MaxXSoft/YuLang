@@ -1,0 +1,9 @@
+// standard file descriptors
+public let FD_STDIN   = 0
+public let FD_STDOUT  = 1
+public let FD_STDERR  = 2
+
+// UNIX standard operations
+extern declare read:  (i32, u8 var*, u32): i32
+extern declare write: (i32, u8*, u32): i32
+extern declare close: (i32): i32

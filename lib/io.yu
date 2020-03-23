@@ -1,0 +1,45 @@
+import sys.unistd
+
+
+// definition of IO structure
+struct IO { fd: i32 }
+
+// definition of three UNIX standard IO
+public let iin = [IO] {FD_STDIN}
+public let out = [IO] {FD_STDOUT}
+public let err = [IO] {FD_STDERR}
+
+
+// write string to IO
+public def <<<(this: IO&, str: u8*): IO& {
+  var i = 0
+  while str[i] != '\0' {
+    write(this.fd, str + i, 1 as u32)
+    i += 1
+  }
+  this
+}
+
+// write character to IO
+public def <<<(this: IO&, char: u8): IO& {
+  write(this.fd, &char, 1 as u32)
+  this
+}
+
+// write 32-bit integer to IO
+public def <<<(this: IO&, int: i32): IO& {
+  var digits = [u8[11]] {}, i = 10, n = int
+  if !n {
+    i = 9
+    digits[9] = '0'
+  }
+  else {
+    while n != 0 {
+      i -= 1
+      digits[i] = (n % 10) as u8 + '0'
+      n /= 10
+    }
+  }
+  write(this.fd, digits as u8* + i, (10 - i) as u32)
+  this
+}
