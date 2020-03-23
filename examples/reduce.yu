@@ -1,0 +1,30 @@
+import io
+import range
+
+def reduce_impl(r: Range var&, cur: i32, op: (i32, i32): i32): i32 {
+  if r.last() {
+    cur
+  }
+  else {
+    r.reduce_impl(cur op r.next(), op)
+  }
+}
+
+def reduce(r: Range, op: (i32, i32): i32): i32 {
+  var r = r
+  r.reduce_impl(r.next(), op)
+}
+
+def add(l: i32, r: i32): i32 {
+  l + r
+}
+
+extern def main(): i32 {
+  out <<< "counting...\n"
+  for i in 0 to 20 step 2 {
+    out <<< i <<< '\n'
+  }
+  out <<< "sum of 1, 2, ..., 100: " <<<
+          (1 to 100 reduce add) <<< '\n'
+  0
+}
