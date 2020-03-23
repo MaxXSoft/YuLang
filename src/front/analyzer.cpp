@@ -243,6 +243,11 @@ TypePtr Analyzer::AnalyzeOn(FunDefAST &ast) {
 TypePtr Analyzer::AnalyzeOn(DeclareAST &ast) {
   auto type = ast.type()->SemaAnalyze(*this);
   if (!type) return nullptr;
+  // preprocess type
+  if (type->IsFunction()) {
+    assert(!type->IsRightValue());
+    type = type->GetValueType(true);
+  }
   if (!ast.is_var() && !type->IsConst()) {
     type = std::make_shared<ConstType>(std::move(type));
     ast.type()->set_ast_type(type);
