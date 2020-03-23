@@ -92,7 +92,12 @@ inline ASTPtr MakeAST(const EvalNum &num, const ASTPtr &ast) {
   }
   // set additional information
   ret->set_logger(ast->logger());
-  ret->set_ast_type(type);
+  if (type->IsRightValue()) {
+    ret->set_ast_type(type);
+  }
+  else {
+    ret->set_ast_type(type->GetValueType(true));
+  }
   return ret;
 }
 
