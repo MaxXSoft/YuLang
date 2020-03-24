@@ -1013,7 +1013,8 @@ IRPtr LLVMBuilder::GenerateOn(UnaryAST &ast) {
       break;
     }
     case UnaryOp::DeRef: {
-      ret = CreateLoad(opr, opr_ty->GetDerefedType());
+      auto type = opr_ty->GetDerefedType();
+      ret = !type->IsStruct() ? CreateLoad(opr, type) : opr;
       break;
     }
     default: assert(false); break;
