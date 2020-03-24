@@ -24,8 +24,8 @@ class Analyzer {
 
   void Reset() {
     symbols_ = define::MakeEnv();
-    funcs_ = define::MakeFuncMap();
     user_types_ = define::MakeEnv();
+    funcs_ = define::MakeFuncMap();
     in_loop_ = 0;
   }
 

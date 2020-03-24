@@ -33,12 +33,12 @@ inline TypePtr LogError(const Logger &log, std::string_view message,
 
 xstl::Guard Analyzer::NewEnv() {
   symbols_ = MakeEnv(symbols_);
-  funcs_ = MakeFuncMap(funcs_);
   user_types_ = MakeEnv(user_types_);
+  funcs_ = MakeFuncMap(funcs_);
   return xstl::Guard([this] {
     symbols_ = symbols_->outer();
-    funcs_ = funcs_->outer();
     user_types_ = user_types_->outer();
+    funcs_ = funcs_->outer();
   });
 }
 
@@ -801,7 +801,9 @@ TypePtr Analyzer::AnalyzeOn(UnaryAST &ast) {
     default: assert(false); return nullptr;
   }
   if (!ret) return LogError(ast.logger(), "invalid unary operation");
-  if (!ret->IsRightValue()) ret = ret->GetValueType(true);
+  if (ast.op() != UnaryOp::DeRef && !ret->IsRightValue()) {
+    ret = ret->GetValueType(true);
+  }
   return ast.set_ast_type(std::move(ret));
 }
 
@@ -955,7 +957,7 @@ TypePtr Analyzer::AnalyzeOn(FuncTypeAST &ast) {
     args.push_back(std::move(arg));
   }
   // get return type
-  auto ret = ast.ret()->SemaAnalyze(*this);
+  auto ret = ast.ret() ? ast.ret()->SemaAnalyze(*this) : MakeVoid();
   if (!ret) return nullptr;
   // make function type
   auto type = std::make_shared<FuncType>(std::move(args), std::move(ret),

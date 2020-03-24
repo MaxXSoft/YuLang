@@ -526,7 +526,7 @@ std::optional<EvalNum> Evaluator::EvalOn(UnaryAST &ast) {
   }
   // caluate the value of AST
   if (ast.op() == UnaryOp::SizeOf) {
-    return static_cast<std::uint64_t>(ast.ast_type()->GetSize());
+    return static_cast<std::uint64_t>(ast.opr()->ast_type()->GetSize());
   }
   else if (val && ast.op() != UnaryOp::DeRef &&
            ast.op() != UnaryOp::AddrOf) {
