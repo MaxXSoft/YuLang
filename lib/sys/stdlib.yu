@@ -1,0 +1,14 @@
+// dynamic memory management
+extern declare malloc: (u32): u8 var*
+extern declare calloc: (u32, u32): u8 var*
+extern declare realloc: (u8 var*, u32): u8 var*
+extern declare free: (u8 var*)
+
+// program support utilities
+extern declare abort: ()
+extern declare exit: (i32)
+extern declare atexit: (()): i32
+
+// pseudo-random number generation
+extern declare rand: (): i32
+extern declare srand: (u32)
