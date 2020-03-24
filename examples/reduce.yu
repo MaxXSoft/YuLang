@@ -1,18 +1,18 @@
 import io
 import range
 
-def reduce_impl(r: Range var&, cur: i32, op: (i32, i32): i32): i32 {
+def reduceImpl(r: Range var&, cur: i32, op: (i32, i32): i32): i32 {
   if r.last() {
     cur
   }
   else {
-    r.reduce_impl(cur op r.next(), op)
+    r.reduceImpl(cur op r.next(), op)
   }
 }
 
 def reduce(r: Range, op: (i32, i32): i32): i32 {
   var r = r
-  r.reduce_impl(r.next(), op)
+  r.reduceImpl(r.next(), op)
 }
 
 def add(l: i32, r: i32): i32 {
