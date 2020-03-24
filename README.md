@@ -2,6 +2,23 @@
 
 Yu (羽) is a simple system programming language.
 
+## Building from Source
+
+Before building YuLang compiler, please make sure you have installed the following dependencies:
+
+* `cmake` 3.5 or later
+* `llvm` 8.0 or later
+
+Then you can build this repository by executing the following command lines:
+
+```
+$ git clone https://github.com/MaxXSoft/YuLang.git
+$ cd YuLang
+$ mkdir build
+$ cd build
+$ cmake .. && make -j8
+```
+
 ## EBNF of Yu
 
 ```ebnf
