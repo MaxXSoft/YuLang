@@ -628,8 +628,11 @@ ASTPtr Parser::ParseUnary() {
     }
   }
   else if (IsTokenKeyword(Keyword::SizeOf)) {
-    // treat 'sizeof' as an unary operator
-    una_op = UnaryOp::SizeOf;
+    NextToken();
+    // get type
+    auto type = ParseType();
+    if (!type) return nullptr;
+    return MakeAST<UnaryAST>(log, UnaryOp::SizeOf, std::move(type));
   }
   else {
     return ParseFactor();
