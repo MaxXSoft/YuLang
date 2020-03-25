@@ -1,5 +1,7 @@
 # Yu
 
+![YuLang](YuLang.png)
+
 Yu (羽) is a simple system programming language.
 
 ## Building from Source
