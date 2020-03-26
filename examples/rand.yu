@@ -1,0 +1,12 @@
+import range
+import io
+import sys.stdlib
+
+extern def main(argc: i32, argv: u8* *): i32 {
+  out <<< "seed: " <<< seed() <<< '\n'
+  for i in 1 to 10 {
+    let r = rand() % 1000 - 500
+    out <<< "random number #" <<< i <<< ": " <<< r <<< '\n'
+  }
+  0
+}
