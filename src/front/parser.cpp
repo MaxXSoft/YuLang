@@ -829,7 +829,8 @@ ASTPtr Parser::ParseType() {
         is_var = true;
         NextToken();
       }
-      if (IsTokenOperator(Operator::Mul)) {
+      if (IsTokenOperator(Operator::Mul) ||
+          (cur_token_ == Token::Id && lexer()->id_val()[0] == '*')) {
         // pointer type
         type = ParsePointer(is_var, std::move(type));
       }
@@ -930,7 +931,21 @@ ASTPtr Parser::ParseArray(ASTPtr type) {
 }
 
 ASTPtr Parser::ParsePointer(bool is_var, ASTPtr type) {
-  auto ast = MakeAST<PointerTypeAST>(is_var, std::move(type));
+  ASTPtr ast;
+  if (IsTokenOperator(Operator::Mul)) {
+    ast = MakeAST<PointerTypeAST>(is_var, std::move(type));
+  }
+  else {  // Token::Id
+    for (const auto &c : lexer()->id_val()) {
+      if (c != '*') LogError("expected '*'");
+      if (!ast) {
+        ast = MakeAST<PointerTypeAST>(is_var, std::move(type));
+      }
+      else {
+        ast = MakeAST<PointerTypeAST>(false, std::move(ast));
+      }
+    }
+  }
   NextToken();
   return ast;
 }
