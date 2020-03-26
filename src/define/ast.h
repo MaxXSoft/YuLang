@@ -31,6 +31,9 @@ using IRBuilder = IRBuilderInterface;
 
 namespace yulang::define {
 
+// property of statements
+enum class Property { None, Public, Extern, Inline };
+
 // definition of base class of all ASTs
 class BaseAST {
  public:
@@ -68,12 +71,11 @@ class BaseAST {
 using ASTPtr = std::unique_ptr<BaseAST>;
 using ASTPtrList = std::vector<ASTPtr>;
 
-// property (public/extern)
-class PropertyAST : public BaseAST {
+// variable/constant definition
+class VarLetDefAST : public BaseAST {
  public:
-  enum class Property { None, Public, Extern, Demangle };
-
-  PropertyAST(Property prop) : prop_(prop) {}
+  VarLetDefAST(Property prop, ASTPtrList defs)
+      : prop_(prop), defs_(std::move(defs)) {}
 
   bool IsId() const override { return false; }
   bool IsLiteral() const override { return false; }
@@ -85,40 +87,19 @@ class PropertyAST : public BaseAST {
 
   // getters
   Property prop() const { return prop_; }
-
- private:
-  Property prop_;
-};
-
-// variable/constant definition
-class VarLetDefAST : public BaseAST {
- public:
-  VarLetDefAST(ASTPtr prop, ASTPtrList defs)
-      : prop_(std::move(prop)), defs_(std::move(defs)) {}
-
-  bool IsId() const override { return false; }
-  bool IsLiteral() const override { return false; }
-
-  void Dump(std::ostream &os) override;
-  TypePtr SemaAnalyze(front::Analyzer &ana) override;
-  std::optional<EvalNum> Eval(front::Evaluator &eval) override;
-  back::IRPtr GenerateIR(back::IRBuilder &builder) override;
-
-  // getters
-  const ASTPtr &prop() const { return prop_; }
   const ASTPtrList &defs() const { return defs_; }
 
  private:
-  ASTPtr prop_;
+  Property prop_;
   ASTPtrList defs_;
 };
 
 // function definition
 class FunDefAST : public BaseAST {
  public:
-  FunDefAST(ASTPtr prop, const std::string &id, ASTPtrList args,
+  FunDefAST(Property prop, const std::string &id, ASTPtrList args,
             ASTPtr type, ASTPtr body)
-      : id_(id), prop_(std::move(prop)), type_(std::move(type)),
+      : prop_(prop), id_(id), type_(std::move(type)),
         body_(std::move(body)), args_(std::move(args)) {}
 
   bool IsId() const override { return false; }
@@ -130,7 +111,7 @@ class FunDefAST : public BaseAST {
   back::IRPtr GenerateIR(back::IRBuilder &builder) override;
 
   // getters
-  const ASTPtr &prop() const { return prop_; }
+  Property prop() const { return prop_; }
   const std::string &id() const { return id_; }
   const ASTPtrList &args() const { return args_; }
   const ASTPtr &type() const { return type_; }
@@ -140,17 +121,18 @@ class FunDefAST : public BaseAST {
   void set_id(const std::string &id) { id_ = id; }
 
  private:
+  Property prop_;
   std::string id_;
-  ASTPtr prop_, type_, body_;
+  ASTPtr type_, body_;
   ASTPtrList args_;
 };
 
 // declaration
 class DeclareAST : public BaseAST {
  public:
-  DeclareAST(ASTPtr prop, bool is_var, const std::string &id, ASTPtr type)
-      : is_var_(is_var), id_(id), prop_(std::move(prop)),
-        type_(std::move(type)) {}
+  DeclareAST(Property prop, bool is_var, const std::string &id,
+             ASTPtr type)
+      : prop_(prop), is_var_(is_var), id_(id), type_(std::move(type)) {}
 
   bool IsId() const override { return false; }
   bool IsLiteral() const override { return false; }
@@ -161,7 +143,7 @@ class DeclareAST : public BaseAST {
   back::IRPtr GenerateIR(back::IRBuilder &builder) override;
 
   // getters
-  const ASTPtr &prop() const { return prop_; }
+  Property prop() const { return prop_; }
   bool is_var() const { return is_var_; }
   const std::string &id() const { return id_; }
   const ASTPtr &type() const { return type_; }
@@ -170,16 +152,17 @@ class DeclareAST : public BaseAST {
   void set_id(const std::string &id) { id_ = id; }
 
  private:
+  Property prop_;
   bool is_var_;
   std::string id_;
-  ASTPtr prop_, type_;
+  ASTPtr type_;
 };
 
 // type alias
 class TypeAliasAST : public BaseAST {
  public:
-  TypeAliasAST(ASTPtr prop, const std::string &id, ASTPtr type)
-      : id_(id), prop_(std::move(prop)), type_(std::move(type)) {}
+  TypeAliasAST(Property prop, const std::string &id, ASTPtr type)
+      : prop_(prop), id_(id), type_(std::move(type)) {}
 
   bool IsId() const override { return false; }
   bool IsLiteral() const override { return false; }
@@ -190,20 +173,21 @@ class TypeAliasAST : public BaseAST {
   back::IRPtr GenerateIR(back::IRBuilder &builder) override;
 
   // getters
-  const ASTPtr &prop() const { return prop_; }
+  Property prop() const { return prop_; }
   const std::string &id() const { return id_; }
   const ASTPtr &type() const { return type_; }
 
  private:
+  Property prop_;
   std::string id_;
-  ASTPtr prop_, type_;
+  ASTPtr type_;
 };
 
 // structure definition
 class StructAST : public BaseAST {
  public:
-  StructAST(ASTPtr prop, const std::string &id, ASTPtrList defs)
-      : id_(id), prop_(std::move(prop)), defs_(std::move(defs)) {}
+  StructAST(Property prop, const std::string &id, ASTPtrList defs)
+      : prop_(prop), id_(id), defs_(std::move(defs)) {}
 
   bool IsId() const override { return false; }
   bool IsLiteral() const override { return false; }
@@ -214,21 +198,22 @@ class StructAST : public BaseAST {
   back::IRPtr GenerateIR(back::IRBuilder &builder) override;
 
   // getters
-  const ASTPtr &prop() const { return prop_; }
+  Property prop() const { return prop_; }
   const std::string &id() const { return id_; }
   const ASTPtrList &defs() const { return defs_; }
 
  private:
+  Property prop_;
   std::string id_;
-  ASTPtr prop_;
   ASTPtrList defs_;
 };
 
 // enumeration definition
 class EnumAST : public BaseAST {
  public:
-  EnumAST(ASTPtr prop, const std::string &id, ASTPtr type, ASTPtrList defs)
-      : id_(id), prop_(std::move(prop)), type_(std::move(type)),
+  EnumAST(Property prop, const std::string &id, ASTPtr type,
+          ASTPtrList defs)
+      : prop_(prop), id_(id), type_(std::move(type)),
         defs_(std::move(defs)) {}
 
   bool IsId() const override { return false; }
@@ -240,14 +225,15 @@ class EnumAST : public BaseAST {
   back::IRPtr GenerateIR(back::IRBuilder &builder) override;
 
   // getters
-  const ASTPtr &prop() const { return prop_; }
+  Property prop() const { return prop_; }
   const std::string &id() const { return id_; }
   const ASTPtr &type() const { return type_; }
   const ASTPtrList &defs() const { return defs_; }
 
  private:
+  Property prop_;
   std::string id_;
-  ASTPtr prop_, type_;
+  ASTPtr type_;
   ASTPtrList defs_;
 };
 
@@ -271,11 +257,13 @@ class ImportAST : public BaseAST {
   ASTPtrList defs_;
 };
 
-// variable definition element
-class VarElemAST : public BaseAST {
+// variable/constant definition element
+class VarLetElemAST : public BaseAST {
  public:
-  VarElemAST(const std::string &id, ASTPtr type, ASTPtr init)
-      : id_(id), type_(std::move(type)), init_(std::move(init)) {}
+  VarLetElemAST(const std::string &id, ASTPtr type, ASTPtr init,
+                bool is_var)
+      : id_(id), type_(std::move(type)), init_(std::move(init)),
+        is_var_(is_var) {}
 
   bool IsId() const override { return false; }
   bool IsLiteral() const override { return false; }
@@ -289,6 +277,7 @@ class VarElemAST : public BaseAST {
   const std::string &id() const { return id_; }
   const ASTPtr &type() const { return type_; }
   const ASTPtr &init() const { return init_; }
+  bool is_var() const { return is_var_; }
 
   // setters
   void set_init(ASTPtr init) { init_ = std::move(init); }
@@ -296,33 +285,7 @@ class VarElemAST : public BaseAST {
  private:
   std::string id_;
   ASTPtr type_, init_;
-};
-
-// constant definition element
-class LetElemAST : public BaseAST {
- public:
-  LetElemAST(const std::string &id, ASTPtr type, ASTPtr init)
-      : id_(id), type_(std::move(type)), init_(std::move(init)) {}
-
-  bool IsId() const override { return false; }
-  bool IsLiteral() const override { return false; }
-
-  void Dump(std::ostream &os) override;
-  TypePtr SemaAnalyze(front::Analyzer &ana) override;
-  std::optional<EvalNum> Eval(front::Evaluator &eval) override;
-  back::IRPtr GenerateIR(back::IRBuilder &builder) override;
-
-  // getters
-  const std::string &id() const { return id_; }
-  const ASTPtr &type() const { return type_; }
-  const ASTPtr &init() const { return init_; }
-
-  // setters
-  void set_init(ASTPtr init) { init_ = std::move(init); }
-
- private:
-  std::string id_;
-  ASTPtr type_, init_;
+  bool is_var_;
 };
 
 // argument definition

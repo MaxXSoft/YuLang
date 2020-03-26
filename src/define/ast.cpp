@@ -69,31 +69,33 @@ void ConvertChar(std::ostream &os, char c, bool in_char) {
   }
 }
 
-}  // namespace
-
-void PropertyAST::Dump(std::ostream &os) {
-  using Prop = PropertyAST::Property;
+void DumpProperty(std::ostream &os, Property prop) {
   if (!indent_count) {
     os << indent;
-    if (prop_ == Prop::None) {
+    if (prop == Property::None) {
       os << "static ";
     }
-    else if (prop_ == Prop::Extern || prop_ == Prop::Demangle) {
+    else if (prop == Property::Extern) {
       os << "extern \"C\" ";
+    }
+    else if (prop == Property::Inline) {
+      os << "inline ";
     }
   }
 }
 
+}  // namespace
+
 void VarLetDefAST::Dump(std::ostream &os) {
   for (const auto &i : defs_) {
-    prop_->Dump(os);
+    DumpProperty(os, prop_);
     os << indent;
     i->Dump(os);
   }
 }
 
 void FunDefAST::Dump(std::ostream &os) {
-  prop_->Dump(os);
+  DumpProperty(os, prop_);
   os << indent;
   if (type_) {
     type_->Dump(os);
@@ -111,7 +113,7 @@ void FunDefAST::Dump(std::ostream &os) {
 }
 
 void DeclareAST::Dump(std::ostream &os) {
-  prop_->Dump(os);
+  DumpProperty(os, prop_);
   os << indent;
   if (!is_var_) os << "const ";
   type_->Dump(os);
@@ -119,14 +121,14 @@ void DeclareAST::Dump(std::ostream &os) {
 }
 
 void TypeAliasAST::Dump(std::ostream &os) {
-  prop_->Dump(os);
+  DumpProperty(os, prop_);
   os << indent << "using " << id_ << " = ";
   type_->Dump(os);
   os << ';' << std::endl;
 }
 
 void StructAST::Dump(std::ostream &os) {
-  prop_->Dump(os);
+  DumpProperty(os, prop_);
   os << indent << "struct " << id_ << " {" << std::endl;
   {
     auto ind = Indent();
@@ -140,7 +142,7 @@ void StructAST::Dump(std::ostream &os) {
 }
 
 void EnumAST::Dump(std::ostream &os) {
-  prop_->Dump(os);
+  DumpProperty(os, prop_);
   os << indent << "enum class " << id_;
   if (type_) {
     os << " : ";
@@ -171,7 +173,7 @@ void ImportAST::Dump(std::ostream &os) {
   os << indent << "*/" << std::endl;
 }
 
-void VarElemAST::Dump(std::ostream &os) {
+void VarLetElemAST::Dump(std::ostream &os) {
   if (type_) {
     type_->Dump(os);
   }
@@ -184,21 +186,6 @@ void VarElemAST::Dump(std::ostream &os) {
     auto inex = InExpr();
     init_->Dump(os);
   }
-  os << ';' << std::endl;
-}
-
-void LetElemAST::Dump(std::ostream &os) {
-  os << "const ";
-  if (type_) {
-    type_->Dump(os);
-  }
-  else {
-    os << "auto";
-  }
-  os << ' ' << id_;
-  os << " = ";
-  auto inex = InExpr();
-  init_->Dump(os);
   os << ';' << std::endl;
 }
 
