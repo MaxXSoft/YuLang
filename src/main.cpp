@@ -8,7 +8,7 @@
 #include "front/parser.h"
 #include "front/analyzer.h"
 #include "front/eval.h"
-#include "back/llvm/builder.h"
+#include "back/llvm/generator.h"
 
 #include "xstl/argparse.h"
 
@@ -70,8 +70,8 @@ int main(int argc, const char *argv[]) {
   Parser parser(lex_man);
   Evaluator eval;
   Analyzer ana(eval);
-  LLVMBuilder builder(file);
-  yulang::define::SetPointerSize(builder.GetPointerSize());
+  LLVMGen gen(file);
+  yulang::define::SetPointerSize(gen.GetPointerSize());
 
   // get output info
   auto out_type = argp.GetValue<string>("outtype");
@@ -91,12 +91,12 @@ int main(int argc, const char *argv[]) {
     ast->Eval(eval);
     // dump to output
     if (dump_ast) ast->Dump(os);
-    // generate IR
-    ast->GenerateIR(builder);
+    // generate code
+    ast->GenerateCode(gen);
   }
 
   // check if is error
   auto err_num = lex_man.lexer()->logger().error_num();
-  if (!err_num && dump_llvm) builder.Dump(os);
+  if (!err_num && dump_llvm) gen.Dump(os);
   return err_num;
 }
