@@ -12,3 +12,9 @@ extern declare atexit: (()): i32
 // pseudo-random number generation
 extern declare rand: (): i32
 extern declare srand: (u32)
+extern declare time: (i32*): i32
+inline def seed(): u32 {
+  let s = time(null as i32*) as u32
+  srand(s)
+  s
+}
