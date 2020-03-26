@@ -259,7 +259,7 @@ ASTPtr Parser::ParseImport() {
     auto prop = GetProp();
     if (prop != Property::None) {
       auto def = GetStatement(prop);
-      if (!def) return LogError("invalid statement");
+      if (!def) return nullptr;
       defs.push_back(std::move(def));
     }
     else {
@@ -289,7 +289,8 @@ ASTPtr Parser::ParseVarLetElem(Property prop, bool is_var) {
   }
   // get initialization expression
   ASTPtr init;
-  if ((!in_import_ || prop == Property::Inline) &&
+  if ((!in_import_ || prop == Property::None ||
+       prop == Property::Inline) &&
       IsTokenOperator(Operator::Assign)) {
     NextToken();
     init = ParseExpr();
