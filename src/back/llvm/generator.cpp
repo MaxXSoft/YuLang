@@ -1,4 +1,4 @@
-#include "back/llvm/builder.h"
+#include "back/llvm/generator.h"
 
 #include "llvm/IR/DerivedTypes.h"
 #include "llvm/IR/Function.h"
@@ -42,14 +42,14 @@ inline TypeCategory GetTypeCategory(const TypePtr &type) {
 
 }  // namespace
 
-void LLVMBuilder::Init() {
+void LLVMGen::Init() {
   vals_ = xstl::MakeNestedMap<std::string, llvm::Value *>();
   types_ = xstl::MakeNestedMap<std::string, llvm::Type *>();
   ctor_ = nullptr;
   dtor_ = nullptr;
 }
 
-xstl::Guard LLVMBuilder::NewEnv() {
+xstl::Guard LLVMGen::NewEnv() {
   vals_ = xstl::MakeNestedMap<std::string, llvm::Value *>(vals_);
   types_ = xstl::MakeNestedMap<std::string, llvm::Type *>(types_);
   return xstl::Guard([this] {
@@ -58,7 +58,7 @@ xstl::Guard LLVMBuilder::NewEnv() {
   });
 }
 
-xstl::Guard LLVMBuilder::EnterGlobalFunc(bool is_dtor) {
+xstl::Guard LLVMGen::EnterGlobalFunc(bool is_dtor) {
   using namespace llvm;
   auto &func = is_dtor ? dtor_ : ctor_;
   // get current insert point
@@ -99,7 +99,7 @@ xstl::Guard LLVMBuilder::EnterGlobalFunc(bool is_dtor) {
   });
 }
 
-llvm::GlobalValue::LinkageTypes LLVMBuilder::GetLinkType(Property prop) {
+llvm::GlobalValue::LinkageTypes LLVMGen::GetLinkType(Property prop) {
   if (prop == Property::Public || prop == Property::Extern) {
     return llvm::GlobalValue::LinkageTypes::ExternalLinkage;
   }
@@ -111,7 +111,7 @@ llvm::GlobalValue::LinkageTypes LLVMBuilder::GetLinkType(Property prop) {
   }
 }
 
-llvm::Value *LLVMBuilder::UseValue(llvm::Value *val, const TypePtr &type) {
+llvm::Value *LLVMGen::UseValue(llvm::Value *val, const TypePtr &type) {
   if (type->IsStruct()) {
     return val;
   }
@@ -123,15 +123,15 @@ llvm::Value *LLVMBuilder::UseValue(llvm::Value *val, const TypePtr &type) {
   }
 }
 
-llvm::Value *LLVMBuilder::UseValue(const ASTPtr &ast) {
-  return UseValue(LLVMCast(ast->GenerateIR(*this)), ast->ast_type());
+llvm::Value *LLVMGen::UseValue(const ASTPtr &ast) {
+  return UseValue(LLVMCast(ast->GenerateCode(*this)), ast->ast_type());
 }
 
-llvm::Value *LLVMBuilder::CreateSizeValue(std::size_t val) {
+llvm::Value *LLVMGen::CreateSizeValue(std::size_t val) {
   return builder_.getIntN(GetPointerSize() * 8, val);
 }
 
-llvm::Value *LLVMBuilder::CreateSizeValue(llvm::Value *val,
+llvm::Value *LLVMGen::CreateSizeValue(llvm::Value *val,
                                           const TypePtr &type) {
   assert(type->IsInteger());
   auto ptr_size = GetPointerSize();
@@ -149,7 +149,7 @@ llvm::Value *LLVMBuilder::CreateSizeValue(llvm::Value *val,
   return val;
 }
 
-llvm::AllocaInst *LLVMBuilder::CreateAlloca(const TypePtr &type) {
+llvm::AllocaInst *LLVMGen::CreateAlloca(const TypePtr &type) {
   auto func = builder_.GetInsertBlock()->getParent();
   auto &entry = func->getEntryBlock();
   llvm::IRBuilder<> builder(&entry, entry.begin());
@@ -158,14 +158,14 @@ llvm::AllocaInst *LLVMBuilder::CreateAlloca(const TypePtr &type) {
   return alloca;
 }
 
-llvm::LoadInst *LLVMBuilder::CreateLoad(llvm::Value *val,
+llvm::LoadInst *LLVMGen::CreateLoad(llvm::Value *val,
                                         const TypePtr &type) {
   auto load = builder_.CreateLoad(val);
   load->setAlignment(type->GetAlignSize());
   return load;
 }
 
-void LLVMBuilder::CreateStore(llvm::Value *val, llvm::Value *dst,
+void LLVMGen::CreateStore(llvm::Value *val, llvm::Value *dst,
                               const TypePtr &type) {
   auto is_vola = type->IsVola();
   if (!type->IsReference() && type->IsStruct()) {
@@ -183,7 +183,7 @@ void LLVMBuilder::CreateStore(llvm::Value *val, llvm::Value *dst,
   }
 }
 
-llvm::Value *LLVMBuilder::CreateCall(llvm::Value *callee,
+llvm::Value *LLVMGen::CreateCall(llvm::Value *callee,
                                      llvm::ArrayRef<llvm::Value *> args,
                                      const TypePtr &ret) {
   if (IsTypeRawStruct(ret)) {
@@ -203,7 +203,7 @@ llvm::Value *LLVMBuilder::CreateCall(llvm::Value *callee,
   }
 }
 
-llvm::Value *LLVMBuilder::CreateBinOp(Operator op, llvm::Value *lhs,
+llvm::Value *LLVMGen::CreateBinOp(Operator op, llvm::Value *lhs,
                                       llvm::Value *rhs,
                                       const TypePtr &lhs_ty,
                                       const TypePtr &rhs_ty) {
@@ -326,7 +326,7 @@ llvm::Value *LLVMBuilder::CreateBinOp(Operator op, llvm::Value *lhs,
   }
 }
 
-llvm::Type *LLVMBuilder::GenerateType(const TypePtr &type) {
+llvm::Type *LLVMGen::GenerateType(const TypePtr &type) {
   // dispatcher
   if (type->IsReference()) {
     return GenerateRefType(type);
@@ -355,7 +355,7 @@ llvm::Type *LLVMBuilder::GenerateType(const TypePtr &type) {
   }
 }
 
-llvm::Type *LLVMBuilder::GeneratePrimType(const TypePtr &type) {
+llvm::Type *LLVMGen::GeneratePrimType(const TypePtr &type) {
   if (type->IsInteger()) {
     // LLVM's integer types does not distinction
     // between signed and unsigned
@@ -373,7 +373,7 @@ llvm::Type *LLVMBuilder::GeneratePrimType(const TypePtr &type) {
   }
 }
 
-llvm::Type *LLVMBuilder::GenerateStructType(const TypePtr &type) {
+llvm::Type *LLVMGen::GenerateStructType(const TypePtr &type) {
   auto id = type->GetTypeId();
   if (auto t = types_->GetItem(id)) {
     return t;
@@ -394,12 +394,12 @@ llvm::Type *LLVMBuilder::GenerateStructType(const TypePtr &type) {
   }
 }
 
-llvm::Type *LLVMBuilder::GenerateEnumType(const TypePtr &type) {
+llvm::Type *LLVMGen::GenerateEnumType(const TypePtr &type) {
   // just return the base integer type of enumeration
   return llvm::Type::getIntNTy(context_, type->GetSize() * 8);
 }
 
-llvm::Type *LLVMBuilder::GenerateFuncType(const TypePtr &type) {
+llvm::Type *LLVMGen::GenerateFuncType(const TypePtr &type) {
   // get return type
   auto args = type->GetArgsType();
   auto result = GenerateType(type->GetReturnType(*args));
@@ -413,34 +413,34 @@ llvm::Type *LLVMBuilder::GenerateFuncType(const TypePtr &type) {
   return func->getPointerTo();
 }
 
-llvm::Type *LLVMBuilder::GenerateArrayType(const TypePtr &type) {
+llvm::Type *LLVMGen::GenerateArrayType(const TypePtr &type) {
   auto base = type->GetDerefedType();
   return llvm::ArrayType::get(GenerateType(base), type->GetLength());
 }
 
-llvm::Type *LLVMBuilder::GeneratePointerType(const TypePtr &type) {
+llvm::Type *LLVMGen::GeneratePointerType(const TypePtr &type) {
   auto base = type->GetDerefedType();
   return GenerateType(base)->getPointerTo();
 }
 
-llvm::Type *LLVMBuilder::GenerateRefType(const TypePtr &type) {
+llvm::Type *LLVMGen::GenerateRefType(const TypePtr &type) {
   // treat references as pointers
   return GeneratePointerType(type);
 }
 
-bool LLVMBuilder::IsTypeRawStruct(const TypePtr &type) {
+bool LLVMGen::IsTypeRawStruct(const TypePtr &type) {
   return type->IsStruct() && !type->IsReference();
 }
 
-IRPtr LLVMBuilder::GenerateOn(VarLetDefAST &ast) {
+CodePtr LLVMGen::GenerateOn(VarLetDefAST &ast) {
   last_prop_ = ast.prop();
   for (const auto &i : ast.defs()) {
-    i->GenerateIR(*this);
+    i->GenerateCode(*this);
   }
   return nullptr;
 }
 
-IRPtr LLVMBuilder::GenerateOn(FunDefAST &ast) {
+CodePtr LLVMGen::GenerateOn(FunDefAST &ast) {
   auto env = NewEnv();
   // get linkage type
   auto link = GetLinkType(ast.prop());
@@ -472,7 +472,7 @@ IRPtr LLVMBuilder::GenerateOn(FunDefAST &ast) {
   auto arg_it = func->args().begin();
   if (is_ret_arg) ret_val_ = arg_it++;
   for (const auto &i : ast.args()) {
-    auto arg = LLVMCast(i->GenerateIR(*this));
+    auto arg = LLVMCast(i->GenerateCode(*this));
     CreateStore(arg_it, arg, i->ast_type());
     // add dereferenceable attribute to argument
     if (i->ast_type()->IsReference()) {
@@ -491,7 +491,7 @@ IRPtr LLVMBuilder::GenerateOn(FunDefAST &ast) {
   }
   // generate body
   func_exit_ = llvm::BasicBlock::Create(context_, "func_exit", func);
-  auto body_ret = ast.body()->GenerateIR(*this);
+  auto body_ret = ast.body()->GenerateCode(*this);
   // generate return
   if (!ret_ty->IsVoid()) {
     assert(body_ret);
@@ -515,7 +515,7 @@ IRPtr LLVMBuilder::GenerateOn(FunDefAST &ast) {
   return nullptr;
 }
 
-IRPtr LLVMBuilder::GenerateOn(DeclareAST &ast) {
+CodePtr LLVMGen::GenerateOn(DeclareAST &ast) {
   using namespace llvm;
   // get linkage type
   auto link = llvm::GlobalValue::LinkageTypes::ExternalLinkage;
@@ -540,28 +540,28 @@ IRPtr LLVMBuilder::GenerateOn(DeclareAST &ast) {
   return nullptr;
 }
 
-IRPtr LLVMBuilder::GenerateOn(TypeAliasAST &ast) {
+CodePtr LLVMGen::GenerateOn(TypeAliasAST &ast) {
   // do nothing
   return nullptr;
 }
 
-IRPtr LLVMBuilder::GenerateOn(StructAST &ast) {
+CodePtr LLVMGen::GenerateOn(StructAST &ast) {
   // generate struct definition in current type environment
   GenerateType(ast.ast_type());
   return nullptr;
 }
 
-IRPtr LLVMBuilder::GenerateOn(EnumAST &ast) {
+CodePtr LLVMGen::GenerateOn(EnumAST &ast) {
   // do nothing
   return nullptr;
 }
 
-IRPtr LLVMBuilder::GenerateOn(ImportAST &ast) {
-  for (const auto &i : ast.defs()) i->GenerateIR(*this);
+CodePtr LLVMGen::GenerateOn(ImportAST &ast) {
+  for (const auto &i : ast.defs()) i->GenerateCode(*this);
   return nullptr;
 }
 
-IRPtr LLVMBuilder::GenerateOn(VarLetElemAST &ast) {
+CodePtr LLVMGen::GenerateOn(VarLetElemAST &ast) {
   using namespace llvm;
   const auto &id = ast.id();
   const auto &type = ast.ast_type();
@@ -576,7 +576,7 @@ IRPtr LLVMBuilder::GenerateOn(VarLetElemAST &ast) {
     if (init) {
       if (init->IsLiteral() || type->IsReference()) {
         // generate constant initializer
-        auto cons = dyn_cast<Constant>(LLVMCast(init->GenerateIR(*this)));
+        auto cons = dyn_cast<Constant>(LLVMCast(init->GenerateCode(*this)));
         assert(cons);
         var->setInitializer(cons);
       }
@@ -597,7 +597,7 @@ IRPtr LLVMBuilder::GenerateOn(VarLetElemAST &ast) {
     auto alloca = CreateAlloca(type);
     if (init) {
       auto init_val = type->IsReference()
-                          ? LLVMCast(init->GenerateIR(*this))
+                          ? LLVMCast(init->GenerateCode(*this))
                           : UseValue(init);
       CreateStore(init_val, alloca, type);
     }
@@ -606,7 +606,7 @@ IRPtr LLVMBuilder::GenerateOn(VarLetElemAST &ast) {
   return nullptr;
 }
 
-IRPtr LLVMBuilder::GenerateOn(ArgElemAST &ast) {
+CodePtr LLVMGen::GenerateOn(ArgElemAST &ast) {
   // create allocation for arguments
   auto alloca = CreateAlloca(ast.type()->ast_type());
   // add to envrionment
@@ -614,17 +614,17 @@ IRPtr LLVMBuilder::GenerateOn(ArgElemAST &ast) {
   return MakeLLVM(alloca);
 }
 
-IRPtr LLVMBuilder::GenerateOn(StructElemAST &ast) {
+CodePtr LLVMGen::GenerateOn(StructElemAST &ast) {
   // do nothing
   return nullptr;
 }
 
-IRPtr LLVMBuilder::GenerateOn(EnumElemAST &ast) {
+CodePtr LLVMGen::GenerateOn(EnumElemAST &ast) {
   // do nothing
   return nullptr;
 }
 
-IRPtr LLVMBuilder::GenerateOn(BlockAST &ast) {
+CodePtr LLVMGen::GenerateOn(BlockAST &ast) {
   auto env = NewEnv();
   // create new block
   auto cur_func = builder_.GetInsertBlock()->getParent();
@@ -632,10 +632,10 @@ IRPtr LLVMBuilder::GenerateOn(BlockAST &ast) {
   builder_.CreateBr(block);
   builder_.SetInsertPoint(block);
   // generate statements
-  IRPtr ret;
+  CodePtr ret;
   for (int i = 0; i < ast.stmts().size(); ++i) {
     const auto &stmt = ast.stmts()[i];
-    auto ir = stmt->GenerateIR(*this);
+    auto ir = stmt->GenerateCode(*this);
     if (i == ast.stmts().size() - 1 && ir) {
       llvm::Value *val = LLVMCast(ir);
       if (!stmt->ast_type()->IsReference()) {
@@ -647,7 +647,7 @@ IRPtr LLVMBuilder::GenerateOn(BlockAST &ast) {
   return ret;
 }
 
-IRPtr LLVMBuilder::GenerateOn(IfAST &ast) {
+CodePtr LLVMGen::GenerateOn(IfAST &ast) {
   // create basic blocks
   auto func = builder_.GetInsertBlock()->getParent();
   auto then_block = llvm::BasicBlock::Create(context_, "if_then", func);
@@ -662,13 +662,13 @@ IRPtr LLVMBuilder::GenerateOn(IfAST &ast) {
   builder_.CreateCondBr(cond, then_block, else_block);
   // emit 'then' block
   builder_.SetInsertPoint(then_block);
-  auto then_val = ast.then()->GenerateIR(*this);
+  auto then_val = ast.then()->GenerateCode(*this);
   if (if_val) CreateStore(LLVMCast(then_val), if_val, if_type);
   builder_.CreateBr(end_block);
   // emit 'else' block
   builder_.SetInsertPoint(else_block);
   if (ast.else_then()) {
-    auto else_val = ast.else_then()->GenerateIR(*this);
+    auto else_val = ast.else_then()->GenerateCode(*this);
     if (if_val) CreateStore(LLVMCast(else_val), if_val, if_type);
   }
   builder_.CreateBr(end_block);
@@ -678,7 +678,7 @@ IRPtr LLVMBuilder::GenerateOn(IfAST &ast) {
   return if_val ? MakeLLVM(if_val) : nullptr;
 }
 
-IRPtr LLVMBuilder::GenerateOn(WhenAST &ast) {
+CodePtr LLVMGen::GenerateOn(WhenAST &ast) {
   // create basic blocks
   auto func = builder_.GetInsertBlock()->getParent();
   when_end_ = llvm::BasicBlock::Create(context_, "when_end", func);
@@ -690,12 +690,12 @@ IRPtr LLVMBuilder::GenerateOn(WhenAST &ast) {
   if (!when_type->IsVoid()) when_val = CreateAlloca(when_type);
   // generate elements
   for (const auto &i : ast.elems()) {
-    auto elem = i->GenerateIR(*this);
+    auto elem = i->GenerateCode(*this);
     if (when_val) CreateStore(LLVMCast(elem), when_val, when_type);
   }
   // generate else branch
   if (ast.else_then()) {
-    auto else_val = ast.else_then()->GenerateIR(*this);
+    auto else_val = ast.else_then()->GenerateCode(*this);
     if (when_val) CreateStore(LLVMCast(else_val), when_val, when_type);
   }
   // emit 'end' block
@@ -705,7 +705,7 @@ IRPtr LLVMBuilder::GenerateOn(WhenAST &ast) {
   return when_val ? MakeLLVM(when_val) : nullptr;
 }
 
-IRPtr LLVMBuilder::GenerateOn(WhileAST &ast) {
+CodePtr LLVMGen::GenerateOn(WhileAST &ast) {
   // create basic blocks
   auto func = builder_.GetInsertBlock()->getParent();
   auto cond_block = llvm::BasicBlock::Create(context_, "while_cond", func);
@@ -721,7 +721,7 @@ IRPtr LLVMBuilder::GenerateOn(WhileAST &ast) {
   builder_.CreateCondBr(cond, body_block, end_block);
   // emit 'body' block
   builder_.SetInsertPoint(body_block);
-  ast.body()->GenerateIR(*this);
+  ast.body()->GenerateCode(*this);
   builder_.CreateBr(cond_block);
   // emit 'end' block
   builder_.SetInsertPoint(end_block);
@@ -730,7 +730,7 @@ IRPtr LLVMBuilder::GenerateOn(WhileAST &ast) {
   return nullptr;
 }
 
-IRPtr LLVMBuilder::GenerateOn(ForInAST &ast) {
+CodePtr LLVMGen::GenerateOn(ForInAST &ast) {
   // get iterator function
   // TODO: alignment?
   auto next_func = vals_->GetItem(ast.next_id());
@@ -758,7 +758,7 @@ IRPtr LLVMBuilder::GenerateOn(ForInAST &ast) {
   builder_.SetInsertPoint(body_block);
   auto new_val = CreateCall(next_func, {expr_val}, ast.id_type());
   CreateStore(new_val, loop_var, ast.id_type());
-  ast.body()->GenerateIR(*this);
+  ast.body()->GenerateCode(*this);
   builder_.CreateBr(cond_block);
   // emit 'end' block
   builder_.SetInsertPoint(end_block);
@@ -767,13 +767,13 @@ IRPtr LLVMBuilder::GenerateOn(ForInAST &ast) {
   return nullptr;
 }
 
-IRPtr LLVMBuilder::GenerateOn(AsmAST &ast) {
+CodePtr LLVMGen::GenerateOn(AsmAST &ast) {
   auto type = llvm::FunctionType::get(builder_.getVoidTy(), false);
   auto asm_func = llvm::InlineAsm::get(type, ast.asm_str(), "", true);
   return MakeLLVM(builder_.CreateCall(asm_func));
 }
 
-IRPtr LLVMBuilder::GenerateOn(ControlAST &ast) {
+CodePtr LLVMGen::GenerateOn(ControlAST &ast) {
   switch (ast.type()) {
     case Keyword::Break: case Keyword::Continue: {
       // generate target
@@ -798,7 +798,7 @@ IRPtr LLVMBuilder::GenerateOn(ControlAST &ast) {
   return nullptr;
 }
 
-IRPtr LLVMBuilder::GenerateOn(WhenElemAST &ast) {
+CodePtr LLVMGen::GenerateOn(WhenElemAST &ast) {
   using namespace llvm;
   // create basic blocks
   auto func = builder_.GetInsertBlock()->getParent();
@@ -825,16 +825,16 @@ IRPtr LLVMBuilder::GenerateOn(WhenElemAST &ast) {
   builder_.CreateBr(exit_block);
   // generate body
   builder_.SetInsertPoint(body_block);
-  auto ret = ast.body()->GenerateIR(*this);
+  auto ret = ast.body()->GenerateCode(*this);
   builder_.CreateBr(when_end_);
   // emit 'exit' block
   builder_.SetInsertPoint(exit_block);
   return ret;
 }
 
-IRPtr LLVMBuilder::GenerateOn(BinaryAST &ast) {
+CodePtr LLVMGen::GenerateOn(BinaryAST &ast) {
   // generate lhs
-  auto lhs = LLVMCast(ast.lhs()->GenerateIR(*this));
+  auto lhs = LLVMCast(ast.lhs()->GenerateCode(*this));
   const auto &lhs_ty = ast.lhs()->ast_type();
   // get name of overloaded function
   auto op_func = ast.op_func_id();
@@ -862,7 +862,7 @@ IRPtr LLVMBuilder::GenerateOn(BinaryAST &ast) {
     }
     // emit 'rhs' block
     builder_.SetInsertPoint(rhs_block);
-    auto rhs = LLVMCast(ast.rhs()->GenerateIR(*this));
+    auto rhs = LLVMCast(ast.rhs()->GenerateCode(*this));
     CreateStore(rhs, result, ast.ast_type());
     builder_.CreateBr(end_block);
     // emit 'end' block
@@ -870,7 +870,7 @@ IRPtr LLVMBuilder::GenerateOn(BinaryAST &ast) {
     return MakeLLVM(CreateLoad(result, ast.ast_type()));
   }
   // generate rhs
-  auto rhs = LLVMCast(ast.rhs()->GenerateIR(*this));
+  auto rhs = LLVMCast(ast.rhs()->GenerateCode(*this));
   const auto &rhs_ty = ast.rhs()->ast_type();
   // try to handle operator overloading
   if (op_func) {
@@ -889,9 +889,9 @@ IRPtr LLVMBuilder::GenerateOn(BinaryAST &ast) {
   return val ? MakeLLVM(val) : nullptr;
 }
 
-IRPtr LLVMBuilder::GenerateOn(AccessAST &ast) {
+CodePtr LLVMGen::GenerateOn(AccessAST &ast) {
   // generate expression
-  auto expr = LLVMCast(ast.expr()->GenerateIR(*this));
+  auto expr = LLVMCast(ast.expr()->GenerateCode(*this));
   const auto &expr_ty = ast.expr()->ast_type();
   assert(expr_ty->IsStruct());
   // get index of element
@@ -903,9 +903,9 @@ IRPtr LLVMBuilder::GenerateOn(AccessAST &ast) {
   return MakeLLVM(ptr);
 }
 
-IRPtr LLVMBuilder::GenerateOn(CastAST &ast) {
+CodePtr LLVMGen::GenerateOn(CastAST &ast) {
   // generate expression
-  auto expr = LLVMCast(ast.expr()->GenerateIR(*this));
+  auto expr = LLVMCast(ast.expr()->GenerateCode(*this));
   const auto &expr_ty = ast.expr()->ast_type();
   const auto &type_ty = ast.type()->ast_type();
   if (!expr_ty->IsArray()) expr = UseValue(expr, expr_ty);
@@ -967,10 +967,10 @@ IRPtr LLVMBuilder::GenerateOn(CastAST &ast) {
   return MakeLLVM(ret);
 }
 
-IRPtr LLVMBuilder::GenerateOn(UnaryAST &ast) {
+CodePtr LLVMGen::GenerateOn(UnaryAST &ast) {
   using UnaryOp = UnaryAST::UnaryOp;
   // generate operand
-  auto opr = LLVMCast(ast.opr()->GenerateIR(*this));
+  auto opr = LLVMCast(ast.opr()->GenerateCode(*this));
   const auto &opr_ty = ast.opr()->ast_type();
   // try to handle 'address of' operator
   if (ast.op() == UnaryOp::AddrOf) return MakeLLVM(opr);
@@ -1025,10 +1025,10 @@ IRPtr LLVMBuilder::GenerateOn(UnaryAST &ast) {
   return MakeLLVM(ret);
 }
 
-IRPtr LLVMBuilder::GenerateOn(IndexAST &ast) {
+CodePtr LLVMGen::GenerateOn(IndexAST &ast) {
   const auto &expr_type = ast.expr()->ast_type();
   // generate expression
-  auto expr = LLVMCast(ast.expr()->GenerateIR(*this));
+  auto expr = LLVMCast(ast.expr()->GenerateCode(*this));
   if (!expr_type->IsArray()) expr = UseValue(expr, expr_type);
   // generate index
   auto index = UseValue(ast.index());
@@ -1044,7 +1044,7 @@ IRPtr LLVMBuilder::GenerateOn(IndexAST &ast) {
   return MakeLLVM(val);
 }
 
-IRPtr LLVMBuilder::GenerateOn(FunCallAST &ast) {
+CodePtr LLVMGen::GenerateOn(FunCallAST &ast) {
   // generate callee
   auto callee = UseValue(ast.expr());
   // generate arguments
@@ -1057,23 +1057,23 @@ IRPtr LLVMBuilder::GenerateOn(FunCallAST &ast) {
   return MakeLLVM(call);
 }
 
-IRPtr LLVMBuilder::GenerateOn(IntAST &ast) {
+CodePtr LLVMGen::GenerateOn(IntAST &ast) {
   const auto &type = ast.ast_type();
   assert(type->IsInteger());
   llvm::APInt ai(type->GetSize() * 8, ast.value(), !type->IsUnsigned());
   return MakeLLVM(builder_.getInt(ai));
 }
 
-IRPtr LLVMBuilder::GenerateOn(FloatAST &ast) {
+CodePtr LLVMGen::GenerateOn(FloatAST &ast) {
   llvm::APFloat af(ast.value());
   return MakeLLVM(llvm::ConstantFP::get(context_, af));
 }
 
-IRPtr LLVMBuilder::GenerateOn(CharAST &ast) {
+CodePtr LLVMGen::GenerateOn(CharAST &ast) {
   return MakeLLVM(builder_.getInt8(ast.c()));
 }
 
-IRPtr LLVMBuilder::GenerateOn(IdAST &ast) {
+CodePtr LLVMGen::GenerateOn(IdAST &ast) {
   auto val = vals_->GetItem(ast.id());
   // handle references
   if (ast.ast_type()->IsReference()) {
@@ -1083,19 +1083,19 @@ IRPtr LLVMBuilder::GenerateOn(IdAST &ast) {
   return MakeLLVM(val);
 }
 
-IRPtr LLVMBuilder::GenerateOn(StringAST &ast) {
+CodePtr LLVMGen::GenerateOn(StringAST &ast) {
   return MakeLLVM(builder_.CreateGlobalStringPtr(ast.str()));
 }
 
-IRPtr LLVMBuilder::GenerateOn(BoolAST &ast) {
+CodePtr LLVMGen::GenerateOn(BoolAST &ast) {
   return MakeLLVM(builder_.getInt1(ast.value()));
 }
 
-IRPtr LLVMBuilder::GenerateOn(NullAST &ast) {
+CodePtr LLVMGen::GenerateOn(NullAST &ast) {
   return MakeLLVM(llvm::Constant::getNullValue(builder_.getInt8PtrTy()));
 }
 
-IRPtr LLVMBuilder::GenerateOn(ValInitAST &ast) {
+CodePtr LLVMGen::GenerateOn(ValInitAST &ast) {
   using namespace llvm;
   // generate LLVM type
   const auto &type = ast.type()->ast_type();
@@ -1146,47 +1146,47 @@ IRPtr LLVMBuilder::GenerateOn(ValInitAST &ast) {
   return MakeLLVM(val);
 }
 
-IRPtr LLVMBuilder::GenerateOn(PrimTypeAST &ast) {
+CodePtr LLVMGen::GenerateOn(PrimTypeAST &ast) {
   // do nothing
   return nullptr;
 }
 
-IRPtr LLVMBuilder::GenerateOn(UserTypeAST &ast) {
+CodePtr LLVMGen::GenerateOn(UserTypeAST &ast) {
   // do nothing
   return nullptr;
 }
 
-IRPtr LLVMBuilder::GenerateOn(FuncTypeAST &ast) {
+CodePtr LLVMGen::GenerateOn(FuncTypeAST &ast) {
   // do nothing
   return nullptr;
 }
 
-IRPtr LLVMBuilder::GenerateOn(VolaTypeAST &ast) {
+CodePtr LLVMGen::GenerateOn(VolaTypeAST &ast) {
   // do nothing
   return nullptr;
 }
 
-IRPtr LLVMBuilder::GenerateOn(ArrayTypeAST &ast) {
+CodePtr LLVMGen::GenerateOn(ArrayTypeAST &ast) {
   // do nothing
   return nullptr;
 }
 
-IRPtr LLVMBuilder::GenerateOn(PointerTypeAST &ast) {
+CodePtr LLVMGen::GenerateOn(PointerTypeAST &ast) {
   // do nothing
   return nullptr;
 }
 
-IRPtr LLVMBuilder::GenerateOn(RefTypeAST &ast) {
+CodePtr LLVMGen::GenerateOn(RefTypeAST &ast) {
   // do nothing
   return nullptr;
 }
 
-std::size_t LLVMBuilder::GetPointerSize() const {
+std::size_t LLVMGen::GetPointerSize() const {
   // TODO
   return sizeof(void *);
 }
 
-void LLVMBuilder::Dump(std::ostream &os) {
+void LLVMGen::Dump(std::ostream &os) {
   llvm::raw_os_ostream raw(os);
   module_->print(raw, nullptr);
 }

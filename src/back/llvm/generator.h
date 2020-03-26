@@ -1,5 +1,5 @@
-#ifndef YULANG_BACK_LLVM_BUILDER_H_
-#define YULANG_BACK_LLVM_BUILDER_H_
+#ifndef YULANG_BACK_LLVM_GENERATOR_H_
+#define YULANG_BACK_LLVM_GENERATOR_H_
 
 #include <memory>
 #include <string>
@@ -16,61 +16,61 @@
 #include "llvm/IR/BasicBlock.h"
 
 #include "define/type.h"
-#include "back/irbuilder.h"
+#include "back/codegen.h"
 #include "back/llvm/ir.h"
 #include "xstl/guard.h"
 #include "xstl/nested.h"
 
 namespace yulang::back::ll {
 
-class LLVMBuilder : public IRBuilderInterface {
+class LLVMGen : public CodeGenInterface {
  public:
-  LLVMBuilder(const std::string &file_name)
+  LLVMGen(const std::string &file_name)
       : builder_(context_),
         module_(std::make_unique<llvm::Module>(file_name, context_)) {
     Init();
   }
 
-  IRPtr GenerateOn(define::VarLetDefAST &ast) override;
-  IRPtr GenerateOn(define::FunDefAST &ast) override;
-  IRPtr GenerateOn(define::DeclareAST &ast) override;
-  IRPtr GenerateOn(define::TypeAliasAST &ast) override;
-  IRPtr GenerateOn(define::StructAST &ast) override;
-  IRPtr GenerateOn(define::EnumAST &ast) override;
-  IRPtr GenerateOn(define::ImportAST &ast) override;
-  IRPtr GenerateOn(define::VarLetElemAST &ast) override;
-  IRPtr GenerateOn(define::ArgElemAST &ast) override;
-  IRPtr GenerateOn(define::StructElemAST &ast) override;
-  IRPtr GenerateOn(define::EnumElemAST &ast) override;
-  IRPtr GenerateOn(define::BlockAST &ast) override;
-  IRPtr GenerateOn(define::IfAST &ast) override;
-  IRPtr GenerateOn(define::WhenAST &ast) override;
-  IRPtr GenerateOn(define::WhileAST &ast) override;
-  IRPtr GenerateOn(define::ForInAST &ast) override;
-  IRPtr GenerateOn(define::AsmAST &ast) override;
-  IRPtr GenerateOn(define::ControlAST &ast) override;
-  IRPtr GenerateOn(define::WhenElemAST &ast) override;
-  IRPtr GenerateOn(define::BinaryAST &ast) override;
-  IRPtr GenerateOn(define::AccessAST &ast) override;
-  IRPtr GenerateOn(define::CastAST &ast) override;
-  IRPtr GenerateOn(define::UnaryAST &ast) override;
-  IRPtr GenerateOn(define::IndexAST &ast) override;
-  IRPtr GenerateOn(define::FunCallAST &ast) override;
-  IRPtr GenerateOn(define::IntAST &ast) override;
-  IRPtr GenerateOn(define::FloatAST &ast) override;
-  IRPtr GenerateOn(define::CharAST &ast) override;
-  IRPtr GenerateOn(define::IdAST &ast) override;
-  IRPtr GenerateOn(define::StringAST &ast) override;
-  IRPtr GenerateOn(define::BoolAST &ast) override;
-  IRPtr GenerateOn(define::NullAST &ast) override;
-  IRPtr GenerateOn(define::ValInitAST &ast) override;
-  IRPtr GenerateOn(define::PrimTypeAST &ast) override;
-  IRPtr GenerateOn(define::UserTypeAST &ast) override;
-  IRPtr GenerateOn(define::FuncTypeAST &ast) override;
-  IRPtr GenerateOn(define::VolaTypeAST &ast) override;
-  IRPtr GenerateOn(define::ArrayTypeAST &ast) override;
-  IRPtr GenerateOn(define::PointerTypeAST &ast) override;
-  IRPtr GenerateOn(define::RefTypeAST &ast) override;
+  CodePtr GenerateOn(define::VarLetDefAST &ast) override;
+  CodePtr GenerateOn(define::FunDefAST &ast) override;
+  CodePtr GenerateOn(define::DeclareAST &ast) override;
+  CodePtr GenerateOn(define::TypeAliasAST &ast) override;
+  CodePtr GenerateOn(define::StructAST &ast) override;
+  CodePtr GenerateOn(define::EnumAST &ast) override;
+  CodePtr GenerateOn(define::ImportAST &ast) override;
+  CodePtr GenerateOn(define::VarLetElemAST &ast) override;
+  CodePtr GenerateOn(define::ArgElemAST &ast) override;
+  CodePtr GenerateOn(define::StructElemAST &ast) override;
+  CodePtr GenerateOn(define::EnumElemAST &ast) override;
+  CodePtr GenerateOn(define::BlockAST &ast) override;
+  CodePtr GenerateOn(define::IfAST &ast) override;
+  CodePtr GenerateOn(define::WhenAST &ast) override;
+  CodePtr GenerateOn(define::WhileAST &ast) override;
+  CodePtr GenerateOn(define::ForInAST &ast) override;
+  CodePtr GenerateOn(define::AsmAST &ast) override;
+  CodePtr GenerateOn(define::ControlAST &ast) override;
+  CodePtr GenerateOn(define::WhenElemAST &ast) override;
+  CodePtr GenerateOn(define::BinaryAST &ast) override;
+  CodePtr GenerateOn(define::AccessAST &ast) override;
+  CodePtr GenerateOn(define::CastAST &ast) override;
+  CodePtr GenerateOn(define::UnaryAST &ast) override;
+  CodePtr GenerateOn(define::IndexAST &ast) override;
+  CodePtr GenerateOn(define::FunCallAST &ast) override;
+  CodePtr GenerateOn(define::IntAST &ast) override;
+  CodePtr GenerateOn(define::FloatAST &ast) override;
+  CodePtr GenerateOn(define::CharAST &ast) override;
+  CodePtr GenerateOn(define::IdAST &ast) override;
+  CodePtr GenerateOn(define::StringAST &ast) override;
+  CodePtr GenerateOn(define::BoolAST &ast) override;
+  CodePtr GenerateOn(define::NullAST &ast) override;
+  CodePtr GenerateOn(define::ValInitAST &ast) override;
+  CodePtr GenerateOn(define::PrimTypeAST &ast) override;
+  CodePtr GenerateOn(define::UserTypeAST &ast) override;
+  CodePtr GenerateOn(define::FuncTypeAST &ast) override;
+  CodePtr GenerateOn(define::VolaTypeAST &ast) override;
+  CodePtr GenerateOn(define::ArrayTypeAST &ast) override;
+  CodePtr GenerateOn(define::PointerTypeAST &ast) override;
+  CodePtr GenerateOn(define::RefTypeAST &ast) override;
 
   std::size_t GetPointerSize() const override;
   void Dump(std::ostream &os) override;
@@ -150,4 +150,4 @@ class LLVMBuilder : public IRBuilderInterface {
 
 }  // namespace yulang::back::ll
 
-#endif  // YULANG_BACK_LLVM_BUILDER_H_
+#endif  // YULANG_BACK_LLVM_GENERATOR_H_

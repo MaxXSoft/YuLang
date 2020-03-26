@@ -3,12 +3,12 @@
 
 #include "llvm/IR/Value.h"
 
-#include "back/ir.h"
+#include "back/code.h"
 
 namespace yulang::back::ll {
 
 // wrapper of 'llvm::Value *'
-class LLVMIR : public IRInterface {
+class LLVMIR : public CodeInterface {
  public:
   LLVMIR(llvm::Value *value) : value_(value) {}
 
@@ -19,13 +19,13 @@ class LLVMIR : public IRInterface {
 };
 
 // make a new LLVM IR pointer by existing LLVM IR
-inline IRPtr MakeLLVM(llvm::Value *ir) {
+inline CodePtr MakeLLVM(llvm::Value *ir) {
   return std::make_shared<LLVMIR>(ir);
 }
 
-// cast IR to LLVM IR
-inline llvm::Value *LLVMCast(const IRPtr &ir) {
-  return IRCast<llvm::Value *>(ir);
+// cast code to LLVM IR
+inline llvm::Value *LLVMCast(const CodePtr &code) {
+  return CodeCast<llvm::Value *>(code);
 }
 
 }  // namespace yulang::back::ll
