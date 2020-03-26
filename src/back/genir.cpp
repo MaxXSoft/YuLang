@@ -5,10 +5,6 @@
 using namespace yulang::define;
 using namespace yulang::back;
 
-IRPtr PropertyAST::GenerateIR(IRBuilder &builder) {
-  return builder.GenerateOn(*this);
-}
-
 IRPtr VarLetDefAST::GenerateIR(IRBuilder &builder) {
   return builder.GenerateOn(*this);
 }
@@ -37,11 +33,7 @@ IRPtr ImportAST::GenerateIR(IRBuilder &builder) {
   return builder.GenerateOn(*this);
 }
 
-IRPtr VarElemAST::GenerateIR(IRBuilder &builder) {
-  return builder.GenerateOn(*this);
-}
-
-IRPtr LetElemAST::GenerateIR(IRBuilder &builder) {
+IRPtr VarLetElemAST::GenerateIR(IRBuilder &builder) {
   return builder.GenerateOn(*this);
 }
 

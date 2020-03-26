@@ -13,7 +13,6 @@ class IRBuilderInterface {
  public:
   virtual ~IRBuilderInterface() = default;
 
-  virtual IRPtr GenerateOn(define::PropertyAST &ast) = 0;
   virtual IRPtr GenerateOn(define::VarLetDefAST &ast) = 0;
   virtual IRPtr GenerateOn(define::FunDefAST &ast) = 0;
   virtual IRPtr GenerateOn(define::DeclareAST &ast) = 0;
@@ -21,8 +20,7 @@ class IRBuilderInterface {
   virtual IRPtr GenerateOn(define::StructAST &ast) = 0;
   virtual IRPtr GenerateOn(define::EnumAST &ast) = 0;
   virtual IRPtr GenerateOn(define::ImportAST &ast) = 0;
-  virtual IRPtr GenerateOn(define::VarElemAST &ast) = 0;
-  virtual IRPtr GenerateOn(define::LetElemAST &ast) = 0;
+  virtual IRPtr GenerateOn(define::VarLetElemAST &ast) = 0;
   virtual IRPtr GenerateOn(define::ArgElemAST &ast) = 0;
   virtual IRPtr GenerateOn(define::StructElemAST &ast) = 0;
   virtual IRPtr GenerateOn(define::EnumElemAST &ast) = 0;
