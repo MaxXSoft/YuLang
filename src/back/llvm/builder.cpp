@@ -99,6 +99,18 @@ xstl::Guard LLVMBuilder::EnterGlobalFunc(bool is_dtor) {
   });
 }
 
+llvm::GlobalValue::LinkageTypes LLVMBuilder::GetLinkType(Property prop) {
+  if (prop == Property::Public || prop == Property::Extern) {
+    return llvm::GlobalValue::LinkageTypes::ExternalLinkage;
+  }
+  else if (prop == Property::Inline) {
+    return llvm::GlobalValue::LinkageTypes::LinkOnceODRLinkage;
+  }
+  else {
+    return llvm::GlobalValue::LinkageTypes::InternalLinkage;
+  }
+}
+
 llvm::Value *LLVMBuilder::UseValue(llvm::Value *val, const TypePtr &type) {
   if (type->IsStruct()) {
     return val;
@@ -168,43 +180,6 @@ void LLVMBuilder::CreateStore(llvm::Value *val, llvm::Value *dst,
     // generate store instruction
     auto store = builder_.CreateStore(val, dst, is_vola);
     store->setAlignment(type->GetAlignSize());
-  }
-}
-
-void LLVMBuilder::CreateVarLet(const std::string &id, const TypePtr &type,
-                               const ASTPtr &init) {
-  using namespace llvm;
-  if (vals_->is_root()) {
-    // global variables/constants
-    auto ty = GenerateType(type);
-    auto zero = ConstantAggregateZero::get(ty);
-    auto var = new GlobalVariable(*module_, ty, true, link_, zero, id);
-    if (init) {
-      if (init->IsLiteral() || type->IsReference()) {
-        // generate constant initializer
-        auto cons = dyn_cast<Constant>(LLVMCast(init->GenerateIR(*this)));
-        assert(cons);
-        var->setInitializer(cons);
-      }
-      else {
-        // generate initialization instructions
-        auto ctor = EnterGlobalFunc(false);
-        CreateStore(UseValue(init), var, type);
-      }
-    }
-    // add to current environment
-    vals_->AddItem(id, var);
-  }
-  else {
-    // local variables/constants
-    auto alloca = CreateAlloca(type);
-    if (init) {
-      auto init_val = type->IsReference()
-                          ? LLVMCast(init->GenerateIR(*this))
-                          : UseValue(init);
-      CreateStore(init_val, alloca, type);
-    }
-    vals_->AddItem(id, alloca);
   }
 }
 
@@ -457,16 +432,8 @@ bool LLVMBuilder::IsTypeRawStruct(const TypePtr &type) {
   return type->IsStruct() && !type->IsReference();
 }
 
-IRPtr LLVMBuilder::GenerateOn(PropertyAST &ast) {
-  bool global = ast.prop() == PropertyAST::Property::Public ||
-                ast.prop() == PropertyAST::Property::Extern;
-  link_ = global ? llvm::GlobalValue::LinkageTypes::ExternalLinkage
-                 : llvm::GlobalValue::LinkageTypes::InternalLinkage;
-  return nullptr;
-}
-
 IRPtr LLVMBuilder::GenerateOn(VarLetDefAST &ast) {
-  ast.prop()->GenerateIR(*this);
+  last_prop_ = ast.prop();
   for (const auto &i : ast.defs()) {
     i->GenerateIR(*this);
   }
@@ -476,9 +443,9 @@ IRPtr LLVMBuilder::GenerateOn(VarLetDefAST &ast) {
 IRPtr LLVMBuilder::GenerateOn(FunDefAST &ast) {
   auto env = NewEnv();
   // get linkage type
-  ast.prop()->GenerateIR(*this);
+  auto link = GetLinkType(ast.prop());
   if (!ast.body()) {
-    link_ = llvm::GlobalValue::LinkageTypes::ExternalLinkage;
+    link = llvm::GlobalValue::LinkageTypes::ExternalLinkage;
   }
   // create function type
   auto ret_ty = ast.type() ? ast.type()->ast_type() : MakeVoid();
@@ -495,7 +462,7 @@ IRPtr LLVMBuilder::GenerateOn(FunDefAST &ast) {
   }
   auto type = llvm::FunctionType::get(ret, args, false);
   // create function declaration
-  auto func = llvm::Function::Create(type, link_, ast.id(), module_.get());
+  auto func = llvm::Function::Create(type, link, ast.id(), module_.get());
   vals_->outer()->AddItem(ast.id(), func);
   if (!ast.body()) return nullptr;
   // generate arguments
@@ -594,13 +561,48 @@ IRPtr LLVMBuilder::GenerateOn(ImportAST &ast) {
   return nullptr;
 }
 
-IRPtr LLVMBuilder::GenerateOn(VarElemAST &ast) {
-  CreateVarLet(ast.id(), ast.ast_type(), ast.init());
-  return nullptr;
-}
-
-IRPtr LLVMBuilder::GenerateOn(LetElemAST &ast) {
-  CreateVarLet(ast.id(), ast.ast_type(), ast.init());
+IRPtr LLVMBuilder::GenerateOn(VarLetElemAST &ast) {
+  using namespace llvm;
+  const auto &id = ast.id();
+  const auto &type = ast.ast_type();
+  const auto &init = ast.init();
+  auto link = GetLinkType(last_prop_);
+  // check if is global definition
+  if (vals_->is_root()) {
+    // global variables/constants
+    auto ty = GenerateType(type);
+    auto zero = ConstantAggregateZero::get(ty);
+    auto var = new GlobalVariable(*module_, ty, true, link, zero, id);
+    if (init) {
+      if (init->IsLiteral() || type->IsReference()) {
+        // generate constant initializer
+        auto cons = dyn_cast<Constant>(LLVMCast(init->GenerateIR(*this)));
+        assert(cons);
+        var->setInitializer(cons);
+      }
+      else {
+        // generate initialization instructions
+        auto ctor = EnterGlobalFunc(false);
+        CreateStore(UseValue(init), var, type);
+      }
+    }
+    else if (last_prop_ == Property::Public) {
+      var->setInitializer(nullptr);
+    }
+    // add to current environment
+    vals_->AddItem(id, var);
+  }
+  else {
+    // local variables/constants
+    auto alloca = CreateAlloca(type);
+    if (init) {
+      auto init_val = type->IsReference()
+                          ? LLVMCast(init->GenerateIR(*this))
+                          : UseValue(init);
+      CreateStore(init_val, alloca, type);
+    }
+    vals_->AddItem(id, alloca);
+  }
   return nullptr;
 }
 

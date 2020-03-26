@@ -31,7 +31,6 @@ class LLVMBuilder : public IRBuilderInterface {
     Init();
   }
 
-  IRPtr GenerateOn(define::PropertyAST &ast) override;
   IRPtr GenerateOn(define::VarLetDefAST &ast) override;
   IRPtr GenerateOn(define::FunDefAST &ast) override;
   IRPtr GenerateOn(define::DeclareAST &ast) override;
@@ -39,8 +38,7 @@ class LLVMBuilder : public IRBuilderInterface {
   IRPtr GenerateOn(define::StructAST &ast) override;
   IRPtr GenerateOn(define::EnumAST &ast) override;
   IRPtr GenerateOn(define::ImportAST &ast) override;
-  IRPtr GenerateOn(define::VarElemAST &ast) override;
-  IRPtr GenerateOn(define::LetElemAST &ast) override;
+  IRPtr GenerateOn(define::VarLetElemAST &ast) override;
   IRPtr GenerateOn(define::ArgElemAST &ast) override;
   IRPtr GenerateOn(define::StructElemAST &ast) override;
   IRPtr GenerateOn(define::EnumElemAST &ast) override;
@@ -87,6 +85,8 @@ class LLVMBuilder : public IRBuilderInterface {
   xstl::Guard NewEnv();
   // switch to body of constructor/destructor
   xstl::Guard EnterGlobalFunc(bool is_dtor);
+  // get linkage type
+  llvm::GlobalValue::LinkageTypes GetLinkType(define::Property prop);
   // automatically create load when specific value is a left value
   llvm::Value *UseValue(llvm::Value *val, const define::TypePtr &type);
   // automatically create load, using specific AST pointer
@@ -106,9 +106,6 @@ class LLVMBuilder : public IRBuilderInterface {
   // if 'dst' is a structure or an array, generate 'memcpy'
   void CreateStore(llvm::Value *val, llvm::Value *dst,
                    const define::TypePtr &type);
-  // create new variable/constant definition
-  void CreateVarLet(const std::string &id, const define::TypePtr &type,
-                    const define::ASTPtr &init);
   // create new function call
   llvm::Value *CreateCall(llvm::Value *callee,
                           llvm::ArrayRef<llvm::Value *> args,
@@ -139,11 +136,11 @@ class LLVMBuilder : public IRBuilderInterface {
   xstl::NestedMapPtr<std::string, llvm::Type *> types_;
   // global constructor & destructor
   llvm::Function *ctor_, *dtor_;
-  // used when generating properties
-  llvm::GlobalVariable::LinkageTypes link_;
   // used when generating function definitions
   llvm::Value *ret_val_;
   llvm::BasicBlock *func_exit_;
+  // used when generating var/let definitions
+  define::Property last_prop_;
   // used when generating when statements
   llvm::BasicBlock *when_end_;
   llvm::Value *when_expr_;
