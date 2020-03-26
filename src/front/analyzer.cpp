@@ -67,58 +67,6 @@ bool Analyzer::AddUserType(const Logger &log, const std::string &id,
   return true;
 }
 
-TypePtr Analyzer::AddVarConst(const Logger &log, const std::string &id,
-                              TypePtr type, TypePtr init, bool is_var) {
-  // check if is defined
-  if (symbols_->GetItem(id, false)) {
-    return LogError(log, "identifier has already been defined", id);
-  }
-  // check types
-  TypePtr sym_type;
-  if (type) {
-    assert(!type->IsRightValue());
-    // check if is compatible
-    if (init && !type->IsIdentical(init)) {
-      return LogError(log, "type mismatch when initializing", id);
-    }
-    // check for reference types
-    if (type->IsReference()) {
-      if (!init) {
-        return LogError(log, "cannot define a reference "
-                        "without initialization", id);
-      }
-      if (init->IsRightValue()) {
-        return LogError(log, "reference cannot be initialized "
-                        "with a right value", id);
-      }
-      if (init->IsConst() && !type->GetDerefedType()->IsConst()) {
-        return LogError(log, "variable reference cannot be initialized "
-                        "with a constant", id);
-      }
-    }
-    sym_type = std::move(type);
-  }
-  else {
-    assert(init);
-    // check if can be deduced
-    if (init->IsVoid() || init->IsNull()) {
-      return LogError(log, "initializing with invalid type", id);
-    }
-    // cast to left value type
-    sym_type = std::move(init);
-    if (sym_type->IsRightValue()) sym_type = sym_type->GetValueType(false);
-  }
-  // add symbol info
-  if (is_var) {
-    if (sym_type->IsConst()) sym_type = sym_type->GetDeconstedType();
-  }
-  else if (!sym_type->IsConst()) {
-    sym_type = std::make_shared<ConstType>(std::move(sym_type));
-  }
-  symbols_->AddItem(id, sym_type);
-  return sym_type;
-}
-
 TypePtr Analyzer::FindFuncType(const Logger &log, const std::string &id,
                                const TypePtrList &args,
                                IdSetter id_setter) {
@@ -167,13 +115,8 @@ std::optional<TypePtr> Analyzer::CheckOpOverload(
   return {};
 }
 
-TypePtr Analyzer::AnalyzeOn(PropertyAST &ast) {
-  // NOTE: this AST will not always be analyzed, so 'ast_type' may be null
-  last_prop_ = ast.prop();
-  return ast.set_ast_type(MakeVoid());
-}
-
 TypePtr Analyzer::AnalyzeOn(VarLetDefAST &ast) {
+  last_prop_ = ast.prop();
   for (const auto &i : ast.defs()) {
     if (!i->SemaAnalyze(*this)) return nullptr;
   }
@@ -199,9 +142,7 @@ TypePtr Analyzer::AnalyzeOn(FunDefAST &ast) {
   if (id == ".") {
     return LogError(ast.logger(), "access operator cannot be overloaded");
   }
-  ast.prop()->SemaAnalyze(*this);
-  if (last_prop_ != PropertyAST::Property::Extern &&
-      last_prop_ != PropertyAST::Property::Demangle) {
+  if (ast.prop() != Property::Extern) {
     id = MangleFuncName(id, args);
     ast.set_id(id);
   }
@@ -254,10 +195,7 @@ TypePtr Analyzer::AnalyzeOn(DeclareAST &ast) {
   }
   // check if needs to perform name mangling
   auto id = ast.id();
-  ast.prop()->SemaAnalyze(*this);
-  if (type->IsFunction() &&
-      (last_prop_ != PropertyAST::Property::Extern &&
-       last_prop_ != PropertyAST::Property::Demangle)) {
+  if (type->IsFunction() && ast.prop() != Property::Extern) {
     id = MangleFuncName(id, *type->GetArgsType());
     ast.set_id(id);
   }
@@ -354,7 +292,9 @@ TypePtr Analyzer::AnalyzeOn(ImportAST &ast) {
   return ast.set_ast_type(MakeVoid());
 }
 
-TypePtr Analyzer::AnalyzeOn(VarElemAST &ast) {
+TypePtr Analyzer::AnalyzeOn(VarLetElemAST &ast) {
+  const auto &log = ast.logger();
+  const auto &id = ast.id();
   // try to get variable type and initializer type
   TypePtr type, init;
   if (ast.type()) {
@@ -365,30 +305,63 @@ TypePtr Analyzer::AnalyzeOn(VarElemAST &ast) {
     init = ast.init()->SemaAnalyze(*this);
     if (!init) return nullptr;
   }
-  // add symbol to environment
-  auto ret = AddVarConst(ast.logger(), ast.id(), std::move(type),
-                         std::move(init), true);
-  if (!ret) return nullptr;
-  ast.set_ast_type(std::move(ret));
-  return MakeVoid();
-}
-
-TypePtr Analyzer::AnalyzeOn(LetElemAST &ast) {
-  // try to get constant type and initializer type
-  TypePtr type, init;
-  if (ast.type()) {
-    type = ast.type()->SemaAnalyze(*this);
-    if (!type) return nullptr;
+  // check if is ill-formed
+  if (last_prop_ == Property::Public || last_prop_ == Property::Extern) {
+    if (!type) {
+      return LogError(log, "'public' definitions must "
+                      "specify type explicitly");
+    }
   }
-  if (ast.init()) {
-    init = ast.init()->SemaAnalyze(*this);
-    if (!init) return nullptr;
+  else if ((ast.is_var() && !type && !init) || (!ast.is_var() && !init)) {
+    return LogError(log, "initializer required");
   }
-  // add symbol to environment
-  auto ret = AddVarConst(ast.logger(), ast.id(), std::move(type),
-                         std::move(init), false);
-  if (!ret) return nullptr;
-  ast.set_ast_type(std::move(ret));
+  // check if is defined
+  if (symbols_->GetItem(id, false)) {
+    return LogError(log, "identifier has already been defined", id);
+  }
+  // check types
+  TypePtr sym_type;
+  if (type) {
+    assert(!type->IsRightValue());
+    // check if is compatible
+    if (init && !type->IsIdentical(init)) {
+      return LogError(log, "type mismatch when initializing", id);
+    }
+    // check for reference types
+    if (type->IsReference()) {
+      if (!init) {
+        return LogError(log, "cannot define a reference "
+                        "without initialization", id);
+      }
+      if (init->IsRightValue()) {
+        return LogError(log, "reference cannot be initialized "
+                        "with a right value", id);
+      }
+      if (init->IsConst() && !type->GetDerefedType()->IsConst()) {
+        return LogError(log, "variable reference cannot be initialized "
+                        "with a constant", id);
+      }
+    }
+    sym_type = std::move(type);
+  }
+  else {
+    // check if can be deduced
+    if (init->IsVoid() || init->IsNull()) {
+      return LogError(log, "initializing with invalid type", id);
+    }
+    // cast to left value type
+    sym_type = std::move(init);
+    if (sym_type->IsRightValue()) sym_type = sym_type->GetValueType(false);
+  }
+  // add symbol info
+  if (ast.is_var()) {
+    if (sym_type->IsConst()) sym_type = sym_type->GetDeconstedType();
+  }
+  else if (!sym_type->IsConst()) {
+    sym_type = std::make_shared<ConstType>(std::move(sym_type));
+  }
+  symbols_->AddItem(id, sym_type);
+  ast.set_ast_type(std::move(sym_type));
   return MakeVoid();
 }
 

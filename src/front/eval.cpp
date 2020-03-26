@@ -191,10 +191,6 @@ xstl::Guard Evaluator::NewEnv() {
   });
 }
 
-std::optional<EvalNum> Evaluator::EvalOn(PropertyAST &ast) {
-  return {};
-}
-
 std::optional<EvalNum> Evaluator::EvalOn(VarLetDefAST &ast) {
   for (const auto &i : ast.defs()) i->Eval(*this);
   return {};
@@ -231,26 +227,15 @@ std::optional<EvalNum> Evaluator::EvalOn(ImportAST &ast) {
   return {};
 }
 
-std::optional<EvalNum> Evaluator::EvalOn(VarElemAST &ast) {
-  // do not evaluate reference
-  if (ast.ast_type()->IsReference()) return {};
-  if (ast.init()) {
-    // evaluate initial value
-    auto val = ast.init()->Eval(*this);
-    // update AST
-    if (val) ast.set_init(MakeAST(*val, ast.init()));
-  }
-  return {};
-}
-
-std::optional<EvalNum> Evaluator::EvalOn(LetElemAST &ast) {
+std::optional<EvalNum> Evaluator::EvalOn(VarLetElemAST &ast) {
   // do not evaluate reference
   if (ast.ast_type()->IsReference()) return {};
   // evaluate initial value
+  if (!ast.init()) return {};
   auto val = ast.init()->Eval(*this);
   if (!val) return {};
   // add to environment
-  values_->AddItem(ast.id(), val);
+  if (!ast.is_var()) values_->AddItem(ast.id(), val);
   // update AST
   ast.set_init(MakeAST(*val, ast.init()));
   return {};

@@ -29,7 +29,6 @@ class Analyzer {
     in_loop_ = 0;
   }
 
-  define::TypePtr AnalyzeOn(define::PropertyAST &ast);
   define::TypePtr AnalyzeOn(define::VarLetDefAST &ast);
   define::TypePtr AnalyzeOn(define::FunDefAST &ast);
   define::TypePtr AnalyzeOn(define::DeclareAST &ast);
@@ -37,8 +36,7 @@ class Analyzer {
   define::TypePtr AnalyzeOn(define::StructAST &ast);
   define::TypePtr AnalyzeOn(define::EnumAST &ast);
   define::TypePtr AnalyzeOn(define::ImportAST &ast);
-  define::TypePtr AnalyzeOn(define::VarElemAST &ast);
-  define::TypePtr AnalyzeOn(define::LetElemAST &ast);
+  define::TypePtr AnalyzeOn(define::VarLetElemAST &ast);
   define::TypePtr AnalyzeOn(define::ArgElemAST &ast);
   define::TypePtr AnalyzeOn(define::StructElemAST &ast);
   define::TypePtr AnalyzeOn(define::EnumElemAST &ast);
@@ -85,10 +83,6 @@ class Analyzer {
   // check and add user type
   bool AddUserType(const Logger &log, const std::string &id,
                    define::TypePtr type);
-  // check and add variables/constants
-  define::TypePtr AddVarConst(const Logger &log, const std::string &id,
-                              define::TypePtr type, define::TypePtr init,
-                              bool is_var);
   // find function type in current environment
   // call 'id_setter' using function name
   // print error message if not found
@@ -109,8 +103,6 @@ class Analyzer {
   // to mangled function name, if there is multiple overloaded functions,
   // the specific item with the original function name will be removed
   define::FuncMapPtr funcs_;
-  // used when analyzing properties
-  define::PropertyAST::Property last_prop_;
   // used when analyzing functions
   define::TypePtr cur_ret_;
   // used when analyzing structures
@@ -118,6 +110,8 @@ class Analyzer {
   // used when analyzing enumerations
   define::TypePtr last_enum_type_;
   std::string last_enum_elem_name_;
+  // used when analyzing var/let definitions
+  define::Property last_prop_;
   // used when analyzing 'when' statements
   define::TypePtr last_when_expr_type_;
   // used when analyzing while loop & for loop

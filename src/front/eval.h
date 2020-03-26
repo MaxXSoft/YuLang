@@ -21,7 +21,6 @@ class Evaluator {
     enum_values_ = define::MakeEnumEnv();
   }
 
-  std::optional<define::EvalNum> EvalOn(define::PropertyAST &ast);
   std::optional<define::EvalNum> EvalOn(define::VarLetDefAST &ast);
   std::optional<define::EvalNum> EvalOn(define::FunDefAST &ast);
   std::optional<define::EvalNum> EvalOn(define::DeclareAST &ast);
@@ -29,8 +28,7 @@ class Evaluator {
   std::optional<define::EvalNum> EvalOn(define::StructAST &ast);
   std::optional<define::EvalNum> EvalOn(define::EnumAST &ast);
   std::optional<define::EvalNum> EvalOn(define::ImportAST &ast);
-  std::optional<define::EvalNum> EvalOn(define::VarElemAST &ast);
-  std::optional<define::EvalNum> EvalOn(define::LetElemAST &ast);
+  std::optional<define::EvalNum> EvalOn(define::VarLetElemAST &ast);
   std::optional<define::EvalNum> EvalOn(define::ArgElemAST &ast);
   std::optional<define::EvalNum> EvalOn(define::StructElemAST &ast);
   std::optional<define::EvalNum> EvalOn(define::EnumElemAST &ast);
