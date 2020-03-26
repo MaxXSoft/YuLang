@@ -654,7 +654,7 @@ TypePtr Analyzer::AnalyzeOn(BinaryAST &ast) {
     }
     case Operator::AssAdd: case Operator::AssSub: {
       // pointer operation
-      if (lhs->IsPointer() && rhs->IsInteger()) {
+      if (lhs->IsPointer() && !lhs->IsConst() && rhs->IsInteger()) {
         ret = MakeVoid();
         break;
       }
@@ -662,7 +662,7 @@ TypePtr Analyzer::AnalyzeOn(BinaryAST &ast) {
     }
     case Operator::AssMul: case Operator::AssDiv: case Operator::AssMod: {
       // float binary operation
-      if (lhs->IsFloat() && lhs->IsIdentical(rhs)) {
+      if (lhs->IsFloat() && lhs->CanAccept(rhs)) {
         ret = MakeVoid();
         break;
       }
@@ -783,6 +783,7 @@ TypePtr Analyzer::AnalyzeOn(UnaryAST &ast) {
 TypePtr Analyzer::AnalyzeOn(IndexAST &ast) {
   // get type of expression
   auto expr = ast.expr()->SemaAnalyze(*this);
+  // TODO: why left value array?
   if (!expr || (!expr->IsPointer() &&
                 !(expr->IsArray() && !expr->IsRightValue()))) {
     return LogError(ast.expr()->logger(),
