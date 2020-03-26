@@ -1,166 +1,166 @@
 #include "define/ast.h"
 
-#include "back/irbuilder.h"
+#include "back/codegen.h"
 
 using namespace yulang::define;
 using namespace yulang::back;
 
-IRPtr VarLetDefAST::GenerateIR(IRBuilder &builder) {
-  return builder.GenerateOn(*this);
+CodePtr VarLetDefAST::GenerateCode(CodeGen &gen) {
+  return gen.GenerateOn(*this);
 }
 
-IRPtr FunDefAST::GenerateIR(IRBuilder &builder) {
-  return builder.GenerateOn(*this);
+CodePtr FunDefAST::GenerateCode(CodeGen &gen) {
+  return gen.GenerateOn(*this);
 }
 
-IRPtr DeclareAST::GenerateIR(IRBuilder &builder) {
-  return builder.GenerateOn(*this);
+CodePtr DeclareAST::GenerateCode(CodeGen &gen) {
+  return gen.GenerateOn(*this);
 }
 
-IRPtr TypeAliasAST::GenerateIR(IRBuilder &builder) {
-  return builder.GenerateOn(*this);
+CodePtr TypeAliasAST::GenerateCode(CodeGen &gen) {
+  return gen.GenerateOn(*this);
 }
 
-IRPtr StructAST::GenerateIR(IRBuilder &builder) {
-  return builder.GenerateOn(*this);
+CodePtr StructAST::GenerateCode(CodeGen &gen) {
+  return gen.GenerateOn(*this);
 }
 
-IRPtr EnumAST::GenerateIR(IRBuilder &builder) {
-  return builder.GenerateOn(*this);
+CodePtr EnumAST::GenerateCode(CodeGen &gen) {
+  return gen.GenerateOn(*this);
 }
 
-IRPtr ImportAST::GenerateIR(IRBuilder &builder) {
-  return builder.GenerateOn(*this);
+CodePtr ImportAST::GenerateCode(CodeGen &gen) {
+  return gen.GenerateOn(*this);
 }
 
-IRPtr VarLetElemAST::GenerateIR(IRBuilder &builder) {
-  return builder.GenerateOn(*this);
+CodePtr VarLetElemAST::GenerateCode(CodeGen &gen) {
+  return gen.GenerateOn(*this);
 }
 
-IRPtr ArgElemAST::GenerateIR(IRBuilder &builder) {
-  return builder.GenerateOn(*this);
+CodePtr ArgElemAST::GenerateCode(CodeGen &gen) {
+  return gen.GenerateOn(*this);
 }
 
-IRPtr StructElemAST::GenerateIR(IRBuilder &builder) {
-  return builder.GenerateOn(*this);
+CodePtr StructElemAST::GenerateCode(CodeGen &gen) {
+  return gen.GenerateOn(*this);
 }
 
-IRPtr EnumElemAST::GenerateIR(IRBuilder &builder) {
-  return builder.GenerateOn(*this);
+CodePtr EnumElemAST::GenerateCode(CodeGen &gen) {
+  return gen.GenerateOn(*this);
 }
 
-IRPtr BlockAST::GenerateIR(IRBuilder &builder) {
-  return builder.GenerateOn(*this);
+CodePtr BlockAST::GenerateCode(CodeGen &gen) {
+  return gen.GenerateOn(*this);
 }
 
-IRPtr IfAST::GenerateIR(IRBuilder &builder) {
-  return builder.GenerateOn(*this);
+CodePtr IfAST::GenerateCode(CodeGen &gen) {
+  return gen.GenerateOn(*this);
 }
 
-IRPtr WhenAST::GenerateIR(IRBuilder &builder) {
-  return builder.GenerateOn(*this);
+CodePtr WhenAST::GenerateCode(CodeGen &gen) {
+  return gen.GenerateOn(*this);
 }
 
-IRPtr WhileAST::GenerateIR(IRBuilder &builder) {
-  return builder.GenerateOn(*this);
+CodePtr WhileAST::GenerateCode(CodeGen &gen) {
+  return gen.GenerateOn(*this);
 }
 
-IRPtr ForInAST::GenerateIR(IRBuilder &builder) {
-  return builder.GenerateOn(*this);
+CodePtr ForInAST::GenerateCode(CodeGen &gen) {
+  return gen.GenerateOn(*this);
 }
 
-IRPtr AsmAST::GenerateIR(IRBuilder &builder) {
-  return builder.GenerateOn(*this);
+CodePtr AsmAST::GenerateCode(CodeGen &gen) {
+  return gen.GenerateOn(*this);
 }
 
-IRPtr ControlAST::GenerateIR(IRBuilder &builder) {
-  return builder.GenerateOn(*this);
+CodePtr ControlAST::GenerateCode(CodeGen &gen) {
+  return gen.GenerateOn(*this);
 }
 
-IRPtr WhenElemAST::GenerateIR(IRBuilder &builder) {
-  return builder.GenerateOn(*this);
+CodePtr WhenElemAST::GenerateCode(CodeGen &gen) {
+  return gen.GenerateOn(*this);
 }
 
-IRPtr BinaryAST::GenerateIR(IRBuilder &builder) {
-  return builder.GenerateOn(*this);
+CodePtr BinaryAST::GenerateCode(CodeGen &gen) {
+  return gen.GenerateOn(*this);
 }
 
-IRPtr AccessAST::GenerateIR(IRBuilder &builder) {
-  return builder.GenerateOn(*this);
+CodePtr AccessAST::GenerateCode(CodeGen &gen) {
+  return gen.GenerateOn(*this);
 }
 
-IRPtr CastAST::GenerateIR(IRBuilder &builder) {
-  return builder.GenerateOn(*this);
+CodePtr CastAST::GenerateCode(CodeGen &gen) {
+  return gen.GenerateOn(*this);
 }
 
-IRPtr UnaryAST::GenerateIR(IRBuilder &builder) {
-  return builder.GenerateOn(*this);
+CodePtr UnaryAST::GenerateCode(CodeGen &gen) {
+  return gen.GenerateOn(*this);
 }
 
-IRPtr IndexAST::GenerateIR(IRBuilder &builder) {
-  return builder.GenerateOn(*this);
+CodePtr IndexAST::GenerateCode(CodeGen &gen) {
+  return gen.GenerateOn(*this);
 }
 
-IRPtr FunCallAST::GenerateIR(IRBuilder &builder) {
-  return builder.GenerateOn(*this);
+CodePtr FunCallAST::GenerateCode(CodeGen &gen) {
+  return gen.GenerateOn(*this);
 }
 
-IRPtr IntAST::GenerateIR(IRBuilder &builder) {
-  return builder.GenerateOn(*this);
+CodePtr IntAST::GenerateCode(CodeGen &gen) {
+  return gen.GenerateOn(*this);
 }
 
-IRPtr FloatAST::GenerateIR(IRBuilder &builder) {
-  return builder.GenerateOn(*this);
+CodePtr FloatAST::GenerateCode(CodeGen &gen) {
+  return gen.GenerateOn(*this);
 }
 
-IRPtr CharAST::GenerateIR(IRBuilder &builder) {
-  return builder.GenerateOn(*this);
+CodePtr CharAST::GenerateCode(CodeGen &gen) {
+  return gen.GenerateOn(*this);
 }
 
-IRPtr IdAST::GenerateIR(IRBuilder &builder) {
-  return builder.GenerateOn(*this);
+CodePtr IdAST::GenerateCode(CodeGen &gen) {
+  return gen.GenerateOn(*this);
 }
 
-IRPtr StringAST::GenerateIR(IRBuilder &builder) {
-  return builder.GenerateOn(*this);
+CodePtr StringAST::GenerateCode(CodeGen &gen) {
+  return gen.GenerateOn(*this);
 }
 
-IRPtr BoolAST::GenerateIR(IRBuilder &builder) {
-  return builder.GenerateOn(*this);
+CodePtr BoolAST::GenerateCode(CodeGen &gen) {
+  return gen.GenerateOn(*this);
 }
 
-IRPtr NullAST::GenerateIR(IRBuilder &builder) {
-  return builder.GenerateOn(*this);
+CodePtr NullAST::GenerateCode(CodeGen &gen) {
+  return gen.GenerateOn(*this);
 }
 
-IRPtr ValInitAST::GenerateIR(IRBuilder &builder) {
-  return builder.GenerateOn(*this);
+CodePtr ValInitAST::GenerateCode(CodeGen &gen) {
+  return gen.GenerateOn(*this);
 }
 
-IRPtr PrimTypeAST::GenerateIR(IRBuilder &builder) {
-  return builder.GenerateOn(*this);
+CodePtr PrimTypeAST::GenerateCode(CodeGen &gen) {
+  return gen.GenerateOn(*this);
 }
 
-IRPtr UserTypeAST::GenerateIR(IRBuilder &builder) {
-  return builder.GenerateOn(*this);
+CodePtr UserTypeAST::GenerateCode(CodeGen &gen) {
+  return gen.GenerateOn(*this);
 }
 
-IRPtr FuncTypeAST::GenerateIR(IRBuilder &builder) {
-  return builder.GenerateOn(*this);
+CodePtr FuncTypeAST::GenerateCode(CodeGen &gen) {
+  return gen.GenerateOn(*this);
 }
 
-IRPtr VolaTypeAST::GenerateIR(IRBuilder &builder) {
-  return builder.GenerateOn(*this);
+CodePtr VolaTypeAST::GenerateCode(CodeGen &gen) {
+  return gen.GenerateOn(*this);
 }
 
-IRPtr ArrayTypeAST::GenerateIR(IRBuilder &builder) {
-  return builder.GenerateOn(*this);
+CodePtr ArrayTypeAST::GenerateCode(CodeGen &gen) {
+  return gen.GenerateOn(*this);
 }
 
-IRPtr PointerTypeAST::GenerateIR(IRBuilder &builder) {
-  return builder.GenerateOn(*this);
+CodePtr PointerTypeAST::GenerateCode(CodeGen &gen) {
+  return gen.GenerateOn(*this);
 }
 
-IRPtr RefTypeAST::GenerateIR(IRBuilder &builder) {
-  return builder.GenerateOn(*this);
+CodePtr RefTypeAST::GenerateCode(CodeGen &gen) {
+  return gen.GenerateOn(*this);
 }
