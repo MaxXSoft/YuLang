@@ -1,21 +1,21 @@
 // definition of range
 public struct Range {
-  cur: i32,
-  end: i32,
-  step: i32,
+  __cur: i32,
+  __end: i32,
+  __step: i32,
 }
 
 
 // iterator method for 'for-in' loop
 public def next(this: Range var&): i32 {
-  let cur = this.cur
-  this.cur += this.step
+  let cur = this.__cur
+  this.__cur += this.__step
   cur
 }
 
 // iterator method for 'for-in' loop
 public def last(this: Range&): bool {
-  this.cur >= this.end
+  this.__cur >= this.__end
 }
 
 // generate range '[begin, end)'
@@ -30,5 +30,5 @@ public def to(begin: i32, end: i32): Range {
 
 // set the step of generated range
 public def step(this: Range, step: i32): Range {
-  [Range] {this.cur, this.end, step}
+  [Range] {this.__cur, this.__end, step}
 }

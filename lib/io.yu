@@ -2,7 +2,7 @@ import sys.unistd
 
 
 // definition of IO structure
-public struct IO { fd: i32 }
+public struct IO { __fd: i32 }
 
 // definition of three UNIX standard IO
 public let iin: IO = [IO] {FD_STDIN}
@@ -14,7 +14,7 @@ public let err: IO = [IO] {FD_STDERR}
 public def <<<(this: IO&, str: u8*): IO& {
   var i = 0
   while str[i] != '\0' {
-    write(this.fd, str + i, 1 as u32)
+    write(this.__fd, str + i, 1 as u32)
     i += 1
   }
   this
@@ -22,7 +22,7 @@ public def <<<(this: IO&, str: u8*): IO& {
 
 // write character to IO
 public def <<<(this: IO&, char: u8): IO& {
-  write(this.fd, &char, 1 as u32)
+  write(this.__fd, &char, 1 as u32)
   this
 }
 
@@ -40,7 +40,7 @@ public def <<<(this: IO&, uint: u32): IO& {
       n /= 10 as u32
     }
   }
-  write(this.fd, digits as u8* + i, (10 - i) as u32)
+  write(this.__fd, digits as u8* + i, (10 - i) as u32)
   this
 }
 
@@ -49,7 +49,7 @@ public def <<<(this: IO&, int: i32): IO& {
   var n = int
   if n < 0 {
     let minus = '-'
-    write(this.fd, &minus, 1 as u32)
+    write(this.__fd, &minus, 1 as u32)
     n = -n
   }
   this <<< n as u32
