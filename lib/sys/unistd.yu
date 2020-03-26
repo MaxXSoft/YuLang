@@ -1,7 +1,7 @@
 // standard file descriptors
-public let FD_STDIN   = 0
-public let FD_STDOUT  = 1
-public let FD_STDERR  = 2
+inline let FD_STDIN   = 0
+inline let FD_STDOUT  = 1
+inline let FD_STDERR  = 2
 
 // UNIX standard operations
 extern declare read:  (i32, u8 var*, u32): i32

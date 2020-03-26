@@ -5,9 +5,9 @@ import sys.unistd
 public struct IO { fd: i32 }
 
 // definition of three UNIX standard IO
-public let iin = [IO] {0}
-public let out = [IO] {1}
-public let err = [IO] {2}
+public let iin: IO = [IO] {FD_STDIN}
+public let out: IO = [IO] {FD_STDOUT}
+public let err: IO = [IO] {FD_STDERR}
 
 
 // write string to IO
