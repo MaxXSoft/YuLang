@@ -29,18 +29,17 @@ line      ::= stmt {";" stmt} [";"];
 stmt      ::= var_def   | let_def | fun_def | declare
             | ty_alias  | struct  | enum    | import;
 
-var_def   ::= visib "var" var_elem {"," var_elem};
-let_def   ::= visib "let" let_elem {"," let_elem};
+var_def   ::= property "var" var_elem {"," var_elem};
+let_def   ::= property "let" let_elem {"," let_elem};
 fun_def   ::= property "def" [id | bin_op | unary_op]
               "(" [arg_list] ")" [":" type] block;
 declare   ::= property "declare" ["var"] id ":" type;
-ty_alias  ::= visib "type" id "=" type;
-struct    ::= visib "struct" id "{" arg_list [","] "}";
-enum      ::= visib "enum" id [":" type] "{" enum_list "}";
-import    ::= visib "import" id {"." id};
+ty_alias  ::= property "type" id "=" type;
+struct    ::= property "struct" id "{" arg_list [","] "}";
+enum      ::= property "enum" id [":" type] "{" enum_list "}";
+import    ::= property "import" id {"." id};
 
-property  ::= ["public" | "extern"];
-visib     ::= ["public"];
+property  ::= ["public" | "extern" | "inline"]
 var_elem  ::= id [":" type] ["=" expr];
 let_elem  ::= id [":" type] "=" expr;
 arg_list  ::= id ":" type ["," arg_list];
