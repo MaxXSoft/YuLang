@@ -11,8 +11,7 @@ using namespace yulang::define;
 
 namespace {
 
-// type aliases
-using Prop = PropertyAST::Property;
+// type alias for unary operators
 using UnaryOp = UnaryAST::UnaryOp;
 
 // table of operator's precedence
@@ -41,41 +40,31 @@ ASTPtr Parser::ParseLine() {
   return stmt;
 }
 
-ASTPtr Parser::ParseVarDef(ASTPtr prop) {
+ASTPtr Parser::ParseVarLetDef(Property prop, bool is_var) {
   auto log = logger();
+  // check property
+  if (prop == Property::Extern) {
+    log.LogWarning("var/let definitions cannot be 'extern', "
+                   "try using 'public'");
+    prop = Property::Public;
+  }
+  // go to next token
   NextToken();
   if (!ExpectId()) return nullptr;
   // get definition list
   ASTPtrList defs;
   for (;;) {
-    auto elem = ParseVarElem();
+    auto elem = ParseVarLetElem(prop, is_var);
     if (!elem) return nullptr;
     defs.push_back(std::move(elem));
     // eat ','
     if (!IsTokenChar(',')) break;
     NextToken();
   }
-  return MakeAST<VarLetDefAST>(log, std::move(prop), std::move(defs));
+  return MakeAST<VarLetDefAST>(log, prop, std::move(defs));
 }
 
-ASTPtr Parser::ParseLetDef(ASTPtr prop) {
-  auto log = logger();
-  NextToken();
-  if (!ExpectId()) return nullptr;
-  // get definition list
-  ASTPtrList defs;
-  for (;;) {
-    auto elem = ParseLetElem();
-    if (!elem) return nullptr;
-    defs.push_back(std::move(elem));
-    // eat ','
-    if (!IsTokenChar(',')) break;
-    NextToken();
-  }
-  return MakeAST<VarLetDefAST>(log, std::move(prop), std::move(defs));
-}
-
-ASTPtr Parser::ParseFunDef(ASTPtr prop) {
+ASTPtr Parser::ParseFunDef(Property prop) {
   auto log = logger();
   NextToken();
   // get function name
@@ -115,16 +104,22 @@ ASTPtr Parser::ParseFunDef(ASTPtr prop) {
     if (!type) return nullptr;
   }
   // get function body
-  auto body = ParseBlock();
-  if (!body) return nullptr;
-  // do not store function body if is an imported function definition
-  if (in_import_) body = nullptr;
-  return MakeAST<FunDefAST>(log, std::move(prop), name, std::move(args),
+  ASTPtr body;
+  if (!in_import_ || prop == Property::Inline) {
+    body = ParseBlock();
+    if (!body) return nullptr;
+  }
+  return MakeAST<FunDefAST>(log, prop, name, std::move(args),
                             std::move(type), std::move(body));
 }
 
-ASTPtr Parser::ParseDeclare(ASTPtr prop) {
+ASTPtr Parser::ParseDeclare(Property prop) {
   auto log = logger();
+  // check property
+  if (prop == Property::Inline) {
+    log.LogWarning("declarations cannot be 'inline', try using 'public'");
+    prop = Property::Public;
+  }
   NextToken();
   // check if is variable declaration
   bool is_var = false;
@@ -140,12 +135,17 @@ ASTPtr Parser::ParseDeclare(ASTPtr prop) {
   if (!ExpectChar(':')) return nullptr;
   // get type
   auto type = ParseType();
-  return MakeAST<DeclareAST>(log, std::move(prop), is_var, id,
-                             std::move(type));
+  return MakeAST<DeclareAST>(log, prop, is_var, id, std::move(type));
 }
 
-ASTPtr Parser::ParseTypeAlias(ASTPtr prop) {
+ASTPtr Parser::ParseTypeAlias(Property prop) {
   auto log = logger();
+  // check property
+  if (prop == Property::Extern || prop == Property::Inline) {
+    log.LogWarning("type aliases cannot be 'extern' or 'inline', "
+                   "try using 'public'");
+    prop = Property::Public;
+  }
   NextToken();
   // get identifier
   if (!ExpectId()) return nullptr;
@@ -156,11 +156,17 @@ ASTPtr Parser::ParseTypeAlias(ASTPtr prop) {
   NextToken();
   // get type
   auto type = ParseType();
-  return MakeAST<TypeAliasAST>(log, std::move(prop), id, std::move(type));
+  return MakeAST<TypeAliasAST>(log, prop, id, std::move(type));
 }
 
-ASTPtr Parser::ParseStruct(ASTPtr prop) {
+ASTPtr Parser::ParseStruct(Property prop) {
   auto log = logger();
+  // check property
+  if (prop == Property::Extern || prop == Property::Inline) {
+    log.LogWarning("structure definitions cannot be 'extern' "
+                   "or 'inline', try using 'public'");
+    prop = Property::Public;
+  }
   NextToken();
   // get identifier
   if (!ExpectId()) return nullptr;
@@ -180,11 +186,17 @@ ASTPtr Parser::ParseStruct(ASTPtr prop) {
   }
   // check & eat '}'
   if (!ExpectChar('}')) return nullptr;
-  return MakeAST<StructAST>(log, std::move(prop), id, std::move(defs));
+  return MakeAST<StructAST>(log, prop, id, std::move(defs));
 }
 
-ASTPtr Parser::ParseEnum(ASTPtr prop) {
+ASTPtr Parser::ParseEnum(Property prop) {
   auto log = logger();
+  // check property
+  if (prop == Property::Extern || prop == Property::Inline) {
+    log.LogWarning("enumeration definitions cannot be 'extern' "
+                   "or 'inline', try using 'public'");
+    prop = Property::Public;
+  }
   NextToken();
   // get identifier
   if (!ExpectId()) return nullptr;
@@ -211,8 +223,7 @@ ASTPtr Parser::ParseEnum(ASTPtr prop) {
   }
   // check & eat '}'
   if (!ExpectChar('}')) return nullptr;
-  return MakeAST<EnumAST>(log, std::move(prop), id, std::move(type),
-                          std::move(defs));
+  return MakeAST<EnumAST>(log, prop, id, std::move(type), std::move(defs));
 }
 
 ASTPtr Parser::ParseImport() {
@@ -241,15 +252,14 @@ ASTPtr Parser::ParseImport() {
   auto last_lex = lex_man_.SetLexer(mod_path);
   assert(last_lex);
   NextToken();
-  // get all public/extern definitions
+  // get all public/extern/inline definitions
   ASTPtrList defs;
   ++in_import_;
   while (!logger().error_num() && cur_token_ != Token::End) {
     auto prop = GetProp();
-    if (prop != Prop::None) {
-      prop = prop == Prop::Extern ? Prop::Demangle : Prop::None;
+    if (prop != Property::None) {
       auto def = GetStatement(prop);
-      if (!def) return nullptr;
+      if (!def) return LogError("invalid statement");
       defs.push_back(std::move(def));
     }
     else {
@@ -264,7 +274,7 @@ ASTPtr Parser::ParseImport() {
   return MakeAST<ImportAST>(log, std::move(defs));
 }
 
-ASTPtr Parser::ParseVarElem() {
+ASTPtr Parser::ParseVarLetElem(Property prop, bool is_var) {
   auto log = logger();
   // get identifier
   if (!ExpectId()) return nullptr;
@@ -279,37 +289,14 @@ ASTPtr Parser::ParseVarElem() {
   }
   // get initialization expression
   ASTPtr init;
-  if (IsTokenOperator(Operator::Assign)) {
+  if ((!in_import_ || prop == Property::Inline) &&
+      IsTokenOperator(Operator::Assign)) {
     NextToken();
     init = ParseExpr();
     if (!init) return nullptr;
   }
-  // check type & init
-  if (!type && !init) return LogError("initializer required");
-  return MakeAST<VarElemAST>(log, id, std::move(type), std::move(init));
-}
-
-ASTPtr Parser::ParseLetElem() {
-  auto log = logger();
-  // get identifier
-  if (!ExpectId()) return nullptr;
-  auto id = lexer()->id_val();
-  NextToken();
-  // get type
-  ASTPtr type;
-  if (IsTokenChar(':')) {
-    NextToken();
-    type = ParseType();
-    if (!type) return nullptr;
-  }
-  // get initialization expression
-  if (!IsTokenOperator(Operator::Assign)) {
-    return LogError("expected initialization expression");
-  }
-  NextToken();
-  auto init = ParseExpr();
-  if (!init) return nullptr;
-  return MakeAST<LetElemAST>(log, id, std::move(type), std::move(init));
+  return MakeAST<VarLetElemAST>(log, id, std::move(type), std::move(init),
+                                is_var);
 }
 
 ASTPtr Parser::ParseArgElem() {
@@ -380,7 +367,7 @@ ASTPtr Parser::ParseBlockLine() {
 ASTPtr Parser::ParseBlockStatement() {
   // get normal statement
   if (!IsTokenKeyword(Keyword::Def)) {
-    auto stmt = GetStatement(Prop::None);
+    auto stmt = GetStatement(Property::None);
     if (stmt) return stmt;
   }
   // parse other in-block statements
@@ -953,47 +940,39 @@ ASTPtr Parser::ParseRef(bool is_var, ASTPtr type) {
   return ast;
 }
 
-Prop Parser::GetProp() {
+Property Parser::GetProp() {
   if (IsTokenKeyword(Keyword::Public)) {
     // eat 'public'
     NextToken();
-    return Prop::Public;
+    return Property::Public;
   }
   else if (IsTokenKeyword(Keyword::Extern)) {
     // eat 'extern'
     NextToken();
-    return Prop::Extern;
+    return Property::Extern;
   }
-  return Prop::None;
+  else if (IsTokenKeyword(Keyword::Inline)) {
+    // eat 'inline'
+    NextToken();
+    return Property::Inline;
+  }
+  return Property::None;
 }
 
-ASTPtr Parser::GetStatement(Prop prop) {
-  auto prop_ast = MakeAST<PropertyAST>(prop);
-  // parse definitions and declarations
+ASTPtr Parser::GetStatement(Property prop) {
   if (cur_token_ != Token::Keyword) return nullptr;
+  // parse statements by keyword
   switch (lexer()->key_val()) {
-    case Keyword::Var: return ParseVarDef(std::move(prop_ast));
-    case Keyword::Let: return ParseLetDef(std::move(prop_ast));
-    case Keyword::Def: return ParseFunDef(std::move(prop_ast));
-    case Keyword::Declare: return ParseDeclare(std::move(prop_ast));
-    default:;
+    case Keyword::Var: return ParseVarLetDef(prop, true);
+    case Keyword::Let: return ParseVarLetDef(prop, false);
+    case Keyword::Def: return ParseFunDef(prop);
+    case Keyword::Declare: return ParseDeclare(prop);
+    case Keyword::Type: return ParseTypeAlias(prop);
+    case Keyword::Struct: return ParseStruct(prop);
+    case Keyword::Enum: return ParseEnum(prop);
+    case Keyword::Import: return ParseImport();
+    default: return nullptr;
   }
-  // parse type, struct, enum and import
-  if (!IsTokenKeyword(Keyword::Def) && !IsTokenKeyword(Keyword::Declare)) {
-    if (prop == Prop::Extern || prop == Prop::Demangle) {
-      logger().LogWarning("only function definition and declaration"
-                          "can be 'extern', try using 'public'");
-      prop_ast = MakeAST<PropertyAST>(Prop::Public);
-    }
-    switch (lexer()->key_val()) {
-      case Keyword::Type: return ParseTypeAlias(std::move(prop_ast));
-      case Keyword::Struct: return ParseStruct(std::move(prop_ast));
-      case Keyword::Enum: return ParseEnum(std::move(prop_ast));
-      case Keyword::Import: return ParseImport();
-      default:;
-    }
-  }
-  return nullptr;
 }
 
 bool Parser::GetExprList(ASTPtrList &args) {

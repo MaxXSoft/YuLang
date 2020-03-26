@@ -97,17 +97,15 @@ class Parser {
 
   define::ASTPtr ParseLine();
 
-  define::ASTPtr ParseVarDef(define::ASTPtr prop);
-  define::ASTPtr ParseLetDef(define::ASTPtr prop);
-  define::ASTPtr ParseFunDef(define::ASTPtr prop);
-  define::ASTPtr ParseDeclare(define::ASTPtr prop);
-  define::ASTPtr ParseTypeAlias(define::ASTPtr prop);
-  define::ASTPtr ParseStruct(define::ASTPtr prop);
-  define::ASTPtr ParseEnum(define::ASTPtr prop);
+  define::ASTPtr ParseVarLetDef(define::Property prop, bool is_var);
+  define::ASTPtr ParseFunDef(define::Property prop);
+  define::ASTPtr ParseDeclare(define::Property prop);
+  define::ASTPtr ParseTypeAlias(define::Property prop);
+  define::ASTPtr ParseStruct(define::Property prop);
+  define::ASTPtr ParseEnum(define::Property prop);
   define::ASTPtr ParseImport();
 
-  define::ASTPtr ParseVarElem();
-  define::ASTPtr ParseLetElem();
+  define::ASTPtr ParseVarLetElem(define::Property prop, bool is_var);
   define::ASTPtr ParseArgElem();
   define::ASTPtr ParseStructElem();
   define::ASTPtr ParseEnumElem();
@@ -155,9 +153,9 @@ class Parser {
   define::ASTPtr ParseRef(bool is_var, define::ASTPtr type);
 
   // try to get property and goto next token
-  define::PropertyAST::Property GetProp();
+  define::Property GetProp();
   // parse statement, returns nullptr if failed
-  define::ASTPtr GetStatement(define::PropertyAST::Property prop);
+  define::ASTPtr GetStatement(define::Property prop);
   // parse expression list, returns false if failed
   bool GetExprList(define::ASTPtrList &args);
   // make sure current token is specific character and goto next token
@@ -176,7 +174,7 @@ class Parser {
   LexerManager &lex_man_;
   define::Token last_token_, cur_token_;
   bool ended_;
-  int in_import_;
+  unsigned int in_import_;
 };
 
 }  // namespace yulang::front
