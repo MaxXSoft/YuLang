@@ -12,8 +12,8 @@
   e(UInt8, "u8") e(UInt16, "u16") e(UInt32, "u32") e(UInt64, "u64") \
   e(Bool, "bool") e(Float32, "f32") e(Float64, "f64") \
   e(True, "true") e(False, "false") e(Null, "null") \
-  e(Import, "import") e(Public, "public") \
-  e(Extern, "extern") e(Volatile, "volatile") \
+  e(Import, "import") e(Public, "public") e(Extern, "extern") \
+  e(Volatile, "volatile") e(Inline, "inline") \
   e(If, "if") e(Else, "else") e(When, "when") e(While, "while") \
   e(For, "for") e(In, "in") \
   e(Break, "break") e(Continue, "continue") e(Return, "return")
