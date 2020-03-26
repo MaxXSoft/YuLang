@@ -776,14 +776,21 @@ CodePtr LLVMGen::GenerateOn(AsmAST &ast) {
 CodePtr LLVMGen::GenerateOn(ControlAST &ast) {
   switch (ast.type()) {
     case Keyword::Break: case Keyword::Continue: {
+      // create basic block
+      auto func = builder_.GetInsertBlock()->getParent();
+      auto block = llvm::BasicBlock::Create(context_, "", func);
       // generate target
       const auto &cur = break_cont_.top();
       auto target = ast.type() == Keyword::Break ? cur.first : cur.second;
       // generate branch
       builder_.CreateBr(target);
+      builder_.SetInsertPoint(block);
       break;
     }
     case Keyword::Return: {
+      // create basic block
+      auto func = builder_.GetInsertBlock()->getParent();
+      auto block = llvm::BasicBlock::Create(context_, "", func);
       // generate return value
       if (ast.expr()) {
         auto val = UseValue(ast.expr());
@@ -791,6 +798,7 @@ CodePtr LLVMGen::GenerateOn(ControlAST &ast) {
       }
       // generate branch
       builder_.CreateBr(func_exit_);
+      builder_.SetInsertPoint(block);
       break;
     }
     default: assert(false); break;
