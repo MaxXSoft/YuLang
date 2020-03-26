@@ -1,0 +1,39 @@
+import range
+import io
+import dynarray
+
+def addOne(val: i32): i32 {
+  val + 1
+}
+
+def add(l: i32, r: i32): i32 {
+  l + r
+}
+
+def print(this: DynArray&) {
+  out <<< "content of array: "
+  for i in this.iter() {
+    out <<< i <<< ' '
+  }
+  out <<< '\n'
+}
+
+extern def main(argc: i32, argv: u8**): i32 {
+  // initialize array
+  var arr = newDynArray()
+  for i in 0 until 40 {
+    arr.push(i)
+  }
+  // print array
+  arr.print()
+  // do something
+  out <<< "adding one...\n"
+  arr.map(addOne)
+  arr.print()
+  out <<< "sum: " <<< arr.reduce(add) <<< '\n'
+  out <<< "len: " <<< arr.len()
+  out <<< ", capacity: " <<< arr.capacity() <<< '\n'
+  // release
+  arr.del()
+  0
+}
