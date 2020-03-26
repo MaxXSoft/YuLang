@@ -6,10 +6,6 @@
 using namespace yulang::define;
 using namespace yulang::front;
 
-TypePtr PropertyAST::SemaAnalyze(Analyzer &ana) {
-  return ana.AnalyzeOn(*this);
-}
-
 TypePtr VarLetDefAST::SemaAnalyze(Analyzer &ana) {
   return ana.AnalyzeOn(*this);
 }
@@ -38,11 +34,7 @@ TypePtr ImportAST::SemaAnalyze(Analyzer &ana) {
   return ana.AnalyzeOn(*this);
 }
 
-TypePtr VarElemAST::SemaAnalyze(Analyzer &ana) {
-  return ana.AnalyzeOn(*this);
-}
-
-TypePtr LetElemAST::SemaAnalyze(Analyzer &ana) {
+TypePtr VarLetElemAST::SemaAnalyze(Analyzer &ana) {
   return ana.AnalyzeOn(*this);
 }
 
@@ -174,10 +166,6 @@ TypePtr RefTypeAST::SemaAnalyze(Analyzer &ana) {
   return ana.AnalyzeOn(*this);
 }
 
-std::optional<EvalNum> PropertyAST::Eval(Evaluator &eval) {
-  return eval.EvalOn(*this);
-}
-
 std::optional<EvalNum> VarLetDefAST::Eval(Evaluator &eval) {
   return eval.EvalOn(*this);
 }
@@ -206,11 +194,7 @@ std::optional<EvalNum> ImportAST::Eval(Evaluator &eval) {
   return eval.EvalOn(*this);
 }
 
-std::optional<EvalNum> VarElemAST::Eval(Evaluator &eval) {
-  return eval.EvalOn(*this);
-}
-
-std::optional<EvalNum> LetElemAST::Eval(Evaluator &eval) {
+std::optional<EvalNum> VarLetElemAST::Eval(Evaluator &eval) {
   return eval.EvalOn(*this);
 }
 
