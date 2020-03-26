@@ -26,20 +26,32 @@ public def <<<(this: IO&, char: u8): IO& {
   this
 }
 
-// write 32-bit integer to IO
-public def <<<(this: IO&, int: i32): IO& {
-  var digits = [u8[11]] {}, i = 10, n = int
+// write 32-bit unsigned integer to IO
+public def <<<(this: IO&, uint: u32): IO& {
+  var digits = [u8[11]] {}, i = 10, n = uint
   if !n {
     i = 9
     digits[9] = '0'
   }
   else {
-    while n != 0 {
+    while n != 0 as u32 {
       i -= 1
-      digits[i] = (n % 10) as u8 + '0'
-      n /= 10
+      digits[i] = (n % 10 as u32) as u8 + '0'
+      n /= 10 as u32
     }
   }
   write(this.fd, digits as u8* + i, (10 - i) as u32)
+  this
+}
+
+// write 32-bit signed integer to IO
+public def <<<(this: IO&, int: i32): IO& {
+  var n = int
+  if n < 0 {
+    let minus = '-'
+    write(this.fd, &minus, 1 as u32)
+    n = -n
+  }
+  this <<< n as u32
   this
 }
