@@ -3,10 +3,11 @@
 
 // reference: LLVM version 1.3
 
-#include <ostream>
 #include <memory>
 #include <vector>
+#include <ostream>
 #include <forward_list>
+#include <any>
 #include <cstddef>
 
 #include "define/type.h"
@@ -38,20 +39,24 @@ class Value {
 
   // getters
   const SSAPtr &address() const { return address_; }
-  const std::forward_list<Use *> &uses() const { return uses_; }
   const define::TypePtr &type() const { return type_; }
+  const std::any &metadata() const { return metadata_; }
+  const std::forward_list<Use *> &uses() const { return uses_; }
 
   // setters
   void set_address(const SSAPtr &address) { address_ = address; }
   void set_type(const define::TypePtr &type) { type_ = type; }
+  void set_metadata(const std::any &metadata) { metadata_ = metadata; }
 
  private:
-  // address value of current value
-  SSAPtr address_;
   // singly-linked list of 'Use'
   std::forward_list<Use *> uses_;
+  // address value of current value
+  SSAPtr address_;
   // type of current value
   define::TypePtr type_;
+  // metadata
+  std::any metadata_;
 };
 
 // bidirectional reference between SSA users and values
