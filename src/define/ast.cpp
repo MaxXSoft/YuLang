@@ -86,7 +86,7 @@ void DumpProperty(std::ostream &os, Property prop) {
 
 }  // namespace
 
-void VarLetDefAST::Dump(std::ostream &os) {
+void VarLetDefAST::Dump(std::ostream &os) const {
   for (const auto &i : defs_) {
     DumpProperty(os, prop_);
     os << indent;
@@ -94,7 +94,7 @@ void VarLetDefAST::Dump(std::ostream &os) {
   }
 }
 
-void FunDefAST::Dump(std::ostream &os) {
+void FunDefAST::Dump(std::ostream &os) const {
   DumpProperty(os, prop_);
   os << indent;
   if (type_) {
@@ -112,7 +112,7 @@ void FunDefAST::Dump(std::ostream &os) {
   if (body_) body_->Dump(os);
 }
 
-void DeclareAST::Dump(std::ostream &os) {
+void DeclareAST::Dump(std::ostream &os) const {
   DumpProperty(os, prop_);
   os << indent;
   if (!is_var_) os << "const ";
@@ -120,14 +120,14 @@ void DeclareAST::Dump(std::ostream &os) {
   os << ' ' << id_ << ';' << std::endl;
 }
 
-void TypeAliasAST::Dump(std::ostream &os) {
+void TypeAliasAST::Dump(std::ostream &os) const {
   DumpProperty(os, prop_);
   os << indent << "using " << id_ << " = ";
   type_->Dump(os);
   os << ';' << std::endl;
 }
 
-void StructAST::Dump(std::ostream &os) {
+void StructAST::Dump(std::ostream &os) const {
   DumpProperty(os, prop_);
   os << indent << "struct " << id_ << " {" << std::endl;
   {
@@ -141,7 +141,7 @@ void StructAST::Dump(std::ostream &os) {
   os << indent << "};" << std::endl;
 }
 
-void EnumAST::Dump(std::ostream &os) {
+void EnumAST::Dump(std::ostream &os) const {
   DumpProperty(os, prop_);
   os << indent << "enum class " << id_;
   if (type_) {
@@ -160,7 +160,7 @@ void EnumAST::Dump(std::ostream &os) {
   os << indent << "};" << std::endl;
 }
 
-void ImportAST::Dump(std::ostream &os) {
+void ImportAST::Dump(std::ostream &os) const {
   os << indent << "/*" << std::endl;
   {
     auto ind = Indent();
@@ -173,7 +173,7 @@ void ImportAST::Dump(std::ostream &os) {
   os << indent << "*/" << std::endl;
 }
 
-void VarLetElemAST::Dump(std::ostream &os) {
+void VarLetElemAST::Dump(std::ostream &os) const {
   if (type_) {
     type_->Dump(os);
   }
@@ -189,17 +189,17 @@ void VarLetElemAST::Dump(std::ostream &os) {
   os << ';' << std::endl;
 }
 
-void ArgElemAST::Dump(std::ostream &os) {
+void ArgElemAST::Dump(std::ostream &os) const {
   type_->Dump(os);
   os << ' ' << id_;
 }
 
-void StructElemAST::Dump(std::ostream &os) {
+void StructElemAST::Dump(std::ostream &os) const {
   type_->Dump(os);
   os << ' ' << id_;
 }
 
-void EnumElemAST::Dump(std::ostream &os) {
+void EnumElemAST::Dump(std::ostream &os) const {
   os << id_;
   if (expr_) {
     os << " = ";
@@ -208,7 +208,7 @@ void EnumElemAST::Dump(std::ostream &os) {
   }
 }
 
-void BlockAST::Dump(std::ostream &os) {
+void BlockAST::Dump(std::ostream &os) const {
   os << indent << '{' << std::endl;
   {
     auto ind = Indent();
@@ -217,7 +217,7 @@ void BlockAST::Dump(std::ostream &os) {
   os << indent << '}' << std::endl;
 }
 
-void IfAST::Dump(std::ostream &os) {
+void IfAST::Dump(std::ostream &os) const {
   os << indent << "if (";
   {
     auto inex = InExpr();
@@ -234,7 +234,7 @@ void IfAST::Dump(std::ostream &os) {
   in_expr = prev_inex;
 }
 
-void WhenAST::Dump(std::ostream &os) {
+void WhenAST::Dump(std::ostream &os) const {
   os << indent << "switch (";
   {
     auto inex = InExpr();
@@ -259,7 +259,7 @@ void WhenAST::Dump(std::ostream &os) {
   in_expr = prev_inex;
 }
 
-void WhileAST::Dump(std::ostream &os) {
+void WhileAST::Dump(std::ostream &os) const {
   os << indent << "while (";
   {
     auto inex = InExpr();
@@ -269,7 +269,7 @@ void WhileAST::Dump(std::ostream &os) {
   body_->Dump(os);
 }
 
-void ForInAST::Dump(std::ostream &os) {
+void ForInAST::Dump(std::ostream &os) const {
   os << indent << "for (const auto &" << id_ << " : ";
   {
     auto inex = InExpr();
@@ -279,13 +279,13 @@ void ForInAST::Dump(std::ostream &os) {
   body_->Dump(os);
 }
 
-void AsmAST::Dump(std::ostream &os) {
+void AsmAST::Dump(std::ostream &os) const {
   os << indent << "asm volatile(\"";
   for (const auto &c : asm_str_) ConvertChar(os, c, false);
   os << "\");" << std::endl;
 }
 
-void ControlAST::Dump(std::ostream &os) {
+void ControlAST::Dump(std::ostream &os) const {
   os << indent;
   switch (type_) {
     case Keyword::Break: os << "break"; break;
@@ -304,7 +304,7 @@ void ControlAST::Dump(std::ostream &os) {
   os << ';' << std::endl;
 }
 
-void WhenElemAST::Dump(std::ostream &os) {
+void WhenElemAST::Dump(std::ostream &os) const {
   for (const auto &i : conds_) {
     os << indent << "case ";
     auto inex = InExpr();
@@ -316,7 +316,7 @@ void WhenElemAST::Dump(std::ostream &os) {
   os << indent << "break;" << std::endl;
 }
 
-void BinaryAST::Dump(std::ostream &os) {
+void BinaryAST::Dump(std::ostream &os) const {
   os << indent;
   if (in_expr) os << '(';
   {
@@ -335,13 +335,13 @@ void BinaryAST::Dump(std::ostream &os) {
   }
 }
 
-void AccessAST::Dump(std::ostream &os) {
+void AccessAST::Dump(std::ostream &os) const {
   auto inex = InExpr();
   expr_->Dump(os);
   os << '.' << id_;
 }
 
-void CastAST::Dump(std::ostream &os) {
+void CastAST::Dump(std::ostream &os) const {
   auto inex = InExpr(os);
   os << '(';
   type_->Dump(os);
@@ -349,7 +349,7 @@ void CastAST::Dump(std::ostream &os) {
   expr_->Dump(os);
 }
 
-void UnaryAST::Dump(std::ostream &os) {
+void UnaryAST::Dump(std::ostream &os) const {
   auto inex = InExpr(os);
   switch (op_) {
     case UnaryOp::Pos:      os << '+';        break;
@@ -364,7 +364,7 @@ void UnaryAST::Dump(std::ostream &os) {
   opr_->Dump(os);
 }
 
-void IndexAST::Dump(std::ostream &os) {
+void IndexAST::Dump(std::ostream &os) const {
   auto inex = InExpr(os);
   expr_->Dump(os);
   os << '[';
@@ -372,7 +372,7 @@ void IndexAST::Dump(std::ostream &os) {
   os << ']';
 }
 
-void FunCallAST::Dump(std::ostream &os) {
+void FunCallAST::Dump(std::ostream &os) const {
   auto inex = InExpr(os);
   expr_->Dump(os);
   os << '(';
@@ -383,46 +383,46 @@ void FunCallAST::Dump(std::ostream &os) {
   os << ')';
 }
 
-void IntAST::Dump(std::ostream &os) {
+void IntAST::Dump(std::ostream &os) const {
   auto inex = InExpr(os);
   os << value_;
 }
 
-void FloatAST::Dump(std::ostream &os) {
+void FloatAST::Dump(std::ostream &os) const {
   auto inex = InExpr(os);
   os << value_;
 }
 
-void CharAST::Dump(std::ostream &os) {
+void CharAST::Dump(std::ostream &os) const {
   auto inex = InExpr(os);
   os << "'";
   ConvertChar(os, c_, true);
   os << "'";
 }
 
-void IdAST::Dump(std::ostream &os) {
+void IdAST::Dump(std::ostream &os) const {
   auto inex = InExpr(os);
   os << id_;
 }
 
-void StringAST::Dump(std::ostream &os) {
+void StringAST::Dump(std::ostream &os) const {
   auto inex = InExpr(os);
   os << '"';
   for (const auto &c : str_) ConvertChar(os, c, false);
   os << '"';
 }
 
-void BoolAST::Dump(std::ostream &os) {
+void BoolAST::Dump(std::ostream &os) const {
   auto inex = InExpr(os);
   os << std::boolalpha << value_;
 }
 
-void NullAST::Dump(std::ostream &os) {
+void NullAST::Dump(std::ostream &os) const {
   auto inex = InExpr(os);
   os << "nullptr";
 }
 
-void ValInitAST::Dump(std::ostream &os) {
+void ValInitAST::Dump(std::ostream &os) const {
   auto inex = InExpr(os);
   type_->Dump(os);
   os << " {";
@@ -433,7 +433,7 @@ void ValInitAST::Dump(std::ostream &os) {
   os << '}';
 }
 
-void PrimTypeAST::Dump(std::ostream &os) {
+void PrimTypeAST::Dump(std::ostream &os) const {
   switch (type_) {
     case Keyword::Int8:     os << "int8_t";   break;
     case Keyword::Int16:    os << "int16_t";  break;
@@ -450,11 +450,11 @@ void PrimTypeAST::Dump(std::ostream &os) {
   }
 }
 
-void UserTypeAST::Dump(std::ostream &os) {
+void UserTypeAST::Dump(std::ostream &os) const {
   os << id_;
 }
 
-void FuncTypeAST::Dump(std::ostream &os) {
+void FuncTypeAST::Dump(std::ostream &os) const {
   if (ret_) {
     ret_->Dump(os);
   }
@@ -469,12 +469,12 @@ void FuncTypeAST::Dump(std::ostream &os) {
   os << ')';
 }
 
-void VolaTypeAST::Dump(std::ostream &os) {
+void VolaTypeAST::Dump(std::ostream &os) const {
   type_->Dump(os);
   os << " volatile";
 }
 
-void ArrayTypeAST::Dump(std::ostream &os) {
+void ArrayTypeAST::Dump(std::ostream &os) const {
   base_->Dump(os);
   os << '[';
   {
@@ -484,13 +484,13 @@ void ArrayTypeAST::Dump(std::ostream &os) {
   os << ']';
 }
 
-void PointerTypeAST::Dump(std::ostream &os) {
+void PointerTypeAST::Dump(std::ostream &os) const {
   base_->Dump(os);
   os << '*';
   if (!is_var_) os << "const";
 }
 
-void RefTypeAST::Dump(std::ostream &os) {
+void RefTypeAST::Dump(std::ostream &os) const {
   base_->Dump(os);
   os << '&';
   if (!is_var_) os << "const";

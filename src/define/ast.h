@@ -45,7 +45,7 @@ class BaseAST {
   virtual bool IsLiteral() const = 0;
 
   // dump the content of AST to output stream
-  virtual void Dump(std::ostream &os) = 0;
+  virtual void Dump(std::ostream &os) const = 0;
   // run sematic analysis on current AST
   virtual TypePtr SemaAnalyze(front::Analyzer &ana) = 0;
   // evaluate AST (if possible)
@@ -80,7 +80,7 @@ class VarLetDefAST : public BaseAST {
   bool IsId() const override { return false; }
   bool IsLiteral() const override { return false; }
 
-  void Dump(std::ostream &os) override;
+  void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
   back::CodePtr GenerateCode(back::CodeGen &gen) override;
@@ -105,7 +105,7 @@ class FunDefAST : public BaseAST {
   bool IsId() const override { return false; }
   bool IsLiteral() const override { return false; }
 
-  void Dump(std::ostream &os) override;
+  void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
   back::CodePtr GenerateCode(back::CodeGen &gen) override;
@@ -137,7 +137,7 @@ class DeclareAST : public BaseAST {
   bool IsId() const override { return false; }
   bool IsLiteral() const override { return false; }
 
-  void Dump(std::ostream &os) override;
+  void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
   back::CodePtr GenerateCode(back::CodeGen &gen) override;
@@ -167,7 +167,7 @@ class TypeAliasAST : public BaseAST {
   bool IsId() const override { return false; }
   bool IsLiteral() const override { return false; }
 
-  void Dump(std::ostream &os) override;
+  void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
   back::CodePtr GenerateCode(back::CodeGen &gen) override;
@@ -192,7 +192,7 @@ class StructAST : public BaseAST {
   bool IsId() const override { return false; }
   bool IsLiteral() const override { return false; }
 
-  void Dump(std::ostream &os) override;
+  void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
   back::CodePtr GenerateCode(back::CodeGen &gen) override;
@@ -219,7 +219,7 @@ class EnumAST : public BaseAST {
   bool IsId() const override { return false; }
   bool IsLiteral() const override { return false; }
 
-  void Dump(std::ostream &os) override;
+  void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
   back::CodePtr GenerateCode(back::CodeGen &gen) override;
@@ -245,7 +245,7 @@ class ImportAST : public BaseAST {
   bool IsId() const override { return false; }
   bool IsLiteral() const override { return false; }
 
-  void Dump(std::ostream &os) override;
+  void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
   back::CodePtr GenerateCode(back::CodeGen &gen) override;
@@ -268,7 +268,7 @@ class VarLetElemAST : public BaseAST {
   bool IsId() const override { return false; }
   bool IsLiteral() const override { return false; }
 
-  void Dump(std::ostream &os) override;
+  void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
   back::CodePtr GenerateCode(back::CodeGen &gen) override;
@@ -297,7 +297,7 @@ class ArgElemAST : public BaseAST {
   bool IsId() const override { return false; }
   bool IsLiteral() const override { return false; }
 
-  void Dump(std::ostream &os) override;
+  void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
   back::CodePtr GenerateCode(back::CodeGen &gen) override;
@@ -320,7 +320,7 @@ class StructElemAST : public BaseAST {
   bool IsId() const override { return false; }
   bool IsLiteral() const override { return false; }
 
-  void Dump(std::ostream &os) override;
+  void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
   back::CodePtr GenerateCode(back::CodeGen &gen) override;
@@ -343,7 +343,7 @@ class EnumElemAST : public BaseAST {
   bool IsId() const override { return false; }
   bool IsLiteral() const override { return false; }
 
-  void Dump(std::ostream &os) override;
+  void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
   back::CodePtr GenerateCode(back::CodeGen &gen) override;
@@ -368,7 +368,7 @@ class BlockAST : public BaseAST {
   bool IsId() const override { return false; }
   bool IsLiteral() const override { return false; }
 
-  void Dump(std::ostream &os) override;
+  void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
   back::CodePtr GenerateCode(back::CodeGen &gen) override;
@@ -396,7 +396,7 @@ class IfAST : public BaseAST {
   bool IsId() const override { return false; }
   bool IsLiteral() const override { return false; }
 
-  void Dump(std::ostream &os) override;
+  void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
   back::CodePtr GenerateCode(back::CodeGen &gen) override;
@@ -427,7 +427,7 @@ class WhenAST : public BaseAST {
   bool IsId() const override { return false; }
   bool IsLiteral() const override { return false; }
 
-  void Dump(std::ostream &os) override;
+  void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
   back::CodePtr GenerateCode(back::CodeGen &gen) override;
@@ -457,7 +457,7 @@ class WhileAST : public BaseAST {
   bool IsId() const override { return false; }
   bool IsLiteral() const override { return false; }
 
-  void Dump(std::ostream &os) override;
+  void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
   back::CodePtr GenerateCode(back::CodeGen &gen) override;
@@ -483,7 +483,7 @@ class ForInAST : public BaseAST {
   bool IsId() const override { return false; }
   bool IsLiteral() const override { return false; }
 
-  void Dump(std::ostream &os) override;
+  void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
   back::CodePtr GenerateCode(back::CodeGen &gen) override;
@@ -517,7 +517,7 @@ class AsmAST : public BaseAST {
   bool IsId() const override { return false; }
   bool IsLiteral() const override { return false; }
 
-  void Dump(std::ostream &os) override;
+  void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
   back::CodePtr GenerateCode(back::CodeGen &gen) override;
@@ -538,7 +538,7 @@ class ControlAST : public BaseAST {
   bool IsId() const override { return false; }
   bool IsLiteral() const override { return false; }
 
-  void Dump(std::ostream &os) override;
+  void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
   back::CodePtr GenerateCode(back::CodeGen &gen) override;
@@ -564,7 +564,7 @@ class WhenElemAST : public BaseAST {
   bool IsId() const override { return false; }
   bool IsLiteral() const override { return false; }
 
-  void Dump(std::ostream &os) override;
+  void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
   back::CodePtr GenerateCode(back::CodeGen &gen) override;
@@ -594,7 +594,7 @@ class BinaryAST : public BaseAST {
   bool IsId() const override { return false; }
   bool IsLiteral() const override { return false; }
 
-  void Dump(std::ostream &os) override;
+  void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
   back::CodePtr GenerateCode(back::CodeGen &gen) override;
@@ -626,7 +626,7 @@ class AccessAST : public BaseAST {
   bool IsId() const override { return false; }
   bool IsLiteral() const override { return false; }
 
-  void Dump(std::ostream &os) override;
+  void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
   back::CodePtr GenerateCode(back::CodeGen &gen) override;
@@ -649,7 +649,7 @@ class CastAST : public BaseAST {
   bool IsId() const override { return false; }
   bool IsLiteral() const override { return false; }
 
-  void Dump(std::ostream &os) override;
+  void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
   back::CodePtr GenerateCode(back::CodeGen &gen) override;
@@ -676,7 +676,7 @@ class UnaryAST : public BaseAST {
   bool IsId() const override { return false; }
   bool IsLiteral() const override { return false; }
 
-  void Dump(std::ostream &os) override;
+  void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
   back::CodePtr GenerateCode(back::CodeGen &gen) override;
@@ -707,7 +707,7 @@ class IndexAST : public BaseAST {
   bool IsId() const override { return false; }
   bool IsLiteral() const override { return false; }
 
-  void Dump(std::ostream &os) override;
+  void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
   back::CodePtr GenerateCode(back::CodeGen &gen) override;
@@ -732,7 +732,7 @@ class FunCallAST : public BaseAST {
   bool IsId() const override { return false; }
   bool IsLiteral() const override { return false; }
 
-  void Dump(std::ostream &os) override;
+  void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
   back::CodePtr GenerateCode(back::CodeGen &gen) override;
@@ -760,7 +760,7 @@ class IntAST : public BaseAST {
   bool IsId() const override { return false; }
   bool IsLiteral() const override { return true; }
 
-  void Dump(std::ostream &os) override;
+  void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
   back::CodePtr GenerateCode(back::CodeGen &gen) override;
@@ -780,7 +780,7 @@ class FloatAST : public BaseAST {
   bool IsId() const override { return false; }
   bool IsLiteral() const override { return true; }
 
-  void Dump(std::ostream &os) override;
+  void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
   back::CodePtr GenerateCode(back::CodeGen &gen) override;
@@ -800,7 +800,7 @@ class CharAST : public BaseAST {
   bool IsId() const override { return false; }
   bool IsLiteral() const override { return true; }
 
-  void Dump(std::ostream &os) override;
+  void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
   back::CodePtr GenerateCode(back::CodeGen &gen) override;
@@ -820,7 +820,7 @@ class IdAST : public BaseAST {
   bool IsId() const override { return true; }
   bool IsLiteral() const override { return false; }
 
-  void Dump(std::ostream &os) override;
+  void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
   back::CodePtr GenerateCode(back::CodeGen &gen) override;
@@ -843,7 +843,7 @@ class StringAST : public BaseAST {
   bool IsId() const override { return false; }
   bool IsLiteral() const override { return true; }
 
-  void Dump(std::ostream &os) override;
+  void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
   back::CodePtr GenerateCode(back::CodeGen &gen) override;
@@ -863,7 +863,7 @@ class BoolAST : public BaseAST {
   bool IsId() const override { return false; }
   bool IsLiteral() const override { return true; }
 
-  void Dump(std::ostream &os) override;
+  void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
   back::CodePtr GenerateCode(back::CodeGen &gen) override;
@@ -883,7 +883,7 @@ class NullAST : public BaseAST {
   bool IsId() const override { return false; }
   bool IsLiteral() const override { return true; }
 
-  void Dump(std::ostream &os) override;
+  void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
   back::CodePtr GenerateCode(back::CodeGen &gen) override;
@@ -903,7 +903,7 @@ class ValInitAST : public BaseAST {
     return true;
   }
 
-  void Dump(std::ostream &os) override;
+  void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
   back::CodePtr GenerateCode(back::CodeGen &gen) override;
@@ -931,7 +931,7 @@ class PrimTypeAST : public BaseAST {
   bool IsId() const override { return false; }
   bool IsLiteral() const override { return false; }
 
-  void Dump(std::ostream &os) override;
+  void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
   back::CodePtr GenerateCode(back::CodeGen &gen) override;
@@ -951,7 +951,7 @@ class UserTypeAST : public BaseAST {
   bool IsId() const override { return false; }
   bool IsLiteral() const override { return false; }
 
-  void Dump(std::ostream &os) override;
+  void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
   back::CodePtr GenerateCode(back::CodeGen &gen) override;
@@ -972,7 +972,7 @@ class FuncTypeAST : public BaseAST {
   bool IsId() const override { return false; }
   bool IsLiteral() const override { return false; }
 
-  void Dump(std::ostream &os) override;
+  void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
   back::CodePtr GenerateCode(back::CodeGen &gen) override;
@@ -994,7 +994,7 @@ class VolaTypeAST : public BaseAST {
   bool IsId() const override { return false; }
   bool IsLiteral() const override { return false; }
 
-  void Dump(std::ostream &os) override;
+  void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
   back::CodePtr GenerateCode(back::CodeGen &gen) override;
@@ -1015,7 +1015,7 @@ class ArrayTypeAST : public BaseAST {
   bool IsId() const override { return false; }
   bool IsLiteral() const override { return false; }
 
-  void Dump(std::ostream &os) override;
+  void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
   back::CodePtr GenerateCode(back::CodeGen &gen) override;
@@ -1040,7 +1040,7 @@ class PointerTypeAST : public BaseAST {
   bool IsId() const override { return false; }
   bool IsLiteral() const override { return false; }
 
-  void Dump(std::ostream &os) override;
+  void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
   back::CodePtr GenerateCode(back::CodeGen &gen) override;
@@ -1063,7 +1063,7 @@ class RefTypeAST : public BaseAST {
   bool IsId() const override { return false; }
   bool IsLiteral() const override { return false; }
 
-  void Dump(std::ostream &os) override;
+  void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
   back::CodePtr GenerateCode(back::CodeGen &gen) override;
