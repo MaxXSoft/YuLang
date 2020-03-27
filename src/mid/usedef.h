@@ -11,15 +11,6 @@
 
 namespace yulang::mid {
 
-// interface of all SSAs
-class SSAInterface {
- public:
-  virtual ~SSAInterface() = default;
-
-  // dump the content of SSA value to output stream
-  virtual void Dump(std::ostream &os) = 0;
-};
-
 // forward declarations
 class Value;
 class User;
@@ -28,10 +19,13 @@ class Use;
 using SSAPtr = std::shared_ptr<Value>;
 using SSAPtrList = std::vector<SSAPtr>;
 
-// a SSA value
-class Value : public SSAInterface {
+// SSA value
+class Value {
  public:
-  Value() {}
+  virtual ~Value() = default;
+
+  // dump the content of SSA value to output stream
+  virtual void Dump(std::ostream &os) const = 0;
 
   // add a use reference to current value
   void AddUse(Use *use) { uses_.push_front(use); }
@@ -41,14 +35,22 @@ class Value : public SSAInterface {
   void ReplaceBy(const SSAPtr &value);
 
   // getters
+  // get parent value
+  const SSAPtr &parent() const { return parent_; }
+  // get list of uses
   const std::forward_list<Use *> &uses() const { return uses_; }
 
+  // setters
+  void set_parent(const SSAPtr &parent) { parent_ = parent; }
+
  private:
+  // parent value of current value
+  SSAPtr parent_;
   // singly-linked list of 'Use'
   std::forward_list<Use *> uses_;
 };
 
-// a bidirectional reference between SSA users and values
+// bidirectional reference between SSA users and values
 class Use {
  public:
   explicit Use(const SSAPtr &value, User *user)
@@ -86,37 +88,35 @@ class Use {
   User *user_;
 };
 
-// a SSA user which can use other values
+// SSA user which can use other values
 class User : public Value {
  public:
-  User() : Value() {}
-
   // preallocate some space for values
-  void Reserve(std::size_t size) { operands_.reserve(size); }
+  void Reserve(std::size_t size) { values_.reserve(size); }
   // add new value to current user
   void AddValue(const SSAPtr &value) {
-    operands_.push_back(Use(value, this));
+    values_.push_back(Use(value, this));
   }
 
   // access value in current user
-  Use &operator[](std::size_t pos) { return operands_[pos]; }
+  Use &operator[](std::size_t pos) { return values_[pos]; }
   // access value in current user (const)
-  const Use &operator[](std::size_t pos) const { return operands_[pos]; }
+  const Use &operator[](std::size_t pos) const { return values_[pos]; }
   // begin iterator
-  auto begin() { return operands_.begin(); }
-  auto begin() const { return operands_.begin(); }
+  auto begin() { return values_.begin(); }
+  auto begin() const { return values_.begin(); }
   // end iterator
-  auto end() { return operands_.end(); }
-  auto end() const { return operands_.end(); }
+  auto end() { return values_.end(); }
+  auto end() const { return values_.end(); }
 
   // getters
   // count of elements in current user
-  std::size_t size() const { return operands_.size(); }
+  std::size_t size() const { return values_.size(); }
   // return true if no value in current user
-  bool empty() const { return operands_.empty(); }
+  bool empty() const { return values_.empty(); }
 
  private:
-  std::vector<Use> operands_;
+  std::vector<Use> values_;
 };
 
 }  // namespace yulang::mid
