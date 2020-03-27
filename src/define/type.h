@@ -657,6 +657,16 @@ inline TypePtr MakeVoid() {
   return std::make_shared<PrimType>(PrimType::Type::Void, true);
 }
 
+// create a new pointer type
+inline TypePtr MakePointer(const TypePtr &type, bool is_right) {
+  return std::make_shared<PointerType>(type, is_right);
+}
+
+// create a new pointer type (right value)
+inline TypePtr MakePointer(const TypePtr &type) {
+  return std::make_shared<PointerType>(type, true);
+}
+
 // set the size of pointers
 void SetPointerSize(std::size_t size);
 
