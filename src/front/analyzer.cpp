@@ -762,9 +762,7 @@ TypePtr Analyzer::AnalyzeOn(UnaryAST &ast) {
     }
     case UnaryOp::AddrOf: {
       // left value unary operation
-      if (!opr->IsRightValue()) {
-        ret = std::make_shared<PointerType>(opr, true);
-      }
+      if (!opr->IsRightValue()) ret = MakePointer(opr);
       break;
     }
     case UnaryOp::SizeOf: {
@@ -878,7 +876,7 @@ TypePtr Analyzer::AnalyzeOn(IdAST &ast) {
 TypePtr Analyzer::AnalyzeOn(StringAST &ast) {
   auto u8t = MakePrimType(Keyword::UInt8, true);
   auto cu8t = std::make_shared<ConstType>(std::move(u8t));
-  auto strt = std::make_shared<PointerType>(std::move(cu8t), true);
+  auto strt = MakePointer(std::move(cu8t));
   return ast.set_ast_type(std::move(strt));
 }
 
@@ -976,7 +974,7 @@ TypePtr Analyzer::AnalyzeOn(PointerTypeAST &ast) {
   auto base = ast.base()->SemaAnalyze(*this);
   if (!base) return nullptr;
   if (!ast.is_var()) base = std::make_shared<ConstType>(std::move(base));
-  auto type = std::make_shared<PointerType>(std::move(base), false);
+  auto type = MakePointer(std::move(base), false);
   return ast.set_ast_type(std::move(type));
 }
 

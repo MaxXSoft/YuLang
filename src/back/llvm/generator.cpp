@@ -132,7 +132,7 @@ llvm::Value *LLVMGen::CreateSizeValue(std::size_t val) {
 }
 
 llvm::Value *LLVMGen::CreateSizeValue(llvm::Value *val,
-                                          const TypePtr &type) {
+                                      const TypePtr &type) {
   assert(type->IsInteger());
   auto ptr_size = GetPointerSize();
   // handle extending/truncating
@@ -158,15 +158,14 @@ llvm::AllocaInst *LLVMGen::CreateAlloca(const TypePtr &type) {
   return alloca;
 }
 
-llvm::LoadInst *LLVMGen::CreateLoad(llvm::Value *val,
-                                        const TypePtr &type) {
+llvm::LoadInst *LLVMGen::CreateLoad(llvm::Value *val, const TypePtr &type) {
   auto load = builder_.CreateLoad(val);
   load->setAlignment(type->GetAlignSize());
   return load;
 }
 
 void LLVMGen::CreateStore(llvm::Value *val, llvm::Value *dst,
-                              const TypePtr &type) {
+                          const TypePtr &type) {
   auto is_vola = type->IsVola();
   if (!type->IsReference() && type->IsStruct()) {
     // generate memory copy
@@ -184,8 +183,8 @@ void LLVMGen::CreateStore(llvm::Value *val, llvm::Value *dst,
 }
 
 llvm::Value *LLVMGen::CreateCall(llvm::Value *callee,
-                                     llvm::ArrayRef<llvm::Value *> args,
-                                     const TypePtr &ret) {
+                                 llvm::ArrayRef<llvm::Value *> args,
+                                 const TypePtr &ret) {
   if (IsTypeRawStruct(ret)) {
     std::vector<llvm::Value *> args_with_ret;
     // create alloca for return value
@@ -204,9 +203,8 @@ llvm::Value *LLVMGen::CreateCall(llvm::Value *callee,
 }
 
 llvm::Value *LLVMGen::CreateBinOp(Operator op, llvm::Value *lhs,
-                                      llvm::Value *rhs,
-                                      const TypePtr &lhs_ty,
-                                      const TypePtr &rhs_ty) {
+                                  llvm::Value *rhs, const TypePtr &lhs_ty,
+                                  const TypePtr &rhs_ty) {
   if (IsOperatorAssign(op)) {
     // get value
     auto val = rhs;
