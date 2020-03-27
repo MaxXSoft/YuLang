@@ -35,7 +35,7 @@ int main(int argc, const char *argv[]) {
   argp.AddOption<bool>("help", "h", "show this message", false);
   argp.AddOption<bool>("version", "v", "show version info", false);
   argp.AddOption<string>("outtype", "ot",
-                         "type of output (ast/yir/llvm/obj)", "llvm");
+                         "type of output (ast/yuir/llvm/obj)", "llvm");
   argp.AddOption<string>("output", "o", "output file, default to stdout",
                          "");
   argp.AddOption<string>("imppath", "I", "set directory of import path",
