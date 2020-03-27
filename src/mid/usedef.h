@@ -9,6 +9,8 @@
 #include <forward_list>
 #include <cstddef>
 
+#include "define/type.h"
+
 namespace yulang::mid {
 
 // forward declarations
@@ -35,19 +37,21 @@ class Value {
   void ReplaceBy(const SSAPtr &value);
 
   // getters
-  // get parent value
-  const SSAPtr &parent() const { return parent_; }
-  // get list of uses
+  const SSAPtr &address() const { return address_; }
   const std::forward_list<Use *> &uses() const { return uses_; }
+  const define::TypePtr &type() const { return type_; }
 
   // setters
-  void set_parent(const SSAPtr &parent) { parent_ = parent; }
+  void set_address(const SSAPtr &address) { address_ = address; }
+  void set_type(const define::TypePtr &type) { type_ = type; }
 
  private:
-  // parent value of current value
-  SSAPtr parent_;
+  // address value of current value
+  SSAPtr address_;
   // singly-linked list of 'Use'
   std::forward_list<Use *> uses_;
+  // type of current value
+  define::TypePtr type_;
 };
 
 // bidirectional reference between SSA users and values
