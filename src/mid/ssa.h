@@ -14,7 +14,7 @@ namespace yulang::mid {
 
 // linkage types
 enum class LinkageTypes {
-  Internal, Inline, Appending, External,
+  Internal, Inline, External, GlobalCtorDtor,
 };
 
 // load from allocation
@@ -255,6 +255,7 @@ class AllocaSSA : public Value {
 class BlockSSA : public Value {
  public:
   BlockSSA() { succs_.reserve(2); }
+  BlockSSA(const std::string &name) : name_(name) { succs_.reserve(2); }
 
   void Dump(std::ostream &os) const override;
 
@@ -266,11 +267,14 @@ class BlockSSA : public Value {
   void AddInst(const SSAPtr &inst) { insts_.push_back(inst); }
 
   // getters
+  const std::string &name() const { return name_; }
   const SSAPtrList &preds() const { return preds_; }
   const SSAPtrList &succs() const { return succs_; }
   const SSAPtrList &insts() const { return insts_; }
 
  private:
+  // block name
+  std::string name_;
   // predecessor and successor blocks
   SSAPtrList preds_, succs_;
   // instructions in current block
