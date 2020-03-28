@@ -154,7 +154,7 @@ TypePtr Analyzer::AnalyzeOn(FunDefAST &ast) {
   // add function type info to symbol environment
   auto type = std::make_shared<FuncType>(std::move(args), std::move(ret),
                                          true);
-  symbols_->outer()->AddItem(id, std::move(type));
+  symbols_->outer()->AddItem(id, type);
   // add function type info to function mapping table
   if (!funcs_->outer()->GetItem(org_id)) {
     funcs_->outer()->AddItem(org_id, id);
@@ -178,7 +178,8 @@ TypePtr Analyzer::AnalyzeOn(FunDefAST &ast) {
       }
     }
   }
-  return ast.set_ast_type(MakeVoid());
+  ast.set_ast_type(std::move(type));
+  return MakeVoid();
 }
 
 TypePtr Analyzer::AnalyzeOn(DeclareAST &ast) {
