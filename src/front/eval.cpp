@@ -66,6 +66,8 @@ inline ASTPtr MakeAST(const EvalNum &num, const ASTPtr &ast) {
   }
   else if (type->IsFloat()) {
     // generate float AST
+    // NOTE: there is no loss of precision due to floating point promotion
+    //  ref: section 4.6 from n3337
     if (type->GetSize() == 4) {
       auto val = std::get_if<float>(&num);
       assert(val);
