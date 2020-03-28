@@ -1,14 +1,14 @@
-#ifndef YULANG_MID_IRGEN_H_
-#define YULANG_MID_IRGEN_H_
+#ifndef YULANG_MID_IRBUILDER_H_
+#define YULANG_MID_IRBUILDER_H_
 
 #include "define/ast.h"
 #include "mid/usedef.h"
 
 namespace yulang::mid {
 
-class IRGen {
+class IRBuilder {
  public:
-  IRGen() {}
+  IRBuilder() {}
 
   SSAPtr GenerateOn(define::VarLetDefAST &ast);
   SSAPtr GenerateOn(define::FunDefAST &ast);
@@ -57,4 +57,4 @@ class IRGen {
 
 }  // namespace yulang::mid
 
-#endif  // YULANG_MID_IRGEN_H_
+#endif  // YULANG_MID_IRBUILDER_H_
