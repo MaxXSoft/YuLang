@@ -1,166 +1,166 @@
 #include "define/ast.h"
 
-#include "mid/irgen.h"
+#include "mid/irbuilder.h"
 
 using namespace yulang::define;
 using namespace yulang::mid;
 
-SSAPtr VarLetDefAST::GenerateIR(mid::IRGen &gen) {
-  return gen.GenerateOn(*this);
+SSAPtr VarLetDefAST::GenerateIR(IRBuilder &irb) {
+  return irb.GenerateOn(*this);
 }
 
-SSAPtr FunDefAST::GenerateIR(mid::IRGen &gen) {
-  return gen.GenerateOn(*this);
+SSAPtr FunDefAST::GenerateIR(IRBuilder &irb) {
+  return irb.GenerateOn(*this);
 }
 
-SSAPtr DeclareAST::GenerateIR(mid::IRGen &gen) {
-  return gen.GenerateOn(*this);
+SSAPtr DeclareAST::GenerateIR(IRBuilder &irb) {
+  return irb.GenerateOn(*this);
 }
 
-SSAPtr TypeAliasAST::GenerateIR(mid::IRGen &gen) {
-  return gen.GenerateOn(*this);
+SSAPtr TypeAliasAST::GenerateIR(IRBuilder &irb) {
+  return irb.GenerateOn(*this);
 }
 
-SSAPtr StructAST::GenerateIR(mid::IRGen &gen) {
-  return gen.GenerateOn(*this);
+SSAPtr StructAST::GenerateIR(IRBuilder &irb) {
+  return irb.GenerateOn(*this);
 }
 
-SSAPtr EnumAST::GenerateIR(mid::IRGen &gen) {
-  return gen.GenerateOn(*this);
+SSAPtr EnumAST::GenerateIR(IRBuilder &irb) {
+  return irb.GenerateOn(*this);
 }
 
-SSAPtr ImportAST::GenerateIR(mid::IRGen &gen) {
-  return gen.GenerateOn(*this);
+SSAPtr ImportAST::GenerateIR(IRBuilder &irb) {
+  return irb.GenerateOn(*this);
 }
 
-SSAPtr VarLetElemAST::GenerateIR(mid::IRGen &gen) {
-  return gen.GenerateOn(*this);
+SSAPtr VarLetElemAST::GenerateIR(IRBuilder &irb) {
+  return irb.GenerateOn(*this);
 }
 
-SSAPtr ArgElemAST::GenerateIR(mid::IRGen &gen) {
-  return gen.GenerateOn(*this);
+SSAPtr ArgElemAST::GenerateIR(IRBuilder &irb) {
+  return irb.GenerateOn(*this);
 }
 
-SSAPtr StructElemAST::GenerateIR(mid::IRGen &gen) {
-  return gen.GenerateOn(*this);
+SSAPtr StructElemAST::GenerateIR(IRBuilder &irb) {
+  return irb.GenerateOn(*this);
 }
 
-SSAPtr EnumElemAST::GenerateIR(mid::IRGen &gen) {
-  return gen.GenerateOn(*this);
+SSAPtr EnumElemAST::GenerateIR(IRBuilder &irb) {
+  return irb.GenerateOn(*this);
 }
 
-SSAPtr BlockAST::GenerateIR(mid::IRGen &gen) {
-  return gen.GenerateOn(*this);
+SSAPtr BlockAST::GenerateIR(IRBuilder &irb) {
+  return irb.GenerateOn(*this);
 }
 
-SSAPtr IfAST::GenerateIR(mid::IRGen &gen) {
-  return gen.GenerateOn(*this);
+SSAPtr IfAST::GenerateIR(IRBuilder &irb) {
+  return irb.GenerateOn(*this);
 }
 
-SSAPtr WhenAST::GenerateIR(mid::IRGen &gen) {
-  return gen.GenerateOn(*this);
+SSAPtr WhenAST::GenerateIR(IRBuilder &irb) {
+  return irb.GenerateOn(*this);
 }
 
-SSAPtr WhileAST::GenerateIR(mid::IRGen &gen) {
-  return gen.GenerateOn(*this);
+SSAPtr WhileAST::GenerateIR(IRBuilder &irb) {
+  return irb.GenerateOn(*this);
 }
 
-SSAPtr ForInAST::GenerateIR(mid::IRGen &gen) {
-  return gen.GenerateOn(*this);
+SSAPtr ForInAST::GenerateIR(IRBuilder &irb) {
+  return irb.GenerateOn(*this);
 }
 
-SSAPtr AsmAST::GenerateIR(mid::IRGen &gen) {
-  return gen.GenerateOn(*this);
+SSAPtr AsmAST::GenerateIR(IRBuilder &irb) {
+  return irb.GenerateOn(*this);
 }
 
-SSAPtr ControlAST::GenerateIR(mid::IRGen &gen) {
-  return gen.GenerateOn(*this);
+SSAPtr ControlAST::GenerateIR(IRBuilder &irb) {
+  return irb.GenerateOn(*this);
 }
 
-SSAPtr WhenElemAST::GenerateIR(mid::IRGen &gen) {
-  return gen.GenerateOn(*this);
+SSAPtr WhenElemAST::GenerateIR(IRBuilder &irb) {
+  return irb.GenerateOn(*this);
 }
 
-SSAPtr BinaryAST::GenerateIR(mid::IRGen &gen) {
-  return gen.GenerateOn(*this);
+SSAPtr BinaryAST::GenerateIR(IRBuilder &irb) {
+  return irb.GenerateOn(*this);
 }
 
-SSAPtr AccessAST::GenerateIR(mid::IRGen &gen) {
-  return gen.GenerateOn(*this);
+SSAPtr AccessAST::GenerateIR(IRBuilder &irb) {
+  return irb.GenerateOn(*this);
 }
 
-SSAPtr CastAST::GenerateIR(mid::IRGen &gen) {
-  return gen.GenerateOn(*this);
+SSAPtr CastAST::GenerateIR(IRBuilder &irb) {
+  return irb.GenerateOn(*this);
 }
 
-SSAPtr UnaryAST::GenerateIR(mid::IRGen &gen) {
-  return gen.GenerateOn(*this);
+SSAPtr UnaryAST::GenerateIR(IRBuilder &irb) {
+  return irb.GenerateOn(*this);
 }
 
-SSAPtr IndexAST::GenerateIR(mid::IRGen &gen) {
-  return gen.GenerateOn(*this);
+SSAPtr IndexAST::GenerateIR(IRBuilder &irb) {
+  return irb.GenerateOn(*this);
 }
 
-SSAPtr FunCallAST::GenerateIR(mid::IRGen &gen) {
-  return gen.GenerateOn(*this);
+SSAPtr FunCallAST::GenerateIR(IRBuilder &irb) {
+  return irb.GenerateOn(*this);
 }
 
-SSAPtr IntAST::GenerateIR(mid::IRGen &gen) {
-  return gen.GenerateOn(*this);
+SSAPtr IntAST::GenerateIR(IRBuilder &irb) {
+  return irb.GenerateOn(*this);
 }
 
-SSAPtr FloatAST::GenerateIR(mid::IRGen &gen) {
-  return gen.GenerateOn(*this);
+SSAPtr FloatAST::GenerateIR(IRBuilder &irb) {
+  return irb.GenerateOn(*this);
 }
 
-SSAPtr CharAST::GenerateIR(mid::IRGen &gen) {
-  return gen.GenerateOn(*this);
+SSAPtr CharAST::GenerateIR(IRBuilder &irb) {
+  return irb.GenerateOn(*this);
 }
 
-SSAPtr IdAST::GenerateIR(mid::IRGen &gen) {
-  return gen.GenerateOn(*this);
+SSAPtr IdAST::GenerateIR(IRBuilder &irb) {
+  return irb.GenerateOn(*this);
 }
 
-SSAPtr StringAST::GenerateIR(mid::IRGen &gen) {
-  return gen.GenerateOn(*this);
+SSAPtr StringAST::GenerateIR(IRBuilder &irb) {
+  return irb.GenerateOn(*this);
 }
 
-SSAPtr BoolAST::GenerateIR(mid::IRGen &gen) {
-  return gen.GenerateOn(*this);
+SSAPtr BoolAST::GenerateIR(IRBuilder &irb) {
+  return irb.GenerateOn(*this);
 }
 
-SSAPtr NullAST::GenerateIR(mid::IRGen &gen) {
-  return gen.GenerateOn(*this);
+SSAPtr NullAST::GenerateIR(IRBuilder &irb) {
+  return irb.GenerateOn(*this);
 }
 
-SSAPtr ValInitAST::GenerateIR(mid::IRGen &gen) {
-  return gen.GenerateOn(*this);
+SSAPtr ValInitAST::GenerateIR(IRBuilder &irb) {
+  return irb.GenerateOn(*this);
 }
 
-SSAPtr PrimTypeAST::GenerateIR(mid::IRGen &gen) {
-  return gen.GenerateOn(*this);
+SSAPtr PrimTypeAST::GenerateIR(IRBuilder &irb) {
+  return irb.GenerateOn(*this);
 }
 
-SSAPtr UserTypeAST::GenerateIR(mid::IRGen &gen) {
-  return gen.GenerateOn(*this);
+SSAPtr UserTypeAST::GenerateIR(IRBuilder &irb) {
+  return irb.GenerateOn(*this);
 }
 
-SSAPtr FuncTypeAST::GenerateIR(mid::IRGen &gen) {
-  return gen.GenerateOn(*this);
+SSAPtr FuncTypeAST::GenerateIR(IRBuilder &irb) {
+  return irb.GenerateOn(*this);
 }
 
-SSAPtr VolaTypeAST::GenerateIR(mid::IRGen &gen) {
-  return gen.GenerateOn(*this);
+SSAPtr VolaTypeAST::GenerateIR(IRBuilder &irb) {
+  return irb.GenerateOn(*this);
 }
 
-SSAPtr ArrayTypeAST::GenerateIR(mid::IRGen &gen) {
-  return gen.GenerateOn(*this);
+SSAPtr ArrayTypeAST::GenerateIR(IRBuilder &irb) {
+  return irb.GenerateOn(*this);
 }
 
-SSAPtr PointerTypeAST::GenerateIR(mid::IRGen &gen) {
-  return gen.GenerateOn(*this);
+SSAPtr PointerTypeAST::GenerateIR(IRBuilder &irb) {
+  return irb.GenerateOn(*this);
 }
 
-SSAPtr RefTypeAST::GenerateIR(mid::IRGen &gen) {
-  return gen.GenerateOn(*this);
+SSAPtr RefTypeAST::GenerateIR(IRBuilder &irb) {
+  return irb.GenerateOn(*this);
 }

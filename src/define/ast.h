@@ -24,7 +24,7 @@ class Evaluator;
 }  // namespace front
 
 namespace mid {
-class IRGen;
+class IRBuilder;
 }  // namespace mid
 
 namespace back {
@@ -56,7 +56,7 @@ class BaseAST {
   // evaluate AST (if possible)
   virtual std::optional<EvalNum> Eval(front::Evaluator &eval) = 0;
   // generate IR by current AST
-  virtual mid::SSAPtr GenerateIR(mid::IRGen &gen) = 0;
+  virtual mid::SSAPtr GenerateIR(mid::IRBuilder &irb) = 0;
   // generate code by current AST
   virtual back::CodePtr GenerateCode(back::CodeGen &gen) = 0;
 
@@ -90,7 +90,7 @@ class VarLetDefAST : public BaseAST {
   void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
-  mid::SSAPtr GenerateIR(mid::IRGen &gen) override;
+  mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
   back::CodePtr GenerateCode(back::CodeGen &gen) override;
 
   // getters
@@ -116,7 +116,7 @@ class FunDefAST : public BaseAST {
   void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
-  mid::SSAPtr GenerateIR(mid::IRGen &gen) override;
+  mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
   back::CodePtr GenerateCode(back::CodeGen &gen) override;
 
   // getters
@@ -149,7 +149,7 @@ class DeclareAST : public BaseAST {
   void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
-  mid::SSAPtr GenerateIR(mid::IRGen &gen) override;
+  mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
   back::CodePtr GenerateCode(back::CodeGen &gen) override;
 
   // getters
@@ -180,7 +180,7 @@ class TypeAliasAST : public BaseAST {
   void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
-  mid::SSAPtr GenerateIR(mid::IRGen &gen) override;
+  mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
   back::CodePtr GenerateCode(back::CodeGen &gen) override;
 
   // getters
@@ -206,7 +206,7 @@ class StructAST : public BaseAST {
   void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
-  mid::SSAPtr GenerateIR(mid::IRGen &gen) override;
+  mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
   back::CodePtr GenerateCode(back::CodeGen &gen) override;
 
   // getters
@@ -234,7 +234,7 @@ class EnumAST : public BaseAST {
   void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
-  mid::SSAPtr GenerateIR(mid::IRGen &gen) override;
+  mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
   back::CodePtr GenerateCode(back::CodeGen &gen) override;
 
   // getters
@@ -261,7 +261,7 @@ class ImportAST : public BaseAST {
   void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
-  mid::SSAPtr GenerateIR(mid::IRGen &gen) override;
+  mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
   back::CodePtr GenerateCode(back::CodeGen &gen) override;
 
   // getters
@@ -285,7 +285,7 @@ class VarLetElemAST : public BaseAST {
   void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
-  mid::SSAPtr GenerateIR(mid::IRGen &gen) override;
+  mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
   back::CodePtr GenerateCode(back::CodeGen &gen) override;
 
   // getters
@@ -315,7 +315,7 @@ class ArgElemAST : public BaseAST {
   void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
-  mid::SSAPtr GenerateIR(mid::IRGen &gen) override;
+  mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
   back::CodePtr GenerateCode(back::CodeGen &gen) override;
 
   // getters
@@ -339,7 +339,7 @@ class StructElemAST : public BaseAST {
   void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
-  mid::SSAPtr GenerateIR(mid::IRGen &gen) override;
+  mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
   back::CodePtr GenerateCode(back::CodeGen &gen) override;
 
   // getters
@@ -363,7 +363,7 @@ class EnumElemAST : public BaseAST {
   void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
-  mid::SSAPtr GenerateIR(mid::IRGen &gen) override;
+  mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
   back::CodePtr GenerateCode(back::CodeGen &gen) override;
 
   // getters
@@ -389,7 +389,7 @@ class BlockAST : public BaseAST {
   void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
-  mid::SSAPtr GenerateIR(mid::IRGen &gen) override;
+  mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
   back::CodePtr GenerateCode(back::CodeGen &gen) override;
 
   // getters
@@ -418,7 +418,7 @@ class IfAST : public BaseAST {
   void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
-  mid::SSAPtr GenerateIR(mid::IRGen &gen) override;
+  mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
   back::CodePtr GenerateCode(back::CodeGen &gen) override;
 
   // getters
@@ -450,7 +450,7 @@ class WhenAST : public BaseAST {
   void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
-  mid::SSAPtr GenerateIR(mid::IRGen &gen) override;
+  mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
   back::CodePtr GenerateCode(back::CodeGen &gen) override;
 
   // getters
@@ -481,7 +481,7 @@ class WhileAST : public BaseAST {
   void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
-  mid::SSAPtr GenerateIR(mid::IRGen &gen) override;
+  mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
   back::CodePtr GenerateCode(back::CodeGen &gen) override;
 
   // getters
@@ -508,7 +508,7 @@ class ForInAST : public BaseAST {
   void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
-  mid::SSAPtr GenerateIR(mid::IRGen &gen) override;
+  mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
   back::CodePtr GenerateCode(back::CodeGen &gen) override;
 
   // getters
@@ -543,7 +543,7 @@ class AsmAST : public BaseAST {
   void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
-  mid::SSAPtr GenerateIR(mid::IRGen &gen) override;
+  mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
   back::CodePtr GenerateCode(back::CodeGen &gen) override;
 
   // getters
@@ -565,7 +565,7 @@ class ControlAST : public BaseAST {
   void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
-  mid::SSAPtr GenerateIR(mid::IRGen &gen) override;
+  mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
   back::CodePtr GenerateCode(back::CodeGen &gen) override;
 
   // getters
@@ -592,7 +592,7 @@ class WhenElemAST : public BaseAST {
   void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
-  mid::SSAPtr GenerateIR(mid::IRGen &gen) override;
+  mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
   back::CodePtr GenerateCode(back::CodeGen &gen) override;
 
   // getters
@@ -623,7 +623,7 @@ class BinaryAST : public BaseAST {
   void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
-  mid::SSAPtr GenerateIR(mid::IRGen &gen) override;
+  mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
   back::CodePtr GenerateCode(back::CodeGen &gen) override;
 
   // getters
@@ -656,7 +656,7 @@ class AccessAST : public BaseAST {
   void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
-  mid::SSAPtr GenerateIR(mid::IRGen &gen) override;
+  mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
   back::CodePtr GenerateCode(back::CodeGen &gen) override;
 
   // getters
@@ -680,7 +680,7 @@ class CastAST : public BaseAST {
   void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
-  mid::SSAPtr GenerateIR(mid::IRGen &gen) override;
+  mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
   back::CodePtr GenerateCode(back::CodeGen &gen) override;
 
   // getters
@@ -708,7 +708,7 @@ class UnaryAST : public BaseAST {
   void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
-  mid::SSAPtr GenerateIR(mid::IRGen &gen) override;
+  mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
   back::CodePtr GenerateCode(back::CodeGen &gen) override;
 
   // getters
@@ -740,7 +740,7 @@ class IndexAST : public BaseAST {
   void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
-  mid::SSAPtr GenerateIR(mid::IRGen &gen) override;
+  mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
   back::CodePtr GenerateCode(back::CodeGen &gen) override;
 
   // getters
@@ -766,7 +766,7 @@ class FunCallAST : public BaseAST {
   void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
-  mid::SSAPtr GenerateIR(mid::IRGen &gen) override;
+  mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
   back::CodePtr GenerateCode(back::CodeGen &gen) override;
 
   // getters
@@ -795,7 +795,7 @@ class IntAST : public BaseAST {
   void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
-  mid::SSAPtr GenerateIR(mid::IRGen &gen) override;
+  mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
   back::CodePtr GenerateCode(back::CodeGen &gen) override;
 
   // getters
@@ -816,7 +816,7 @@ class FloatAST : public BaseAST {
   void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
-  mid::SSAPtr GenerateIR(mid::IRGen &gen) override;
+  mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
   back::CodePtr GenerateCode(back::CodeGen &gen) override;
 
   // getters
@@ -837,7 +837,7 @@ class CharAST : public BaseAST {
   void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
-  mid::SSAPtr GenerateIR(mid::IRGen &gen) override;
+  mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
   back::CodePtr GenerateCode(back::CodeGen &gen) override;
 
   // getters
@@ -858,7 +858,7 @@ class IdAST : public BaseAST {
   void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
-  mid::SSAPtr GenerateIR(mid::IRGen &gen) override;
+  mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
   back::CodePtr GenerateCode(back::CodeGen &gen) override;
 
   // getters
@@ -882,7 +882,7 @@ class StringAST : public BaseAST {
   void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
-  mid::SSAPtr GenerateIR(mid::IRGen &gen) override;
+  mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
   back::CodePtr GenerateCode(back::CodeGen &gen) override;
 
   // getters
@@ -903,7 +903,7 @@ class BoolAST : public BaseAST {
   void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
-  mid::SSAPtr GenerateIR(mid::IRGen &gen) override;
+  mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
   back::CodePtr GenerateCode(back::CodeGen &gen) override;
 
   // getters
@@ -924,7 +924,7 @@ class NullAST : public BaseAST {
   void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
-  mid::SSAPtr GenerateIR(mid::IRGen &gen) override;
+  mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
   back::CodePtr GenerateCode(back::CodeGen &gen) override;
 };
 
@@ -945,7 +945,7 @@ class ValInitAST : public BaseAST {
   void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
-  mid::SSAPtr GenerateIR(mid::IRGen &gen) override;
+  mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
   back::CodePtr GenerateCode(back::CodeGen &gen) override;
 
   // getters
@@ -974,7 +974,7 @@ class PrimTypeAST : public BaseAST {
   void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
-  mid::SSAPtr GenerateIR(mid::IRGen &gen) override;
+  mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
   back::CodePtr GenerateCode(back::CodeGen &gen) override;
 
   // getter
@@ -995,7 +995,7 @@ class UserTypeAST : public BaseAST {
   void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
-  mid::SSAPtr GenerateIR(mid::IRGen &gen) override;
+  mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
   back::CodePtr GenerateCode(back::CodeGen &gen) override;
 
   // getters
@@ -1017,7 +1017,7 @@ class FuncTypeAST : public BaseAST {
   void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
-  mid::SSAPtr GenerateIR(mid::IRGen &gen) override;
+  mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
   back::CodePtr GenerateCode(back::CodeGen &gen) override;
 
   // getters
@@ -1040,7 +1040,7 @@ class VolaTypeAST : public BaseAST {
   void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
-  mid::SSAPtr GenerateIR(mid::IRGen &gen) override;
+  mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
   back::CodePtr GenerateCode(back::CodeGen &gen) override;
 
   // getters
@@ -1062,7 +1062,7 @@ class ArrayTypeAST : public BaseAST {
   void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
-  mid::SSAPtr GenerateIR(mid::IRGen &gen) override;
+  mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
   back::CodePtr GenerateCode(back::CodeGen &gen) override;
 
   // getters
@@ -1088,7 +1088,7 @@ class PointerTypeAST : public BaseAST {
   void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
-  mid::SSAPtr GenerateIR(mid::IRGen &gen) override;
+  mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
   back::CodePtr GenerateCode(back::CodeGen &gen) override;
 
   // getters
@@ -1112,7 +1112,7 @@ class RefTypeAST : public BaseAST {
   void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
-  mid::SSAPtr GenerateIR(mid::IRGen &gen) override;
+  mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
   back::CodePtr GenerateCode(back::CodeGen &gen) override;
 
   // getters
