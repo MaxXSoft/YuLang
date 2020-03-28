@@ -99,31 +99,35 @@ class Use {
 class User : public Value {
  public:
   // preallocate some space for values
-  void Reserve(std::size_t size) { values_.reserve(size); }
+  void Reserve(std::size_t size) { uses_.reserve(size); }
   // add new value to current user
   void AddValue(const SSAPtr &value) {
-    values_.push_back(Use(value, this));
+    uses_.push_back(Use(value, this));
   }
 
   // access value in current user
-  Use &operator[](std::size_t pos) { return values_[pos]; }
+  Use &operator[](std::size_t pos) { return uses_[pos]; }
   // access value in current user (const)
-  const Use &operator[](std::size_t pos) const { return values_[pos]; }
+  const Use &operator[](std::size_t pos) const { return uses_[pos]; }
   // begin iterator
-  auto begin() { return values_.begin(); }
-  auto begin() const { return values_.begin(); }
+  auto begin() { return uses_.begin(); }
+  auto begin() const { return uses_.begin(); }
   // end iterator
-  auto end() { return values_.end(); }
-  auto end() const { return values_.end(); }
+  auto end() { return uses_.end(); }
+  auto end() const { return uses_.end(); }
 
   // getters
   // count of elements in current user
-  std::size_t size() const { return values_.size(); }
+  std::size_t size() const { return uses_.size(); }
   // return true if no value in current user
-  bool empty() const { return values_.empty(); }
+  bool empty() const { return uses_.empty(); }
+  // list of all uses
+  std::vector<Use> &uses() { return uses_; }
+  // constant list of all uses
+  const std::vector<Use> &uses() const { return uses_; }
 
  private:
-  std::vector<Use> values_;
+  std::vector<Use> uses_;
 };
 
 }  // namespace yulang::mid

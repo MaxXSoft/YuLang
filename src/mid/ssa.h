@@ -230,9 +230,13 @@ class GlobalVarSSA : public User {
 
   void Dump(std::ostream &os) const override;
 
+  // setters
+  void set_init(const SSAPtr &init) { uses()[0].set_value(init); }
+
   // getters
   LinkageTypes link() const { return link_; }
   const std::string &name() const { return name_; }
+  const SSAPtr &init() const { return uses()[0].value(); }
 
  private:
   LinkageTypes link_;
@@ -266,8 +270,12 @@ class BlockSSA : public Value {
   // add a new instruction
   void AddInst(const SSAPtr &inst) { insts_.push_back(inst); }
 
+  // setters
+  void set_parent(const SSAPtr &parent) { parent_ = parent; }
+
   // getters
   const std::string &name() const { return name_; }
+  const SSAPtr &parent() const { return parent_; }
   const SSAPtrList &preds() const { return preds_; }
   const SSAPtrList &succs() const { return succs_; }
   const SSAPtrList &insts() const { return insts_; }
@@ -275,6 +283,8 @@ class BlockSSA : public Value {
  private:
   // block name
   std::string name_;
+  // parent function
+  SSAPtr parent_;
   // predecessor and successor blocks
   SSAPtrList preds_, succs_;
   // instructions in current block
