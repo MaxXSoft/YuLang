@@ -29,6 +29,8 @@ class Value {
 
   // dump the content of SSA value to output stream
   virtual void Dump(std::ostream &os) const = 0;
+  // get address value of current value
+  virtual const SSAPtr &GetAddr() const { return nullptr; }
 
   // add a use reference to current value
   void AddUse(Use *use) { uses_.push_front(use); }
@@ -38,21 +40,17 @@ class Value {
   void ReplaceBy(const SSAPtr &value);
 
   // getters
-  const SSAPtr &address() const { return address_; }
   const define::TypePtr &type() const { return type_; }
   const std::any &metadata() const { return metadata_; }
   const std::forward_list<Use *> &uses() const { return uses_; }
 
   // setters
-  void set_address(const SSAPtr &address) { address_ = address; }
   void set_type(const define::TypePtr &type) { type_ = type; }
   void set_metadata(const std::any &metadata) { metadata_ = metadata; }
 
  private:
   // singly-linked list of 'Use'
   std::forward_list<Use *> uses_;
-  // address value of current value
-  SSAPtr address_;
   // type of current value
   define::TypePtr type_;
   // metadata
