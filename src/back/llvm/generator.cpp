@@ -768,7 +768,8 @@ CodePtr LLVMGen::GenerateOn(ForInAST &ast) {
 CodePtr LLVMGen::GenerateOn(AsmAST &ast) {
   auto type = llvm::FunctionType::get(builder_.getVoidTy(), false);
   auto asm_func = llvm::InlineAsm::get(type, ast.asm_str(), "", true);
-  return MakeLLVM(builder_.CreateCall(asm_func));
+  builder_.CreateCall(asm_func);
+  return nullptr;
 }
 
 CodePtr LLVMGen::GenerateOn(ControlAST &ast) {
