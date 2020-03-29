@@ -1,14 +1,20 @@
 #ifndef YULANG_MID_IRBUILDER_H_
 #define YULANG_MID_IRBUILDER_H_
 
+#include <stack>
+#include <utility>
+
 #include "define/ast.h"
 #include "mid/usedef.h"
+#include "mid/module.h"
+#include "xstl/guard.h"
+#include "xstl/nested.h"
 
 namespace yulang::mid {
 
 class IRBuilder {
  public:
-  IRBuilder() {}
+  IRBuilder() : vals_(xstl::MakeNestedMap<std::string, SSAPtr>()) {}
 
   SSAPtr GenerateOn(define::VarLetDefAST &ast);
   SSAPtr GenerateOn(define::FunDefAST &ast);
@@ -51,8 +57,33 @@ class IRBuilder {
   SSAPtr GenerateOn(define::PointerTypeAST &ast);
   SSAPtr GenerateOn(define::RefTypeAST &ast);
 
+  // getters
+  const Module &module() const { return module_; }
+
  private:
-  //
+  // pair for storing target block of break & continue
+  using BreakCont = std::pair<BlockPtr, BlockPtr>;
+
+  // switch to a new environment
+  xstl::Guard NewEnv();
+  // create binary operation
+  SSAPtr CreateBinOp(define::Operator op, const SSAPtr &lhs,
+                     const SSAPtr &rhs);
+
+  // module for storing IRs
+  Module module_;
+  // table of values
+  xstl::NestedMapPtr<std::string, SSAPtr> vals_;
+  // used when generating var/let definitions
+  define::Property last_prop_;
+  // used when generating function definitions
+  SSAPtr ret_val_;
+  BlockPtr func_exit_;
+  // used when generating when statement
+  BlockPtr when_end_;
+  SSAPtr when_expr_;
+  // used when generating loops
+  std::stack<BreakCont> break_cont_;
 };
 
 }  // namespace yulang::mid
