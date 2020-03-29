@@ -2,6 +2,7 @@
 #define YULANG_MID_SSA_H_
 
 #include <string>
+#include <vector>
 #include <cstddef>
 #include <cstdint>
 #include <cassert>
@@ -10,6 +11,15 @@
 #include "mid/usedef.h"
 
 namespace yulang::mid {
+
+// forward declarations
+class BlockSSA;
+class GlobalVarSSA;
+
+// type aliases
+using BlockPtr = std::shared_ptr<BlockSSA>;
+using BlockPtrList = std::vector<BlockPtr>;
+using GlobalVarPtr = std::shared_ptr<GlobalVarSSA>;
 
 // linkage types
 enum class LinkageTypes {
@@ -257,7 +267,7 @@ class AllocaSSA : public Value {
 // basic block
 class BlockSSA : public Value {
  public:
-  BlockSSA(const SSAPtr &parent, const std::string &name)
+  BlockSSA(const UserPtr &parent, const std::string &name)
       : parent_(parent), name_(name) {
     succs_.reserve(2);
   }
@@ -265,29 +275,26 @@ class BlockSSA : public Value {
   void Dump(std::ostream &os) const override;
 
   // add a new predecessor
-  void AddPred(const SSAPtr &pred) { preds_.push_back(pred); }
+  void AddPred(const BlockPtr &pred) { preds_.push_back(pred); }
   // add a new successor
-  void AddSucc(const SSAPtr &succ) { succs_.push_back(succ); }
+  void AddSucc(const BlockPtr &succ) { succs_.push_back(succ); }
   // add a new instruction
   void AddInst(const SSAPtr &inst) { insts_.push_back(inst); }
 
-  // setters
-  void set_parent(const SSAPtr &parent) { parent_ = parent; }
-
   // getters
   const std::string &name() const { return name_; }
-  const SSAPtr &parent() const { return parent_; }
-  const SSAPtrList &preds() const { return preds_; }
-  const SSAPtrList &succs() const { return succs_; }
+  const UserPtr &parent() const { return parent_; }
+  const BlockPtrList &preds() const { return preds_; }
+  const BlockPtrList &succs() const { return succs_; }
   const SSAPtrList &insts() const { return insts_; }
 
  private:
   // block name
   std::string name_;
   // parent function
-  SSAPtr parent_;
+  UserPtr parent_;
   // predecessor and successor blocks
-  SSAPtrList preds_, succs_;
+  BlockPtrList preds_, succs_;
   // instructions in current block
   SSAPtrList insts_;
 };
