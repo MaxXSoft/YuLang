@@ -270,6 +270,8 @@ class BlockSSA : public Value {
   BlockSSA(const UserPtr &parent, const std::string &name)
       : parent_(parent), name_(name) {
     succs_.reserve(2);
+    // assertion for type checking
+    assert(parent_ && parent_->type()->IsFunction());
   }
 
   void Dump(std::ostream &os) const override;
