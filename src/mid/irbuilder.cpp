@@ -115,7 +115,12 @@ SSAPtr IRBuilder::GenerateOn(FunDefAST &ast) {
   // emit 'exit' block
   module_.CreateJump(func_exit_);
   module_.SetInsertPoint(func_exit_);
-  module_.CreateReturn(ast.type() ? ret_val_ : nullptr);
+  if (ast.type()) {
+    module_.CreateReturn(module_.CreateLoad(ret_val_));
+  }
+  else {
+    module_.CreateReturn(nullptr);
+  }
   return nullptr;
 }
 
