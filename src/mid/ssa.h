@@ -257,8 +257,10 @@ class AllocaSSA : public Value {
 // basic block
 class BlockSSA : public Value {
  public:
-  BlockSSA() { succs_.reserve(2); }
-  BlockSSA(const std::string &name) : name_(name) { succs_.reserve(2); }
+  BlockSSA(const SSAPtr &parent, const std::string &name)
+      : parent_(parent), name_(name) {
+    succs_.reserve(2);
+  }
 
   void Dump(std::ostream &os) const override;
 
