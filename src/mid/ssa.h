@@ -2,7 +2,6 @@
 #define YULANG_MID_SSA_H_
 
 #include <string>
-#include <variant>
 #include <cstddef>
 #include <cstdint>
 #include <cassert>
@@ -55,7 +54,7 @@ class StoreSSA : public User {
 // operands: ptr, index
 class AccessSSA : public User {
  public:
-  enum class AccessType { Pointer, ArrOrStruct };
+  enum class AccessType { Pointer, Element };
 
   AccessSSA(AccessType acc_type, const SSAPtr &ptr, const SSAPtr &index)
       : acc_type_(acc_type) {
@@ -64,7 +63,7 @@ class AccessSSA : public User {
     AddValue(index);
     // assertions for type checking
     assert(ptr->type()->IsPointer());
-    assert(acc_type_ != AccessType::ArrOrStruct ||
+    assert(acc_type_ != AccessType::Element ||
            ptr->type()->GetDerefedType()->GetLength());
   }
 
@@ -349,28 +348,20 @@ class ConstIntSSA : public Value {
 // constant float
 class ConstFloatSSA : public Value {
  public:
-  using FloatVal = std::variant<float, double>;
-
-  ConstFloatSSA(float value, const define::TypePtr &type)
-      : value_(value) {
-    set_type(type);
-    // assertion for type checking
-    assert(type->IsFloat() || type->GetSize() == 4);
-  }
   ConstFloatSSA(double value, const define::TypePtr &type)
       : value_(value) {
     set_type(type);
     // assertion for type checking
-    assert(type->IsFloat() || type->GetSize() == 8);
+    assert(type->IsFloat());
   }
 
   void Dump(std::ostream &os) const override;
 
   // getters
-  FloatVal value() const { return value_; }
+  double value() const { return value_; }
 
  private:
-  FloatVal value_;
+  double value_;
 };
 
 // constant string
