@@ -37,8 +37,6 @@ add_definitions(${LLVM_DEFINITIONS})
 
 # all of C++ source files
 file(GLOB_RECURSE SOURCES "src/*.cpp")
-file(GLOB_RECURSE MID_SOURCES "src/mid/*.cpp")
-list(REMOVE_ITEM SOURCES ${MID_SOURCES})
 
 # executable
 add_executable(yuc ${SOURCES})
