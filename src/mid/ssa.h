@@ -22,7 +22,7 @@ using GlobalVarPtr = std::shared_ptr<GlobalVarSSA>;
 
 // linkage types
 enum class LinkageTypes {
-  Internal, Inline, External, GlobalCtorDtor,
+  Internal, Inline, External,
 };
 
 // load from allocation
@@ -181,6 +181,8 @@ class ReturnSSA : public User {
 
 // function definition/declaration
 // operands: bb1 (entry), bb2, ...
+// NOTE: type of function SSA may be non-trivial,
+// because we want to store reference information
 class FunctionSSA : public User {
  public:
   FunctionSSA(LinkageTypes link, const std::string &name)
