@@ -5,7 +5,6 @@
 #include <vector>
 #include <cstddef>
 #include <cstdint>
-#include <cassert>
 
 #include "define/type.h"
 #include "mid/usedef.h"
@@ -33,9 +32,6 @@ class LoadSSA : public User {
   LoadSSA(const SSAPtr &ptr) : addr_(ptr) {
     Reserve(1);
     AddValue(ptr);
-    // set SSA type
-    set_type(ptr->type()->GetDerefedType());
-    assert(type());
   }
 
   void Dump(std::ostream &os) const override;
@@ -53,8 +49,6 @@ class StoreSSA : public User {
     Reserve(2);
     AddValue(value);
     AddValue(ptr);
-    // assertion for type checking
-    assert(value->type()->IsIdentical(ptr->type()->GetDerefedType()));
   }
 
   void Dump(std::ostream &os) const override;
@@ -71,10 +65,6 @@ class AccessSSA : public User {
     Reserve(2);
     AddValue(ptr);
     AddValue(index);
-    // assertions for type checking
-    assert(ptr->type()->IsPointer());
-    assert(acc_type_ != AccessType::Element ||
-           ptr->type()->GetDerefedType()->GetLength());
   }
 
   void Dump(std::ostream &os) const override;
@@ -104,8 +94,6 @@ class BinarySSA : public User {
     Reserve(2);
     AddValue(lhs);
     AddValue(rhs);
-    // assertion for type checking
-    assert(lhs->type()->IsIdentical(rhs->type()));
   }
 
   void Dump(std::ostream &os) const override;
@@ -146,14 +134,7 @@ class CallSSA : public User {
   CallSSA(const SSAPtr &callee, const SSAPtrList &args) {
     Reserve(args.size() + 1);
     AddValue(callee);
-    define::TypePtrList args_type;
-    for (const auto &i : args) {
-      AddValue(i);
-      args_type.push_back(i->type());
-    }
-    set_type(callee->type()->GetReturnType(args_type));
-    // assertion for type checking
-    assert(callee->type()->IsFunction() && type());
+    for (const auto &i : args) AddValue(i);
   }
 
   void Dump(std::ostream &os) const override;
@@ -169,8 +150,6 @@ class BranchSSA : public User {
     AddValue(cond);
     AddValue(true_block);
     AddValue(false_block);
-    // assertion for type checking
-    assert(cond->type()->IsBool());
   }
 
   void Dump(std::ostream &os) const override;
@@ -204,13 +183,8 @@ class ReturnSSA : public User {
 // operands: bb1 (entry), bb2, ...
 class FunctionSSA : public User {
  public:
-  FunctionSSA(LinkageTypes link, const std::string &name,
-              const define::TypePtr &type)
-      : link_(link), name_(name) {
-    set_type(type);
-    // assertion for type checking
-    assert(type->IsFunction());
-  }
+  FunctionSSA(LinkageTypes link, const std::string &name)
+      : link_(link), name_(name) {}
 
   void Dump(std::ostream &os) const override;
 
@@ -228,13 +202,10 @@ class FunctionSSA : public User {
 class GlobalVarSSA : public User {
  public:
   GlobalVarSSA(LinkageTypes link, const std::string &name,
-               const define::TypePtr &type, const SSAPtr &init)
+               const SSAPtr &init)
       : link_(link), name_(name) {
     Reserve(1);
     AddValue(init);
-    set_type(define::MakePointer(type));
-    // assertion for type checking
-    assert(!type->IsVoid());
   }
 
   void Dump(std::ostream &os) const override;
@@ -255,11 +226,7 @@ class GlobalVarSSA : public User {
 // memory allocation
 class AllocaSSA : public Value {
  public:
-  AllocaSSA(const define::TypePtr &type) {
-    set_type(define::MakePointer(type));
-    // assertion for type checking
-    assert(!type->IsVoid());
-  }
+  AllocaSSA() {}
 
   void Dump(std::ostream &os) const override;
 };
@@ -270,8 +237,6 @@ class BlockSSA : public Value {
   BlockSSA(const UserPtr &parent, const std::string &name)
       : parent_(parent), name_(name) {
     succs_.reserve(2);
-    // assertion for type checking
-    assert(parent_ && parent_->type()->IsFunction());
   }
 
   void Dump(std::ostream &os) const override;
@@ -279,6 +244,7 @@ class BlockSSA : public Value {
   // add a new predecessor
   void AddPred(const BlockPtr &pred) { preds_.push_back(pred); }
   // add a new successor
+  // successor can be 'nullptr' (when returning from function)
   void AddSucc(const BlockPtr &succ) { succs_.push_back(succ); }
   // add a new instruction
   void AddInst(const SSAPtr &inst) { insts_.push_back(inst); }
@@ -305,12 +271,7 @@ class BlockSSA : public Value {
 class ArgRefSSA : public Value {
  public:
   ArgRefSSA(const SSAPtr &func, std::size_t index)
-      : func_(func), index_(index) {
-    auto args_type = func->type()->GetArgsType();
-    set_type((*args_type)[index]);
-    // assertion for type checking
-    assert(index < args_type->size());
-  }
+      : func_(func), index_(index) {}
 
   void Dump(std::ostream &os) const override;
 
@@ -340,12 +301,7 @@ class AsmSSA : public Value {
 // constant integer
 class ConstIntSSA : public Value {
  public:
-  ConstIntSSA(std::uint64_t value, const define::TypePtr &type)
-      : value_(value) {
-    set_type(type);
-    // assertion for type checking
-    assert(type->IsInteger() || type->IsBool());
-  }
+  ConstIntSSA(std::uint64_t value) : value_(value) {}
 
   void Dump(std::ostream &os) const override;
 
@@ -359,12 +315,7 @@ class ConstIntSSA : public Value {
 // constant float
 class ConstFloatSSA : public Value {
  public:
-  ConstFloatSSA(double value, const define::TypePtr &type)
-      : value_(value) {
-    set_type(type);
-    // assertion for type checking
-    assert(type->IsFloat());
-  }
+  ConstFloatSSA(double value) : value_(value) {}
 
   void Dump(std::ostream &os) const override;
 
@@ -378,13 +329,7 @@ class ConstFloatSSA : public Value {
 // constant string
 class ConstStrSSA : public Value {
  public:
-  ConstStrSSA(const std::string &str, const define::TypePtr &type)
-      : str_(str) {
-    set_type(type);
-    // assertion for type checking
-    assert(type->IsPointer() && type->GetDerefedType()->IsInteger() &&
-           type->GetDerefedType()->GetSize() == 1);
-  }
+  ConstStrSSA(const std::string &str) : str_(str) {}
 
   void Dump(std::ostream &os) const override;
 
@@ -399,15 +344,9 @@ class ConstStrSSA : public Value {
 // operands: elem1, elem2, ...
 class ConstStructSSA : public User {
  public:
-  ConstStructSSA(const SSAPtrList &elems, const define::TypePtr &type) {
+  ConstStructSSA(const SSAPtrList &elems) {
     Reserve(elems.size());
-    for (int i = 0; i < elems.size(); ++i) {
-      AddValue(elems[i]);
-      assert(elems[i]->type()->IsIdentical(type->GetElem(i)));
-    }
-    set_type(type);
-    // assertion for type checking
-    assert(type->IsStruct());
+    for (const auto &i : elems) AddValue(i);
   }
 
   void Dump(std::ostream &os) const override;
@@ -417,15 +356,9 @@ class ConstStructSSA : public User {
 // operands: elem1, elem2, ...
 class ConstArraySSA : public User {
  public:
-  ConstArraySSA(const SSAPtrList &elems, const define::TypePtr &type) {
+  ConstArraySSA(const SSAPtrList &elems) {
     Reserve(elems.size());
-    for (int i = 0; i < elems.size(); ++i) {
-      AddValue(elems[i]);
-      assert(elems[i]->type()->IsIdentical(type->GetElem(i)));
-    }
-    set_type(type);
-    // assertion for type checking
-    assert(type->IsArray());
+    for (const auto &i : elems) AddValue(i);
   }
 
   void Dump(std::ostream &os) const override;
@@ -434,12 +367,7 @@ class ConstArraySSA : public User {
 // constant zero
 class ConstZeroSSA : public Value {
  public:
-  ConstZeroSSA(const define::TypePtr &type) {
-    set_type(type);
-    // assertion for type checking
-    assert(type->IsNull() || type->IsBasic() || type->IsStruct() ||
-           type->IsArray());
-  }
+  ConstZeroSSA() {}
 
   void Dump(std::ostream &os) const override;
 };
