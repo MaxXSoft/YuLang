@@ -490,8 +490,8 @@ SSAPtr IRBuilder::GenerateOn(AccessAST &ast) {
   auto index = expr_ty->GetElemIndex(ast.id());
   assert(index);
   // generate access operation
-  auto ptr = module_.CreateElemAccess(expr, module_.GetInt32(*index));
-  return ptr;
+  auto elem_ty = expr_ty->GetElem(*index);
+  return module_.CreateElemAccess(expr, module_.GetInt32(*index), elem_ty);
 }
 
 SSAPtr IRBuilder::GenerateOn(CastAST &ast) {
@@ -530,9 +530,13 @@ SSAPtr IRBuilder::GenerateOn(IndexAST &ast) {
   // generate expression & index
   auto expr = ast.expr()->GenerateIR(*this);
   auto index = ast.index()->GenerateIR(*this);
+  // get type of expression
+  auto expr_ty = ast.expr()->ast_type();
+  if (expr_ty->IsReference()) expr_ty = expr_ty->GetDerefedType();
+  auto elem_ty = expr_ty->GetDerefedType();
   // generate indexing operation
-  if (ast.expr()->ast_type()->IsArray()) {
-    return module_.CreateElemAccess(expr, index);
+  if (expr_ty->IsArray()) {
+    return module_.CreateElemAccess(expr, index, elem_ty);
   }
   else {
     return module_.CreatePtrAccess(expr, index);
@@ -612,7 +616,8 @@ SSAPtr IRBuilder::GenerateOn(ValInitAST &ast) {
     // generate elements
     for (int i = 0; i < ast.elems().size(); ++i) {
       auto elem = ast.elems()[i]->GenerateIR(*this);
-      auto ptr = module_.CreateElemAccess(val, module_.GetInt32(i));
+      const auto &ty = ast.elems()[i]->ast_type();
+      auto ptr = module_.CreateElemAccess(val, module_.GetInt32(i), ty);
       module_.CreateStore(elem, ptr);
     }
     // generate load
