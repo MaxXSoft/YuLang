@@ -35,7 +35,7 @@ class LoadSSA : public User {
   }
 
   void Dump(std::ostream &os) const override;
-  const SSAPtr &GetAddr() const override { return addr_; }
+  SSAPtr GetAddr() const override { return addr_; }
 
  private:
   SSAPtr addr_;
@@ -237,7 +237,7 @@ class AllocaSSA : public Value {
 class BlockSSA : public Value {
  public:
   BlockSSA(const UserPtr &parent, const std::string &name)
-      : parent_(parent), name_(name) {
+      : name_(name), parent_(parent) {
     succs_.reserve(2);
   }
 

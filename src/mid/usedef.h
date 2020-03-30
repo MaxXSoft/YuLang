@@ -32,7 +32,7 @@ class Value {
   // dump the content of SSA value to output stream
   virtual void Dump(std::ostream &os) const = 0;
   // get address value of current value
-  virtual const SSAPtr &GetAddr() const { return nullptr; }
+  virtual SSAPtr GetAddr() const { return nullptr; }
 
   // add a use reference to current value
   void AddUse(Use *use) { uses_.push_front(use); }

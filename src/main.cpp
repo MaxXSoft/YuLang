@@ -8,12 +8,14 @@
 #include "front/parser.h"
 #include "front/analyzer.h"
 #include "front/eval.h"
+#include "define/type.h"
 #include "back/llvm/generator.h"
 
 #include "xstl/argparse.h"
 
 using namespace std;
 using namespace yulang::front;
+using namespace yulang::define;
 using namespace yulang::back::ll;
 
 namespace {
@@ -71,7 +73,7 @@ int main(int argc, const char *argv[]) {
   Evaluator eval;
   Analyzer ana(eval);
   LLVMGen gen(file);
-  yulang::define::SetPointerSize(gen.GetPointerSize());
+  BaseType::set_ptr_size(gen.GetPointerSize());
 
   // get output info
   auto out_type = argp.GetValue<string>("outtype");
