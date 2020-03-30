@@ -40,53 +40,6 @@ namespace {
 using BinaryOp = BinarySSA::Operator;
 using UnaryOp = UnarySSA::Operator;
 
-// cast non-trivial type to trivial type
-// struct(types) -> struct(cast(types)), enum(type) -> type,
-// const(type) -> type, ref(type) -> ptr(type)
-TypePtr TypeCast(const TypePtr &type) {
-  if (type->IsStruct()) {
-    // TODO: reimplement 'TypeCast' as a method of types
-  }
-  else if (type->IsEnum()) {
-    if (type->IsUnsigned()) {
-      switch (type->GetSize()) {
-        case 1: return MakePrimType(Keyword::UInt8, type->IsRightValue());
-        case 2: return MakePrimType(Keyword::UInt16, type->IsRightValue());
-        case 4: return MakePrimType(Keyword::UInt32, type->IsRightValue());
-        case 8: return MakePrimType(Keyword::UInt64, type->IsRightValue());
-        default: assert(false); return nullptr;
-      }
-    }
-    else {
-      switch (type->GetSize()) {
-        case 1: return MakePrimType(Keyword::Int8, type->IsRightValue());
-        case 2: return MakePrimType(Keyword::Int16, type->IsRightValue());
-        case 4: return MakePrimType(Keyword::Int32, type->IsRightValue());
-        case 8: return MakePrimType(Keyword::Int64, type->IsRightValue());
-        default: assert(false); return nullptr;
-      }
-    }
-  }
-  else if (type->IsConst()) {
-    return TypeCast(type->GetDeconstedType());
-  }
-  else if (type->IsArray()) {
-    return std::make_shared<ArrayType>(TypeCast(type->GetDerefedType()),
-                                       type->GetLength(),
-                                       type->IsRightValue());
-  }
-  else if (type->IsPointer()) {
-    return MakePointer(TypeCast(type->GetDerefedType()),
-                       type->IsRightValue());
-  }
-  else if (type->IsReference()) {
-    return MakePointer(TypeCast(type->GetDerefedType()));
-  }
-  else {
-    return type;
-  }
-}
-
 }  // namespace
 
 UserPtr Module::CreateFunction(LinkageTypes link, const std::string &name,
@@ -95,7 +48,8 @@ UserPtr Module::CreateFunction(LinkageTypes link, const std::string &name,
   assert(type->IsFunction());
   // create function
   auto func = std::make_shared<FunctionSSA>(link, name);
-  func->set_type(TypeCast(type));
+  // NOTE: do not get trivial type, we need reference info
+  func->set_type(type);
   // add to global variables
   funcs_.push_back(func);
   return func;
@@ -123,7 +77,7 @@ SSAPtr Module::CreateArgRef(const SSAPtr &func, std::size_t index) {
   assert(index < args_type.size());
   // create argument reference
   auto arg_ref = std::make_shared<ArgRefSSA>(func, index);
-  arg_ref->set_type(TypeCast(args_type[index]));
+  arg_ref->set_type(args_type[index]->GetTrivialType());
   return arg_ref;
 }
 
@@ -157,7 +111,7 @@ SSAPtr Module::CreateAlloca(const TypePtr &type) {
   assert(!type->IsVoid());
   // create allocation
   auto alloca = AddInst<AllocaSSA>();
-  alloca->set_type(MakePointer(TypeCast(type)));
+  alloca->set_type(MakePointer(type->GetTrivialType()));
   return alloca;
 }
 
@@ -184,7 +138,7 @@ SSAPtr Module::CreateReturn(const SSAPtr &value) {
   }
   // assertion for type checking
   assert((ret_type->IsVoid() && !val) ||
-         TypeCast(ret_type)->IsIdentical(val->type()));
+         ret_type->GetTrivialType()->IsIdentical(val->type()));
   // create return
   auto ret = AddInst<ReturnSSA>(val);
   ret->set_type(nullptr);
@@ -199,7 +153,7 @@ GlobalVarPtr Module::CreateGlobalVar(LinkageTypes link,
                                      const SSAPtr &init) {
   // assertions for type checking
   assert(!type->IsVoid());
-  auto var_type = TypeCast(type);
+  auto var_type = type->GetTrivialType();
   assert(!init || !type->IsReference() ||
          var_type->IsIdentical(init->type()));
   // create global variable definition
@@ -249,12 +203,12 @@ SSAPtr Module::CreateCall(const SSAPtr &callee, const SSAPtrList &args) {
   // assertions for checking argument type
   assert(args_type.size() == args.size());
   for (int i = 0; i < args_type.size(); ++i) {
-    assert(TypeCast(args_type[i])->IsIdentical(args[i]->type()));
+    assert(args_type[i]->IsIdentical(args[i]->type()));
   }
   // create call
   auto call = AddInst<CallSSA>(callee, args);
   auto ret_type = callee->type()->GetReturnType(args_type);
-  call->set_type(TypeCast(ret_type));
+  call->set_type(ret_type->GetTrivialType());
   // create extra load if return type is reference
   if (ret_type->IsReference()) call = CreateLoad(call, false);
   return call;
@@ -288,7 +242,7 @@ SSAPtr Module::CreateElemAccess(const SSAPtr &ptr, const SSAPtr &index,
   // create access
   auto acc_type = AccessSSA::AccessType::Element;
   auto access = AddInst<AccessSSA>(acc_type, pointer, index);
-  access->set_type(MakePointer(TypeCast(type)));
+  access->set_type(MakePointer(type->GetTrivialType()));
   // create load
   return CreateLoad(access, type->IsReference());
 }
@@ -299,14 +253,14 @@ SSAPtr Module::CreateBinary(BinaryOp op, const SSAPtr &lhs,
   assert(lhs->type()->IsIdentical(rhs->type()));
   // create binary
   auto binary = AddInst<BinarySSA>(op, lhs, rhs);
-  binary->set_type(TypeCast(type));
+  binary->set_type(type->GetTrivialType());
   return binary;
 }
 
 SSAPtr Module::CreateUnary(UnaryOp op, const SSAPtr &opr,
                            const TypePtr &type) {
   auto unary = AddInst<UnarySSA>(op, opr);
-  unary->set_type(TypeCast(type));
+  unary->set_type(type->GetTrivialType());
   return unary;
 }
 
@@ -407,7 +361,7 @@ SSAPtr Module::CreateShr(const SSAPtr &lhs, const SSAPtr &rhs) {
 SSAPtr Module::CreateCast(const SSAPtr &opr, const TypePtr &type) {
   // assertion for type checking
   const auto &opr_ty = opr->type();
-  auto target = TypeCast(type);
+  auto target = type->GetTrivialType();
   assert(opr_ty->CanCastTo(target));
   // check if is redundant type casting
   if (opr_ty->IsIdentical(target)) {
@@ -439,7 +393,7 @@ SSAPtr Module::GetZero(const TypePtr &type) {
          type->IsArray());
   // create constant zero
   auto zero = std::make_shared<ConstZeroSSA>();
-  zero->set_type(TypeCast(type));
+  zero->set_type(type->GetTrivialType());
   return zero;
 }
 
@@ -448,7 +402,7 @@ SSAPtr Module::GetInt(std::uint64_t value, const TypePtr &type) {
   assert(type->IsInteger() || type->IsBool());
   // create constant integer
   auto const_int = std::make_shared<ConstIntSSA>(value);
-  const_int->set_type(TypeCast(type));
+  const_int->set_type(type->GetTrivialType());
   return const_int;
 }
 
@@ -467,7 +421,7 @@ SSAPtr Module::GetFloat(double value, const TypePtr &type) {
   assert(type->IsFloat());
   // create constant float
   auto const_float = std::make_shared<ConstFloatSSA>(value);
-  const_float->set_type(TypeCast(type));
+  const_float->set_type(type->GetTrivialType());
   return const_float;
 }
 
@@ -477,14 +431,14 @@ SSAPtr Module::GetString(const std::string &str, const TypePtr &type) {
          type->GetDerefedType()->GetSize() == 1);
   // create constant string
   auto const_str = std::make_shared<ConstStrSSA>(str);
-  const_str->set_type(TypeCast(type));
+  const_str->set_type(type->GetTrivialType());
   return const_str;
 }
 
 SSAPtr Module::GetStruct(const SSAPtrList &elems, const TypePtr &type) {
   // assertions for type checking
   assert(type->IsStruct() && type->GetLength() == elems.size());
-  auto struct_ty = TypeCast(type);
+  auto struct_ty = type->GetTrivialType();
   for (int i = 0; i < elems.size(); ++i) {
     assert(struct_ty->GetElem(i)->IsIdentical(elems[i]->type()));
   }
@@ -497,7 +451,7 @@ SSAPtr Module::GetStruct(const SSAPtrList &elems, const TypePtr &type) {
 SSAPtr Module::GetArray(const SSAPtrList &elems, const TypePtr &type) {
   // assertions for type checking
   assert(type->IsArray() && type->GetLength() == elems.size());
-  auto array_ty = TypeCast(type);
+  auto array_ty = type->GetTrivialType();
   for (const auto &i : elems) {
     assert(array_ty->GetDerefedType()->IsIdentical(i->type()));
   }
