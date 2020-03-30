@@ -34,7 +34,7 @@ class LoadSSA : public User {
     AddValue(ptr);
   }
 
-  void Dump(std::ostream &os) const override;
+  void Dump(std::ostream &os, IdManager &idm) const override;
   SSAPtr GetAddr() const override { return addr_; }
 
  private:
@@ -51,7 +51,7 @@ class StoreSSA : public User {
     AddValue(ptr);
   }
 
-  void Dump(std::ostream &os) const override;
+  void Dump(std::ostream &os, IdManager &idm) const override;
 };
 
 // element accessing (load effective address)
@@ -67,7 +67,7 @@ class AccessSSA : public User {
     AddValue(index);
   }
 
-  void Dump(std::ostream &os) const override;
+  void Dump(std::ostream &os, IdManager &idm) const override;
 
   // getters
   AccessType acc_type() const { return acc_type_; }
@@ -96,7 +96,7 @@ class BinarySSA : public User {
     AddValue(rhs);
   }
 
-  void Dump(std::ostream &os) const override;
+  void Dump(std::ostream &os, IdManager &idm) const override;
 
   // getters
   Operator op() const { return op_; }
@@ -118,7 +118,7 @@ class UnarySSA : public User {
     AddValue(opr);
   }
 
-  void Dump(std::ostream &os) const override;
+  void Dump(std::ostream &os, IdManager &idm) const override;
 
   // getters
   Operator op() const { return op_; }
@@ -137,7 +137,7 @@ class CallSSA : public User {
     for (const auto &i : args) AddValue(i);
   }
 
-  void Dump(std::ostream &os) const override;
+  void Dump(std::ostream &os, IdManager &idm) const override;
 };
 
 // conditional branch
@@ -152,7 +152,7 @@ class BranchSSA : public User {
     AddValue(false_block);
   }
 
-  void Dump(std::ostream &os) const override;
+  void Dump(std::ostream &os, IdManager &idm) const override;
 };
 
 // unconditional jump
@@ -164,7 +164,7 @@ class JumpSSA : public User {
     AddValue(target);
   }
 
-  void Dump(std::ostream &os) const override;
+  void Dump(std::ostream &os, IdManager &idm) const override;
 };
 
 // function return
@@ -176,7 +176,7 @@ class ReturnSSA : public User {
     AddValue(value);
   }
 
-  void Dump(std::ostream &os) const override;
+  void Dump(std::ostream &os, IdManager &idm) const override;
 };
 
 // function definition/declaration
@@ -188,7 +188,7 @@ class FunctionSSA : public User {
   FunctionSSA(LinkageTypes link, const std::string &name)
       : link_(link), name_(name) {}
 
-  void Dump(std::ostream &os) const override;
+  void Dump(std::ostream &os, IdManager &idm) const override;
 
   // getters
   LinkageTypes link() const { return link_; }
@@ -210,7 +210,7 @@ class GlobalVarSSA : public User {
     AddValue(init);
   }
 
-  void Dump(std::ostream &os) const override;
+  void Dump(std::ostream &os, IdManager &idm) const override;
 
   // setters
   void set_init(const SSAPtr &init) { uses()[0].set_value(init); }
@@ -230,7 +230,7 @@ class AllocaSSA : public Value {
  public:
   AllocaSSA() {}
 
-  void Dump(std::ostream &os) const override;
+  void Dump(std::ostream &os, IdManager &idm) const override;
 };
 
 // basic block
@@ -241,7 +241,7 @@ class BlockSSA : public Value {
     succs_.reserve(2);
   }
 
-  void Dump(std::ostream &os) const override;
+  void Dump(std::ostream &os, IdManager &idm) const override;
 
   // add a new predecessor
   void AddPred(const BlockPtr &pred) { preds_.push_back(pred); }
@@ -275,7 +275,7 @@ class ArgRefSSA : public Value {
   ArgRefSSA(const SSAPtr &func, std::size_t index)
       : func_(func), index_(index) {}
 
-  void Dump(std::ostream &os) const override;
+  void Dump(std::ostream &os, IdManager &idm) const override;
 
   // getters
   const SSAPtr &func() const { return func_; }
@@ -291,7 +291,7 @@ class AsmSSA : public Value {
  public:
   AsmSSA(const std::string &asm_str) : asm_str_(asm_str) {}
 
-  void Dump(std::ostream &os) const override;
+  void Dump(std::ostream &os, IdManager &idm) const override;
 
   // getters
   const std::string &asm_str() const { return asm_str_; }
@@ -305,7 +305,7 @@ class ConstIntSSA : public Value {
  public:
   ConstIntSSA(std::uint64_t value) : value_(value) {}
 
-  void Dump(std::ostream &os) const override;
+  void Dump(std::ostream &os, IdManager &idm) const override;
 
   // getters
   std::uint64_t value() const { return value_; }
@@ -319,7 +319,7 @@ class ConstFloatSSA : public Value {
  public:
   ConstFloatSSA(double value) : value_(value) {}
 
-  void Dump(std::ostream &os) const override;
+  void Dump(std::ostream &os, IdManager &idm) const override;
 
   // getters
   double value() const { return value_; }
@@ -333,7 +333,7 @@ class ConstStrSSA : public Value {
  public:
   ConstStrSSA(const std::string &str) : str_(str) {}
 
-  void Dump(std::ostream &os) const override;
+  void Dump(std::ostream &os, IdManager &idm) const override;
 
   // getters
   const std::string &str() const { return str_; }
@@ -351,7 +351,7 @@ class ConstStructSSA : public User {
     for (const auto &i : elems) AddValue(i);
   }
 
-  void Dump(std::ostream &os) const override;
+  void Dump(std::ostream &os, IdManager &idm) const override;
 };
 
 // constant array
@@ -363,7 +363,7 @@ class ConstArraySSA : public User {
     for (const auto &i : elems) AddValue(i);
   }
 
-  void Dump(std::ostream &os) const override;
+  void Dump(std::ostream &os, IdManager &idm) const override;
 };
 
 // constant zero
@@ -371,7 +371,7 @@ class ConstZeroSSA : public Value {
  public:
   ConstZeroSSA() {}
 
-  void Dump(std::ostream &os) const override;
+  void Dump(std::ostream &os, IdManager &idm) const override;
 };
 
 }  // namespace yulang::mid

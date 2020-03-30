@@ -492,14 +492,15 @@ xstl::Guard Module::EnterGlobalCtor() {
 }
 
 void Module::Dump(std::ostream &os) const {
+  IdManager idm;
   // dump global variables
   for (const auto &i : vars_) {
-    i->Dump(os);
+    i->Dump(os, idm);
     os << std::endl;
   }
   // dump global functions
   for (const auto &i : funcs_) {
-    i->Dump(os);
+    i->Dump(os, idm);
     os << std::endl;
   }
 }
