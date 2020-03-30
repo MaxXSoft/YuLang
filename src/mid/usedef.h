@@ -22,6 +22,7 @@ class Use;
 using SSAPtr = std::shared_ptr<Value>;
 using SSAPtrList = std::vector<SSAPtr>;
 using UserPtr = std::shared_ptr<User>;
+using UserPtrList = std::vector<UserPtr>;
 
 // SSA value
 class Value {
