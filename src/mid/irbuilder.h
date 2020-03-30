@@ -78,6 +78,7 @@ class IRBuilder {
   define::Property last_prop_;
   // used when generating function definitions
   SSAPtr ret_val_;
+  bool ret_is_ref_;
   BlockPtr func_exit_;
   // used when generating when statement
   BlockPtr when_end_;
