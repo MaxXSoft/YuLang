@@ -797,7 +797,8 @@ TypePtr Analyzer::AnalyzeOn(UnaryAST &ast) {
 TypePtr Analyzer::AnalyzeOn(IndexAST &ast) {
   // get type of expression
   auto expr = ast.expr()->SemaAnalyze(*this);
-  if (!expr || (!expr->IsPointer() && !expr->IsArray())) {
+  if (!expr || (!expr->IsPointer() &&
+                !(expr->IsArray() && !expr->IsRightValue()))) {
     return LogError(ast.expr()->logger(),
                     "expression is not subscriptable");
   }
