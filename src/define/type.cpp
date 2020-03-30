@@ -5,13 +5,8 @@
 
 using namespace yulang::define;
 
-namespace {
-
-// size of pointer
-// TODO: depends on the backend
-std::size_t pointer_size = sizeof(void *);
-
-}  // namespace
+// definition of static member variables in 'BaseType'
+std::size_t BaseType::ptr_size_ = sizeof(void *);
 
 bool PrimType::CanAccept(const TypePtr &type) const {
   if (is_right_ || IsNull()) return false;
@@ -50,7 +45,7 @@ std::size_t PrimType::GetSize() const {
     case Type::Int16: case Type::UInt16: return 2;
     case Type::Int32: case Type::UInt32: case Type::Float32: return 4;
     case Type::Int64: case Type::UInt64: case Type::Float64: return 8;
-    case Type::Null: return pointer_size;
+    case Type::Null: return ptr_size();
     default: return 0;
   }
 }
@@ -114,6 +109,14 @@ TypePtr StructType::GetValueType(bool is_right) const {
   return std::make_shared<StructType>(elems_, id_, is_right);
 }
 
+TypePtr StructType::GetTrivialType() const {
+  TypePairList elems;
+  for (const auto &i : elems_) {
+    elems.push_back({i.first, i.second->GetTrivialType()});
+  }
+  return std::make_shared<StructType>(elems, id_, true);
+}
+
 bool EnumType::CanAccept(const TypePtr &type) const {
   return !is_right_ && IsIdentical(type);
 }
@@ -165,7 +168,7 @@ bool FuncType::IsIdentical(const TypePtr &type) const {
 }
 
 std::size_t FuncType::GetSize() const {
-  return pointer_size;
+  return ptr_size();
 }
 
 TypePtr FuncType::GetReturnType(const TypePtrList &args) const {
@@ -197,6 +200,13 @@ std::string FuncType::GetTypeId() const {
 
 TypePtr FuncType::GetValueType(bool is_right) const {
   return std::make_shared<FuncType>(args_, ret_, is_right);
+}
+
+TypePtr FuncType::GetTrivialType() const {
+  TypePtrList args;
+  for (const auto &i : args_) args.push_back(i->GetTrivialType());
+  return std::make_shared<FuncType>(std::move(args),
+                                    ret_->GetTrivialType(), true);
 }
 
 TypePtr VolaType::GetDeconstedType() const {
@@ -233,6 +243,10 @@ TypePtr ArrayType::GetValueType(bool is_right) const {
   return std::make_shared<ArrayType>(base_, len_, is_right);
 }
 
+TypePtr ArrayType::GetTrivialType() const {
+  return std::make_shared<ArrayType>(base_->GetTrivialType(), len_, true);
+}
+
 bool PointerType::CanAccept(const TypePtr &type) const {
   if (!type->IsPointer()) return false;
   if (!base_->IsConst() && type->GetDerefedType()->IsConst()) return false;
@@ -253,7 +267,7 @@ bool PointerType::IsIdentical(const TypePtr &type) const {
 }
 
 std::size_t PointerType::GetSize() const {
-  return pointer_size;
+  return ptr_size();
 }
 
 std::string PointerType::GetTypeId() const {
@@ -265,6 +279,10 @@ std::string PointerType::GetTypeId() const {
 
 TypePtr PointerType::GetValueType(bool is_right) const {
   return std::make_shared<PointerType>(base_, is_right);
+}
+
+TypePtr PointerType::GetTrivialType() const {
+  return std::make_shared<PointerType>(base_->GetTrivialType(), true);
 }
 
 TypePtr RefType::GetDeconstedType() const {
@@ -283,6 +301,6 @@ TypePtr RefType::GetValueType(bool is_right) const {
   }
 }
 
-void yulang::define::SetPointerSize(std::size_t size) {
-  pointer_size = size;
+TypePtr RefType::GetTrivialType() const {
+  return std::make_shared<PointerType>(base_->GetTrivialType(), true);
 }

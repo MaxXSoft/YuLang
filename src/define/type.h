@@ -94,6 +94,21 @@ class BaseType {
   virtual std::string GetTypeId() const = 0;
   // return a new type with specific value type (left/right)
   virtual TypePtr GetValueType(bool is_right) const = 0;
+  // return a new trivial type
+  // i.e. all right values, no constants,
+  //      replace enumerations with integers,
+  //      replace references with pointers
+  virtual TypePtr GetTrivialType() const = 0;
+
+  // setters
+  static void set_ptr_size(std::size_t ptr_size) { ptr_size_ = ptr_size; }
+
+  // getters
+  static std::size_t ptr_size() { return ptr_size_; }
+
+ private:
+  // size of pointer
+  static std::size_t ptr_size_;
 };
 
 class PrimType : public BaseType {
@@ -151,6 +166,7 @@ class PrimType : public BaseType {
   }
   TypePtr GetDerefedType() const override { return nullptr; }
   TypePtr GetDeconstedType() const override { return nullptr; }
+  TypePtr GetTrivialType() const override { return GetValueType(true); }
 
   bool CanAccept(const TypePtr &type) const override;
   bool CanCastTo(const TypePtr &type) const override;
@@ -210,6 +226,7 @@ class StructType : public BaseType {
   std::optional<std::size_t> GetElemIndex(
       const std::string &name) const override;
   TypePtr GetValueType(bool is_right) const override;
+  TypePtr GetTrivialType() const override;
 
   // setters
   void set_elems(TypePairList elems) {
@@ -271,6 +288,9 @@ class EnumType : public BaseType {
   TypePtr GetDerefedType() const override { return nullptr; }
   TypePtr GetDeconstedType() const override { return nullptr; }
   std::string GetTypeId() const override { return id_; }
+  TypePtr GetTrivialType() const override {
+    return type_->GetValueType(true);
+  }
 
   bool CanAccept(const TypePtr &type) const override;
   bool IsIdentical(const TypePtr &type) const override;
@@ -335,6 +355,9 @@ class ConstType : public BaseType {
   std::string GetTypeId() const override {
     return type_->GetTypeId();
   }
+  TypePtr GetTrivialType() const override {
+    return type_->GetValueType(true);
+  }
 
   TypePtr GetElem(std::size_t index) const override;
   TypePtr GetElem(const std::string &name) const override;
@@ -387,6 +410,7 @@ class FuncType : public BaseType {
   TypePtr GetReturnType(const TypePtrList &args) const override;
   std::string GetTypeId() const override;
   TypePtr GetValueType(bool is_right) const override;
+  TypePtr GetTrivialType() const override;
 
  private:
   TypePtrList args_;
@@ -448,6 +472,7 @@ class VolaType : public BaseType {
     return type_->GetDerefedType();
   }
   std::string GetTypeId() const override { return type_->GetTypeId(); }
+  TypePtr GetTrivialType() const override { return GetValueType(true); }
 
   TypePtr GetDeconstedType() const override;
   TypePtr GetValueType(bool is_right) const override;
@@ -504,6 +529,7 @@ class ArrayType : public BaseType {
   bool IsIdentical(const TypePtr &type) const override;
   std::string GetTypeId() const override;
   TypePtr GetValueType(bool is_right) const override;
+  TypePtr GetTrivialType() const override;
 
  private:
   TypePtr base_;
@@ -555,6 +581,7 @@ class PointerType : public BaseType {
   std::size_t GetSize() const override;
   std::string GetTypeId() const override;
   TypePtr GetValueType(bool is_right) const override;
+  TypePtr GetTrivialType() const override;
 
  private:
   TypePtr base_;
@@ -625,6 +652,7 @@ class RefType : public BaseType {
 
   TypePtr GetDeconstedType() const override;
   TypePtr GetValueType(bool is_right) const override;
+  TypePtr GetTrivialType() const override;
 
  private:
   TypePtr base_;
@@ -666,9 +694,6 @@ inline TypePtr MakePointer(const TypePtr &type, bool is_right) {
 inline TypePtr MakePointer(const TypePtr &type) {
   return std::make_shared<PointerType>(type, true);
 }
-
-// set the size of pointers
-void SetPointerSize(std::size_t size);
 
 }  // namespace yulang::define
 
