@@ -140,8 +140,15 @@ class Module {
     return inst;
   }
 
+  // seal global constructor
+  void SealGlobalCtor();
+
   // all global variables and functions
   UserPtrList vars_, funcs_;
+  // global constructor stuffs
+  UserPtr global_ctor_;
+  BlockPtr ctor_entry_, ctor_exit_;
+  bool is_ctor_sealed_;
   // current insert point
   BlockPtr insert_point_;
 };
