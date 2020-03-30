@@ -3,6 +3,7 @@
 
 #include <string>
 #include <ostream>
+#include <utility>
 
 #include "define/type.h"
 #include "mid/ssa.h"
@@ -10,24 +11,24 @@
 
 namespace yulang::mid {
 
-using BlockPtr = std::shared_ptr<BlockSSA>;
-using GlobalVarPtr = std::shared_ptr<GlobalVarSSA>;
-
 class Module {
  public:
   Module() {}
 
   // create a function declaration
-  SSAPtr CreateFunction(LinkageTypes link, const std::string &name,
+  UserPtr CreateFunction(LinkageTypes link, const std::string &name,
                         const define::TypePtr &type);
   // create a basic block
-  BlockPtr CreateBlock(const SSAPtr &parent);
+  BlockPtr CreateBlock(const UserPtr &parent);
   // create a basic block with name
-  BlockPtr CreateBlock(const SSAPtr &parent, const std::string &name);
+  BlockPtr CreateBlock(const UserPtr &parent, const std::string &name);
   // create a argument reference
   SSAPtr CreateArgRef(const SSAPtr &func, std::size_t index);
   // create a store instruction
-  SSAPtr CreateStore(const SSAPtr &value, const SSAPtr &ptr);
+  SSAPtr CreateStore(const SSAPtr &value, const SSAPtr &pointer);
+  // create a initialization
+  SSAPtr CreateInit(const SSAPtr &value, const SSAPtr &pointer,
+                    bool is_ref);
   // create a allocation instruction
   SSAPtr CreateAlloca(const define::TypePtr &type);
   // create a jump instruction
@@ -42,10 +43,10 @@ class Module {
   GlobalVarPtr CreateGlobalVar(LinkageTypes link, const std::string &name,
                                const define::TypePtr &type);
   // create a branch instruction
-  SSAPtr CreateBranch(const SSAPtr &cond, const SSAPtr &true_block,
-                      const SSAPtr &false_block);
+  SSAPtr CreateBranch(const SSAPtr &cond, const BlockPtr &true_block,
+                      const BlockPtr &false_block);
   // create a load instruction
-  SSAPtr CreateLoad(const SSAPtr &ptr);
+  SSAPtr CreateLoad(const SSAPtr &ptr, bool is_ref);
   // create a call instruction
   SSAPtr CreateCall(const SSAPtr &callee, const SSAPtrList &args);
   // create a inline assemble instruction
@@ -117,9 +118,9 @@ class Module {
   SSAPtr GetArray(const SSAPtrList &elems, const define::TypePtr &type);
 
   // set insert point to a specific basic block
-  void SetInsertPoint(const BlockPtr &block);
+  void SetInsertPoint(const BlockPtr &block) { insert_point_ = block; }
   // get current insert point
-  const BlockPtr &GetInsertPoint() const;
+  const BlockPtr &GetInsertPoint() const { return insert_point_; }
   // set insert point to global constructor
   xstl::Guard EnterGlobalCtor();
 
@@ -127,6 +128,16 @@ class Module {
   void Dump(std::ostream &os) const;
 
  private:
+  // create a new instruction SSA, and push into current block
+  template <typename T, typename... Args>
+  SSAPtr AddInst(Args &&... args) {
+    auto inst = std::make_shared<T>(std::forward<Args>(args)...);
+    insert_point_->AddInst(inst);
+    return inst;
+  }
+
+  // all global values, including global variables and functions
+  SSAPtrList global_vals_;
   // current insert point
   BlockPtr insert_point_;
 };
