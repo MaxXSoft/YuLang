@@ -179,7 +179,7 @@ SSAPtr IRBuilder::GenerateOn(VarLetElemAST &ast) {
     // global variables/constants
     auto var = module_.CreateGlobalVar(link, ast.id(), type);
     if (init) {
-      if (init->IsLiteral() || type->IsReference()) {
+      if (init->IsLiteral()) {
         // generate initializer
         auto var_init = init->GenerateIR(*this);
         var->set_init(var_init);
