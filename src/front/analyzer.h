@@ -75,8 +75,6 @@ class Analyzer {
 
   // switch to new environment
   xstl::Guard NewEnv();
-  // enter a new function
-  xstl::Guard EnterFunc(const define::TypePtr &ret);
   // perform name mangling
   std::string MangleFuncName(const std::string &id,
                              const define::TypePtrList &args);
@@ -89,6 +87,13 @@ class Analyzer {
   define::TypePtr FindFuncType(const Logger &log, const std::string &id,
                                const define::TypePtrList &args,
                                IdSetter id_setter);
+  // check if is valid initialization
+  // type: variable type, init: initializer type
+  bool CheckInit(const Logger &log, const define::TypePtr &type,
+                 const define::TypePtr &init);
+  // check if is valid initialization (with identifier)
+  bool CheckInit(const Logger &log, const define::TypePtr &type,
+                 const define::TypePtr &init, std::string_view id);
   // check if is valid operator overloading
   // if so, return function's return type, otherwise log error
   std::optional<define::TypePtr> CheckOpOverload(

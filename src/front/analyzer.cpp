@@ -29,6 +29,18 @@ inline TypePtr LogError(const Logger &log, std::string_view message,
   return nullptr;
 }
 
+// print error message (with nullable identifier)
+inline bool LogErrorBool(const Logger &log, std::string_view message,
+                         std::string_view id) {
+  if (id.empty()) {
+    log.LogError(message);
+  }
+  else {
+    log.LogError(message, id);
+  }
+  return false;
+}
+
 }  // namespace
 
 xstl::Guard Analyzer::NewEnv() {
@@ -40,11 +52,6 @@ xstl::Guard Analyzer::NewEnv() {
     user_types_ = user_types_->outer();
     funcs_ = funcs_->outer();
   });
-}
-
-xstl::Guard Analyzer::EnterFunc(const TypePtr &ret) {
-  cur_ret_ = ret;
-  return xstl::Guard([this] { cur_ret_ = nullptr; });
 }
 
 std::string Analyzer::MangleFuncName(const std::string &id,
@@ -84,6 +91,31 @@ TypePtr Analyzer::FindFuncType(const Logger &log, const std::string &id,
   }
   assert(type->IsFunction());
   return type;
+}
+
+bool Analyzer::CheckInit(const Logger &log, const TypePtr &type,
+                         const TypePtr &init) {
+  return CheckInit(log, type, init, "");
+}
+
+bool Analyzer::CheckInit(const Logger &log, const TypePtr &type,
+                         const TypePtr &init, std::string_view id) {
+  // check if is compatible
+  if (!type->IsIdentical(init)) {
+    return LogErrorBool(log, "type mismatch when initializing", id);
+  }
+  // check for reference types
+  if (type->IsReference()) {
+    if (!init->IsReference() && init->IsRightValue()) {
+      return LogErrorBool(log, "reference cannot be initialized "
+                          "with a right value", id);
+    }
+    if (init->IsConst() && !type->GetDerefedType()->IsConst()) {
+      return LogErrorBool(log, "variable reference cannot be initialized "
+                          "with a constant", id);
+    }
+  }
+  return true;
 }
 
 std::optional<TypePtr> Analyzer::CheckOpOverload(
@@ -135,8 +167,10 @@ TypePtr Analyzer::AnalyzeOn(FunDefAST &ast) {
   // get return type
   auto ret = ast.type() ? ast.type()->SemaAnalyze(*this) : MakeVoid();
   if (!ret) return nullptr;
-  auto func_guard = EnterFunc(ret);
-  if (!ret->IsRightValue()) ret = ret->GetValueType(true);
+  cur_ret_ = ret;
+  if (!ret->IsReference() && !ret->IsRightValue()) {
+    ret = ret->GetValueType(true);
+  }
   // perform function name mangling
   auto id = ast.id(), org_id = id;
   if (id == ".") {
@@ -166,16 +200,9 @@ TypePtr Analyzer::AnalyzeOn(FunDefAST &ast) {
   if (ast.body()) {
     auto body_ret = ast.body()->SemaAnalyze(*this);
     if (!body_ret) return nullptr;
-    if (!cur_ret_->IsVoid()) {
-      if (!cur_ret_->IsIdentical(body_ret)) {
-        return LogError(ast.body()->logger(),
-                        "type mismatch when returning");
-      }
-      if (cur_ret_->IsReference() && !body_ret->IsReference() &&
-          body_ret->IsRightValue()) {
-        return LogError(ast.body()->logger(),
-                        "returning right value but left value required");
-      }
+    if (!cur_ret_->IsVoid() &&
+        !CheckInit(ast.body()->logger(), cur_ret_, body_ret)) {
+      return nullptr;
     }
   }
   ast.set_ast_type(std::move(type));
@@ -258,7 +285,7 @@ TypePtr Analyzer::AnalyzeOn(EnumAST &ast) {
   auto type = ast.type() ? ast.type()->SemaAnalyze(*this)
                          : MakePrimType(Keyword::Int32, false);
   if (!type) return nullptr;
-  if (!type->IsInteger()) {
+  if (!type->IsInteger() || type->IsReference()) {
     return LogError(ast.logger(),
                     "enumuration's type must be an integer type");
   }
@@ -324,24 +351,11 @@ TypePtr Analyzer::AnalyzeOn(VarLetElemAST &ast) {
   TypePtr sym_type;
   if (type) {
     assert(!type->IsRightValue());
-    // check if is compatible
-    if (init && !type->IsIdentical(init)) {
-      return LogError(log, "type mismatch when initializing", id);
-    }
+    if (init && !CheckInit(log, type, init, id)) return nullptr;
     // check for reference types
-    if (type->IsReference()) {
-      if (!init) {
-        return LogError(log, "cannot define a reference "
-                        "without initialization", id);
-      }
-      if (init->IsRightValue()) {
-        return LogError(log, "reference cannot be initialized "
-                        "with a right value", id);
-      }
-      if (init->IsConst() && !type->GetDerefedType()->IsConst()) {
-        return LogError(log, "variable reference cannot be initialized "
-                        "with a constant", id);
-      }
+    if (!init && type->IsReference()) {
+      return LogError(log, "cannot define a reference "
+                      "without initialization", id);
     }
     sym_type = std::move(type);
   }
@@ -420,7 +434,6 @@ TypePtr Analyzer::AnalyzeOn(BlockAST &ast) {
     if (!type) return nullptr;
     if (i == ast.stmts().size() - 1) ret = std::move(type);
   }
-  if (!ret->IsRightValue()) ret = ret->GetValueType(true);
   return ast.set_ast_type(std::move(ret));
 }
 
@@ -439,7 +452,11 @@ TypePtr Analyzer::AnalyzeOn(IfAST &ast) {
                                    : MakeVoid();
   if (!else_then) return nullptr;
   // create return type
-  auto ret = then->IsIdentical(else_then) ? then : MakeVoid();
+  auto ret = MakeVoid();
+  if (then->IsIdentical(else_then)) {
+    // if one of return value is right value, return right value
+    ret = then->IsRightValue() ? std::move(then) : std::move(else_then);
+  }
   return ast.set_ast_type(std::move(ret));
 }
 
@@ -456,8 +473,14 @@ TypePtr Analyzer::AnalyzeOn(WhenAST &ast) {
     if (!elems) {
       elems = std::move(elem);
     }
-    else if (!elems->IsVoid() && !elems->IsIdentical(elem)) {
-      elems = MakeVoid();
+    else if (!elems->IsVoid()) {
+      if (!elems->IsIdentical(elem)) {
+        elems = MakeVoid();
+      }
+      else if (!elems->IsRightValue() && elem->IsRightValue()) {
+        // handle right value, same as if-statement
+        elems = std::move(elem);
+      }
     }
   }
   // check else then block
@@ -465,7 +488,11 @@ TypePtr Analyzer::AnalyzeOn(WhenAST &ast) {
                                    : MakeVoid();
   if (!else_then) return nullptr;
   // create return type
-  auto ret = elems->IsIdentical(else_then) ? elems : MakeVoid();
+  auto ret = MakeVoid();
+  if (elems->IsIdentical(else_then)) {
+    // handle right value, same as if-statement
+    ret = elems->IsRightValue() ? std::move(elems) : std::move(else_then);
+  }
   return ast.set_ast_type(std::move(ret));
 }
 
@@ -505,7 +532,7 @@ TypePtr Analyzer::AnalyzeOn(ForInAST &ast) {
   }
   // create loop variable
   if (type->IsRightValue()) type = type->GetValueType(false);
-  if (!type->IsConst()) {
+  if (!type->IsReference() && !type->IsConst()) {
     type = std::make_shared<ConstType>(std::move(type));
   }
   symbols_->AddItem(ast.id(), type);
@@ -532,21 +559,10 @@ TypePtr Analyzer::AnalyzeOn(ControlAST &ast) {
       break;
     }
     case Keyword::Return: {
-      // check if is in a function
-      if (!cur_ret_) {
-        return LogError(ast.logger(),
-                        "using 'return' outside the function");
-      }
-      else {
-        auto type = ast.expr() ? ast.expr()->SemaAnalyze(*this)
-                               : MakeVoid();
-        // check if is compatible
-        assert(cur_ret_->IsVoid() || !cur_ret_->IsRightValue());
-        if (!cur_ret_->IsIdentical(type)) {
-          return LogError(ast.expr()->logger(),
-                          "type mismatch when returning");
-        }
-      }
+      auto type = ast.expr() ? ast.expr()->SemaAnalyze(*this) : MakeVoid();
+      // check if is compatible
+      assert(cur_ret_->IsVoid() || !cur_ret_->IsRightValue());
+      if (!CheckInit(ast.logger(), cur_ret_, type)) return nullptr;
       break;
     }
     default: assert(false);
@@ -583,8 +599,6 @@ TypePtr Analyzer::AnalyzeOn(BinaryAST &ast) {
   if (lhs->IsVoid() || rhs->IsVoid()) {
     return LogError(ast.logger(), "invalid operation between void types");
   }
-  if (lhs->IsReference()) lhs = lhs->GetDerefedType();
-  if (rhs->IsReference()) rhs = rhs->GetDerefedType();
   // check if operator was overloaded
   if (!lhs->IsBasic() || !rhs->IsBasic()) {
     TypePtrList args = {lhs, rhs};
@@ -655,7 +669,8 @@ TypePtr Analyzer::AnalyzeOn(BinaryAST &ast) {
     }
     case Operator::AssAdd: case Operator::AssSub: {
       // pointer operation
-      if (lhs->IsPointer() && !lhs->IsConst() && rhs->IsInteger()) {
+      if (lhs->IsPointer() && !lhs->IsRightValue() && !lhs->IsConst() &&
+          rhs->IsInteger()) {
         ret = MakeVoid();
         break;
       }
@@ -782,9 +797,7 @@ TypePtr Analyzer::AnalyzeOn(UnaryAST &ast) {
 TypePtr Analyzer::AnalyzeOn(IndexAST &ast) {
   // get type of expression
   auto expr = ast.expr()->SemaAnalyze(*this);
-  // TODO: why left value array?
-  if (!expr || (!expr->IsPointer() &&
-                !(expr->IsArray() && !expr->IsRightValue()))) {
+  if (!expr || (!expr->IsPointer() && !expr->IsArray())) {
     return LogError(ast.expr()->logger(),
                     "expression is not subscriptable");
   }
@@ -838,8 +851,7 @@ TypePtr Analyzer::AnalyzeOn(FunCallAST &ast) {
   if (!ret) {
     return LogError(ast.expr()->logger(), "invalid function call");
   }
-  // generate right value
-  if (!ret->IsRightValue()) ret = ret->GetValueType(true);
+  assert(ret->IsReference() || ret->IsRightValue());
   return ast.set_ast_type(std::move(ret));
 }
 
@@ -892,6 +904,9 @@ TypePtr Analyzer::AnalyzeOn(NullAST &ast) {
 TypePtr Analyzer::AnalyzeOn(ValInitAST &ast) {
   auto type = ast.type()->SemaAnalyze(*this);
   if (!type) return nullptr;
+  if (type->IsReference()) {
+    return LogError(ast.type()->logger(), "cannot initialize a reference");
+  }
   assert(!type->IsRightValue());
   // check if is a valid initializer list
   if (ast.elems().size() > type->GetLength()) {
@@ -941,13 +956,22 @@ TypePtr Analyzer::AnalyzeOn(FuncTypeAST &ast) {
 TypePtr Analyzer::AnalyzeOn(VolaTypeAST &ast) {
   auto type = ast.type()->SemaAnalyze(*this);
   if (!type) return nullptr;
-  return ast.set_ast_type(std::make_shared<VolaType>(std::move(type)));
+  if (type->IsReference()) {
+    ast.type()->logger().LogWarning("volatile reference is meaningless");
+    return ast.set_ast_type(std::move(type));
+  }
+  else {
+    return ast.set_ast_type(std::make_shared<VolaType>(std::move(type)));
+  }
 }
 
 TypePtr Analyzer::AnalyzeOn(ArrayTypeAST &ast) {
   // get base type
   auto base = ast.base()->SemaAnalyze(*this);
   if (!base) return nullptr;
+  if (base->IsReference()) {
+    return LogError(ast.base()->logger(), "base type cannot be reference");
+  }
   // check type of length expression
   auto expr = ast.expr()->SemaAnalyze(*this);
   if (!expr) return nullptr;
@@ -974,7 +998,11 @@ TypePtr Analyzer::AnalyzeOn(PointerTypeAST &ast) {
   // get base type
   auto base = ast.base()->SemaAnalyze(*this);
   if (!base) return nullptr;
+  if (base->IsReference()) {
+    return LogError(ast.base()->logger(), "base type cannot be reference");
+  }
   if (!ast.is_var()) base = std::make_shared<ConstType>(std::move(base));
+  // create pointer type
   auto type = MakePointer(std::move(base), false);
   return ast.set_ast_type(std::move(type));
 }
