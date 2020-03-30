@@ -8,6 +8,7 @@
 #include <ostream>
 #include <forward_list>
 #include <any>
+#include <unordered_map>
 #include <cstddef>
 
 #include "define/type.h"
@@ -24,13 +25,34 @@ using SSAPtrList = std::vector<SSAPtr>;
 using UserPtr = std::shared_ptr<User>;
 using UserPtrList = std::vector<UserPtr>;
 
+// utility class for dumping SSA IR
+class IdManager {
+ public:
+  IdManager() { Reset(); }
+
+  // reset manager status
+  void Reset();
+  // log new value pointer
+  std::size_t Log(const Value *val);
+  // log new value pointer
+  std::size_t Log(const SSAPtr &val) { return Log(val.get()); }
+  // get id of specific value
+  std::size_t GetId(const Value *val) const;
+  // get id of specific value
+  std::size_t GetId(const SSAPtr &val) const { return GetId(val.get()); }
+
+ private:
+  std::size_t cur_id_;
+  std::unordered_map<const Value *, std::size_t> ids_;
+};
+
 // SSA value
 class Value {
  public:
   virtual ~Value() = default;
 
   // dump the content of SSA value to output stream
-  virtual void Dump(std::ostream &os) const = 0;
+  virtual void Dump(std::ostream &os, IdManager &idm) const = 0;
   // get address value of current value
   virtual SSAPtr GetAddr() const { return nullptr; }
 
