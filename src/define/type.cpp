@@ -273,8 +273,14 @@ TypePtr RefType::GetDeconstedType() const {
 }
 
 TypePtr RefType::GetValueType(bool is_right) const {
-  auto type = base_->GetValueType(is_right);
-  return std::make_shared<RefType>(std::move(type));
+  if (is_right) {
+    // return non-referenced right value type
+    return base_->GetValueType(is_right);
+  }
+  else {
+    // return self
+    return std::make_shared<RefType>(base_);
+  }
 }
 
 void yulang::define::SetPointerSize(std::size_t size) {

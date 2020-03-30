@@ -565,7 +565,7 @@ class RefType : public BaseType {
  public:
   RefType(TypePtr base) : base_(std::move(base)) {}
 
-  bool IsRightValue() const override { return base_->IsRightValue(); }
+  bool IsRightValue() const override { return false; }
   bool IsVoid() const override { return base_->IsVoid(); }
   bool IsNull() const override { return base_->IsNull(); }
   bool IsBasic() const override { return base_->IsBasic(); }
