@@ -802,6 +802,7 @@ TypePtr Analyzer::AnalyzeOn(IndexAST &ast) {
     return LogError(ast.expr()->logger(),
                     "expression is not subscriptable");
   }
+  if (expr->IsReference()) expr = expr->GetDerefedType();
   // get type of index
   auto index = ast.index()->SemaAnalyze(*this);
   if (!index->IsInteger()) {
