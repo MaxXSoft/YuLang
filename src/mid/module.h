@@ -54,11 +54,15 @@ class Module {
   // create a pointer access instruction
   SSAPtr CreatePtrAccess(const SSAPtr &ptr, const SSAPtr &index);
   // create a element access instruction
-  SSAPtr CreateElemAccess(const SSAPtr &ptr, const SSAPtr &index);
-
+  SSAPtr CreateElemAccess(const SSAPtr &ptr, const SSAPtr &index,
+                          const define::TypePtr &type);
   // create a binary instruction
   SSAPtr CreateBinary(BinarySSA::Operator op, const SSAPtr &lhs,
                       const SSAPtr &rhs, const define::TypePtr &type);
+  // create a unary instruction
+  SSAPtr CreateUnary(UnarySSA::Operator op, const SSAPtr &opr,
+                     const define::TypePtr &type);
+
   // create equal (with type detection)
   SSAPtr CreateEqual(const SSAPtr &lhs, const SSAPtr &rhs);
   // create negate (with type detection)
@@ -104,7 +108,7 @@ class Module {
   SSAPtr GetZero(const define::TypePtr &type);
   // get a constant integer
   SSAPtr GetInt(std::uint64_t value, const define::TypePtr &type);
-  // get a 32-bit constant integer
+  // get a 32-bit signed constant integer
   SSAPtr GetInt32(std::uint32_t value);
   // get a constant boolean
   SSAPtr GetBool(bool value);
@@ -136,8 +140,8 @@ class Module {
     return inst;
   }
 
-  // all global values, including global variables and functions
-  SSAPtrList global_vals_;
+  // all global variables and functions
+  UserPtrList vars_, funcs_;
   // current insert point
   BlockPtr insert_point_;
 };
