@@ -15,21 +15,21 @@ const char *kIndent = "  ";
 
 // linkage types
 const char *kLinkTypes[] = {
-  "Internal", "Inline", "External", "GlobalCtor", "GlobalDtor",
+  "internal", "inline", "external", "global_ctor", "global_dtor",
 };
 
 // binary operators
 const char *kBinOps[] = {
-  "Add", "Sub", "Mul", "UDiv", "SDiv", "URem", "SRem",
-  "Equal", "NotEq", "Less", "LessEq", "Great", "GreatEq",
-  "And", "Or", "Xor", "Shl", "LShr", "AShr",
-  "FAdd", "FSub", "FMul", "FDiv", "FRem",
-  "FEqual", "FNotEq", "FLess", "FLessEq", "FGreat", "FGreatEq",
+  "add", "sub", "mul", "udiv", "sdiv", "urem", "srem",
+  "eq", "neq", "lt", "le", "gt", "ge",
+  "and", "or", "xor", "shl", "lshr", "ashr",
+  "fadd", "fsub", "fmul", "fdiv", "frem",
+  "feq", "fne", "flt", "fle", "fgt", "fge",
 };
 
 // unary operators
 const char *kUnaOps[] = {
-  "Neg", "LogicNot", "Not", "FNeg", "Cast",
+  "neg", "lnot", "not", "fneg", "cast",
 };
 
 // indicate if is in expression
@@ -230,12 +230,15 @@ void FunctionSSA::Dump(std::ostream &os, IdManager &idm) const {
   os << kLinkTypes[static_cast<int>(link_)] << ' ';
   idm.LogName(this, name_);
   PrintIdType(os, idm, this);
-  os << " {" << std::endl;
-  idm.ResetId();
-  for (const auto &i : *this) {
-    i.value()->Dump(os, idm);
+  if (size()) {
+    os << " {" << std::endl;
+    idm.ResetId();
+    for (const auto &i : *this) {
+      i.value()->Dump(os, idm);
+    }
+    os << '}';
   }
-  os << '}' << std::endl;
+  os << std::endl;
 }
 
 void GlobalVarSSA::Dump(std::ostream &os, IdManager &idm) const {
