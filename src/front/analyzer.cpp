@@ -949,6 +949,9 @@ TypePtr Analyzer::AnalyzeOn(FuncTypeAST &ast) {
   // get return type
   auto ret = ast.ret() ? ast.ret()->SemaAnalyze(*this) : MakeVoid();
   if (!ret) return nullptr;
+  if (!ret->IsReference() && !ret->IsRightValue()) {
+    ret = ret->GetValueType(true);
+  }
   // make function type
   auto type = std::make_shared<FuncType>(std::move(args), std::move(ret),
                                          false);
