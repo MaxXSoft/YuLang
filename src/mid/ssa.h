@@ -22,7 +22,7 @@ using GlobalVarPtr = std::shared_ptr<GlobalVarSSA>;
 
 // linkage types
 enum class LinkageTypes {
-  Internal, Inline, External,
+  Internal, Inline, External, GlobalCtor, GlobalDtor,
 };
 
 // load from allocation
