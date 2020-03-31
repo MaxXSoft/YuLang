@@ -91,14 +91,19 @@ SSAPtr Module::CreateArgRef(const SSAPtr &func, std::size_t index) {
 
 SSAPtr Module::CreateStore(const SSAPtr &value, const SSAPtr &pointer) {
   // get proper pointer
-  auto ptr = pointer;
+  auto ptr = pointer, val = value;
   while (!ptr->type()->GetDerefedType() ||
-         !value->type()->IsIdentical(ptr->type()->GetDerefedType())) {
+         !ptr->type()->GetDerefedType()->CanAccept(val->type())) {
     ptr = ptr->GetAddr();
     assert(ptr);
   }
+  // create cast (if necessary)
+  auto target_ty = ptr->type()->GetDerefedType();
+  if (!val->type()->IsIdentical(target_ty)) {
+    val = CreateCast(val, target_ty);
+  }
   // create store
-  auto store = AddInst<StoreSSA>(value, ptr);
+  auto store = AddInst<StoreSSA>(val, ptr);
   store->set_type(nullptr);
   return store;
 }
