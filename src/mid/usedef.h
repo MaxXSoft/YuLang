@@ -9,6 +9,8 @@
 #include <forward_list>
 #include <any>
 #include <unordered_map>
+#include <string_view>
+#include <optional>
 #include <cstddef>
 
 #include "define/type.h"
@@ -28,22 +30,27 @@ using UserPtrList = std::vector<UserPtr>;
 // utility class for dumping SSA IR
 class IdManager {
  public:
-  IdManager() { Reset(); }
+  IdManager() : cur_id_(0) {}
 
-  // reset manager status
-  void Reset();
-  // log new value pointer
-  std::size_t Log(const Value *val);
-  // log new value pointer
-  std::size_t Log(const SSAPtr &val) { return Log(val.get()); }
+  // reset status about identifier
+  void ResetId();
   // get id of specific value
-  std::size_t GetId(const Value *val) const;
+  std::size_t GetId(const Value *val);
   // get id of specific value
-  std::size_t GetId(const SSAPtr &val) const { return GetId(val.get()); }
+  std::size_t GetId(const SSAPtr &val) { return GetId(val.get()); }
+  // get name of specific value, set if not found
+  void LogName(const Value *val, std::string_view name);
+  // get name of specific value
+  std::optional<std::string_view> GetName(const Value *val) const;
+  // get name of specific value
+  std::optional<std::string_view> GetName(const SSAPtr &val) const {
+    return GetName(val.get());
+  }
 
  private:
   std::size_t cur_id_;
   std::unordered_map<const Value *, std::size_t> ids_;
+  std::unordered_map<const Value *, std::string_view> names_;
 };
 
 // SSA value

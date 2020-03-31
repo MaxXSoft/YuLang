@@ -2,22 +2,36 @@
 
 using namespace yulang::mid;
 
-void IdManager::Reset() {
+void IdManager::ResetId() {
   cur_id_ = 0;
   ids_.clear();
 }
 
-std::size_t IdManager::Log(const Value *val) {
-  auto id = cur_id_++;
-  assert(ids_.find(val) == ids_.end());
-  ids_.insert({val, id});
-  return id;
+std::size_t IdManager::GetId(const Value *val) {
+  auto it = ids_.find(val);
+  if (it == ids_.end()) {
+    auto id = cur_id_++;
+    ids_.insert({val, id});
+    return id;
+  }
+  else {
+    return it->second;
+  }
 }
 
-std::size_t IdManager::GetId(const Value *val) const {
-  auto it = ids_.find(val);
-  assert(it != ids_.end());
-  return it->second;
+void IdManager::LogName(const Value *val, std::string_view name) {
+  assert(names_.find(val) == names_.end());
+  names_.insert({val, name});
+}
+
+std::optional<std::string_view> IdManager::GetName(const Value *v) const {
+  auto it = names_.find(v);
+  if (it != names_.end()) {
+    return it->second;
+  }
+  else {
+    return {};
+  }
 }
 
 void Value::ReplaceBy(const SSAPtr &value) {
