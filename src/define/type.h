@@ -95,7 +95,7 @@ class BaseType {
   // return a new type with specific value type (left/right)
   virtual TypePtr GetValueType(bool is_right) const = 0;
   // return a new trivial type
-  // i.e. all right values, no constants,
+  // i.e. all left values, no constants,
   //      replace enumerations with integers,
   //      replace references with pointers
   virtual TypePtr GetTrivialType() const = 0;
@@ -166,7 +166,7 @@ class PrimType : public BaseType {
   }
   TypePtr GetDerefedType() const override { return nullptr; }
   TypePtr GetDeconstedType() const override { return nullptr; }
-  TypePtr GetTrivialType() const override { return GetValueType(true); }
+  TypePtr GetTrivialType() const override { return GetValueType(false); }
 
   bool CanAccept(const TypePtr &type) const override;
   bool CanCastTo(const TypePtr &type) const override;
@@ -289,7 +289,7 @@ class EnumType : public BaseType {
   TypePtr GetDeconstedType() const override { return nullptr; }
   std::string GetTypeId() const override { return id_; }
   TypePtr GetTrivialType() const override {
-    return type_->GetValueType(true);
+    return type_->GetTrivialType();
   }
 
   bool CanAccept(const TypePtr &type) const override;
@@ -356,7 +356,7 @@ class ConstType : public BaseType {
     return type_->GetTypeId();
   }
   TypePtr GetTrivialType() const override {
-    return type_->GetValueType(true);
+    return type_->GetTrivialType();
   }
 
   TypePtr GetElem(std::size_t index) const override;
@@ -472,10 +472,10 @@ class VolaType : public BaseType {
     return type_->GetDerefedType();
   }
   std::string GetTypeId() const override { return type_->GetTypeId(); }
-  TypePtr GetTrivialType() const override { return GetValueType(true); }
 
   TypePtr GetDeconstedType() const override;
   TypePtr GetValueType(bool is_right) const override;
+  TypePtr GetTrivialType() const override;
 
  private:
   TypePtr type_;

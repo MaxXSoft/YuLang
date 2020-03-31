@@ -114,7 +114,7 @@ TypePtr StructType::GetTrivialType() const {
   for (const auto &i : elems_) {
     elems.push_back({i.first, i.second->GetTrivialType()});
   }
-  return std::make_shared<StructType>(elems, id_, true);
+  return std::make_shared<StructType>(elems, id_, false);
 }
 
 bool EnumType::CanAccept(const TypePtr &type) const {
@@ -154,7 +154,7 @@ TypePtr ConstType::GetValueType(bool is_right) const {
 }
 
 bool FuncType::CanAccept(const TypePtr &type) const {
-  return !is_right_ && (IsIdentical(type) || type->IsNull());
+  return !is_right_ && IsIdentical(type);
 }
 
 bool FuncType::CanCastTo(const TypePtr &type) const {
@@ -206,7 +206,7 @@ TypePtr FuncType::GetTrivialType() const {
   TypePtrList args;
   for (const auto &i : args_) args.push_back(i->GetTrivialType());
   return std::make_shared<FuncType>(std::move(args),
-                                    ret_->GetTrivialType(), true);
+                                    ret_->GetTrivialType(), false);
 }
 
 TypePtr VolaType::GetDeconstedType() const {
@@ -216,6 +216,11 @@ TypePtr VolaType::GetDeconstedType() const {
 
 TypePtr VolaType::GetValueType(bool is_right) const {
   auto type = type_->GetValueType(is_right);
+  return std::make_shared<VolaType>(std::move(type));
+}
+
+TypePtr VolaType::GetTrivialType() const {
+  auto type = type_->GetTrivialType();
   return std::make_shared<VolaType>(std::move(type));
 }
 
@@ -244,11 +249,10 @@ TypePtr ArrayType::GetValueType(bool is_right) const {
 }
 
 TypePtr ArrayType::GetTrivialType() const {
-  return std::make_shared<ArrayType>(base_->GetTrivialType(), len_, true);
+  return std::make_shared<ArrayType>(base_->GetTrivialType(), len_, false);
 }
 
 bool PointerType::CanAccept(const TypePtr &type) const {
-  if (type->IsNull()) return true;
   if (!type->IsPointer()) return false;
   if (!base_->IsConst() && type->GetDerefedType()->IsConst()) return false;
   return !is_right_ && base_->IsIdentical(type->GetDerefedType());
@@ -283,7 +287,7 @@ TypePtr PointerType::GetValueType(bool is_right) const {
 }
 
 TypePtr PointerType::GetTrivialType() const {
-  return std::make_shared<PointerType>(base_->GetTrivialType(), true);
+  return std::make_shared<PointerType>(base_->GetTrivialType(), false);
 }
 
 TypePtr RefType::GetDeconstedType() const {
@@ -303,5 +307,5 @@ TypePtr RefType::GetValueType(bool is_right) const {
 }
 
 TypePtr RefType::GetTrivialType() const {
-  return std::make_shared<PointerType>(base_->GetTrivialType(), true);
+  return std::make_shared<PointerType>(base_->GetTrivialType(), false);
 }
