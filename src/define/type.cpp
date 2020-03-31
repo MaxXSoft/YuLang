@@ -63,6 +63,7 @@ std::string PrimType::GetTypeId() const {
     case Type::Bool: return "bool";
     case Type::Float32: return "f32";
     case Type::Float64: return "f64";
+    case Type::Null: return "null";
     default: return "";
   }
 }
