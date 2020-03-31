@@ -65,6 +65,7 @@ void ConvertChar(std::ostream &os, char c, bool in_char) {
         os << "\\x" << std::setw(2) << std::setfill('0') << std::hex
            << static_cast<int>(c);
       }
+      break;
     }
   }
 }
