@@ -288,7 +288,15 @@ SSAPtr Module::CreateUnary(UnaryOp op, const SSAPtr &opr,
 }
 
 SSAPtr Module::CreateEqual(const SSAPtr &lhs, const SSAPtr &rhs) {
-  CREATE_RELOP(Equal, lhs, rhs);
+  auto bool_ty = MakePrimType(Keyword::Bool, false);
+  if (lhs->type()->IsInteger() || lhs->type()->IsBool() ||
+      lhs->type()->IsFunction() || lhs->type()->IsPointer()) {
+    return CreateBinary(BinaryOp::Equal, lhs, rhs, bool_ty);
+  }
+  else {
+    assert(lhs->type()->IsFloat());
+    return CreateBinary(BinaryOp::FEqual, lhs, rhs, bool_ty);
+  }
 }
 
 SSAPtr Module::CreateNeg(const SSAPtr &opr) {
@@ -339,7 +347,15 @@ SSAPtr Module::CreateRem(const SSAPtr &lhs, const SSAPtr &rhs) {
 }
 
 SSAPtr Module::CreateNotEq(const SSAPtr &lhs, const SSAPtr &rhs) {
-  CREATE_RELOP(NotEq, lhs, rhs);
+  auto bool_ty = MakePrimType(Keyword::Bool, false);
+  if (lhs->type()->IsInteger() || lhs->type()->IsBool() ||
+      lhs->type()->IsFunction() || lhs->type()->IsPointer()) {
+    return CreateBinary(BinaryOp::NotEq, lhs, rhs, bool_ty);
+  }
+  else {
+    assert(lhs->type()->IsFloat());
+    return CreateBinary(BinaryOp::FNotEq, lhs, rhs, bool_ty);
+  }
 }
 
 SSAPtr Module::CreateLess(const SSAPtr &lhs, const SSAPtr &rhs) {
