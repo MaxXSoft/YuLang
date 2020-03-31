@@ -43,8 +43,8 @@ using UnaryOp = UnarySSA::Operator;
 }  // namespace
 
 void Module::SealGlobalCtor() {
-  if (!is_ctor_sealed_) {    
-    SetInsertPoint(ctor_entry_);
+  if (global_ctor_ && !is_ctor_sealed_) {    
+    insert_point_ = ctor_entry_;
     CreateJump(ctor_exit_);
     is_ctor_sealed_ = true;
   }
@@ -475,24 +475,25 @@ xstl::Guard Module::EnterGlobalCtor() {
   // initialize global function if it does not exist
   if (!global_ctor_) {
     // create function
-    auto link = LinkageTypes::Internal;
+    auto link = LinkageTypes::GlobalCtor;
     auto ty = std::make_shared<FuncType>(TypePtrList(), MakeVoid(), true);
     global_ctor_ = CreateFunction(link, "_$ctor", ty);
     // create basic blocks
     ctor_entry_ = CreateBlock(global_ctor_, "entry");
     ctor_exit_ = CreateBlock(global_ctor_, "exit");
-    SetInsertPoint(ctor_exit_);
+    insert_point_ = ctor_exit_;
     CreateReturn(nullptr);
     // mark as not sealed
     is_ctor_sealed_ = false;
   }
   // switch to global function's body block
   insert_point_ = ctor_entry_;
-  return xstl::Guard([this, cur_block] { SetInsertPoint(cur_block); });
+  return xstl::Guard([this, cur_block] { insert_point_ = cur_block; });
 }
 
-void Module::Dump(std::ostream &os) const {
+void Module::Dump(std::ostream &os) {
   IdManager idm;
+  SealGlobalCtor();
   // dump global variables
   for (const auto &i : vars_) {
     i->Dump(os, idm);

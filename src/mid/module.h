@@ -13,7 +13,18 @@ namespace yulang::mid {
 
 class Module {
  public:
-  Module() {}
+  Module() { Reset(); }
+
+  // reset module status & content
+  void Reset() {
+    vars_.clear();
+    funcs_.clear();
+    global_ctor_ = nullptr;
+    ctor_entry_ = nullptr;
+    ctor_exit_ = nullptr;
+    is_ctor_sealed_ = false;
+    insert_point_ = nullptr;
+  }
 
   // create a function declaration
   UserPtr CreateFunction(LinkageTypes link, const std::string &name,
@@ -129,7 +140,7 @@ class Module {
   xstl::Guard EnterGlobalCtor();
 
   // dump IRs in current module
-  void Dump(std::ostream &os) const;
+  void Dump(std::ostream &os);
 
  private:
   // create a new instruction SSA, and push into current block
