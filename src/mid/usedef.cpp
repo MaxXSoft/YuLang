@@ -20,8 +20,7 @@ std::size_t IdManager::GetId(const Value *val) {
 }
 
 void IdManager::LogName(const Value *val, std::string_view name) {
-  assert(names_.find(val) == names_.end());
-  names_.insert({val, name});
+  if (names_.find(val) == names_.end()) names_.insert({val, name});
 }
 
 std::optional<std::string_view> IdManager::GetName(const Value *v) const {
