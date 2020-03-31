@@ -357,7 +357,11 @@ SSAPtr IRBuilder::GenerateOn(ForInAST &ast) {
   // add to break/continue stack
   break_cont_.push({end_block, cond_block});
   // generate expression
+  const auto &expr_ty = ast.expr()->ast_type();
+  auto expr_ptr = module_.CreateAlloca(expr_ty);
   auto expr_val = ast.expr()->GenerateIR(*this);
+  module_.CreateStore(expr_val, expr_ptr);
+  expr_val = module_.CreateLoad(expr_ptr, expr_ty->IsReference());
   module_.CreateJump(cond_block);
   // emit 'cond' block
   module_.SetInsertPoint(cond_block);
