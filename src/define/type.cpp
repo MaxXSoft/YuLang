@@ -9,7 +9,7 @@ using namespace yulang::define;
 std::size_t BaseType::ptr_size_ = sizeof(void *);
 
 bool PrimType::CanAccept(const TypePtr &type) const {
-  if (is_right_ || IsNull()) return false;
+  if (is_right_ || IsVoid() || IsNull()) return false;
   return IsIdentical(type);
 }
 
@@ -154,7 +154,7 @@ TypePtr ConstType::GetValueType(bool is_right) const {
 }
 
 bool FuncType::CanAccept(const TypePtr &type) const {
-  return !is_right_ && IsIdentical(type);
+  return !is_right_ && (IsIdentical(type) || type->IsNull());
 }
 
 bool FuncType::CanCastTo(const TypePtr &type) const {
@@ -248,6 +248,7 @@ TypePtr ArrayType::GetTrivialType() const {
 }
 
 bool PointerType::CanAccept(const TypePtr &type) const {
+  if (type->IsNull()) return true;
   if (!type->IsPointer()) return false;
   if (!base_->IsConst() && type->GetDerefedType()->IsConst()) return false;
   return !is_right_ && base_->IsIdentical(type->GetDerefedType());
