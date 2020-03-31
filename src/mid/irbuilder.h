@@ -58,7 +58,7 @@ class IRBuilder {
   SSAPtr GenerateOn(define::RefTypeAST &ast);
 
   // getters
-  const Module &module() const { return module_; }
+  Module &module() { return module_; }
 
  private:
   // pair for storing target block of break & continue
