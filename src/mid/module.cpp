@@ -17,7 +17,7 @@ using namespace yulang::define;
 
 #define CREATE_RELOP(op, lhs, rhs)                             \
   do {                                                         \
-    auto bool_ty = MakePrimType(Keyword::Bool, true);          \
+    auto bool_ty = MakePrimType(Keyword::Bool, false);         \
     if (lhs->type()->IsInteger()) {                            \
       return CreateBinary(BinaryOp::op, lhs, rhs, bool_ty);    \
     }                                                          \
@@ -124,7 +124,7 @@ SSAPtr Module::CreateAlloca(const TypePtr &type) {
   assert(!type->IsVoid());
   // create allocation
   auto alloca = AddInst<AllocaSSA>();
-  alloca->set_type(MakePointer(type->GetTrivialType()));
+  alloca->set_type(MakePointer(type->GetTrivialType(), false));
   return alloca;
 }
 
@@ -171,7 +171,7 @@ GlobalVarPtr Module::CreateGlobalVar(LinkageTypes link,
          var_type->IsIdentical(init->type()));
   // create global variable definition
   auto global = std::make_shared<GlobalVarSSA>(link, name, init);
-  global->set_type(MakePointer(var_type));
+  global->set_type(MakePointer(var_type, false));
   // add to global variables
   vars_.push_back(global);
   return global;
@@ -213,13 +213,25 @@ SSAPtr Module::CreateCall(const SSAPtr &callee, const SSAPtrList &args) {
   // assertion for type checking
   assert(callee->type()->IsFunction());
   auto args_type = *callee->type()->GetArgsType();
-  // assertions for checking argument type
+  // get argument list
+  SSAPtrList casted_args;
   assert(args_type.size() == args.size());
   for (int i = 0; i < args_type.size(); ++i) {
-    assert(args_type[i]->IsIdentical(args[i]->type()));
+    auto arg = args[i];
+    // get proper argument value
+    if (args_type[i]->IsReference()) {
+      arg = arg->GetAddr();
+      assert(arg);
+    }
+    // perform necessary type casting
+    auto arg_ty = args_type[i]->GetTrivialType();
+    if (!arg->type()->IsIdentical(arg_ty)) {
+      arg = CreateCast(arg, arg_ty);
+    }
+    casted_args.push_back(std::move(arg));
   }
   // create call
-  auto call = AddInst<CallSSA>(callee, args);
+  auto call = AddInst<CallSSA>(callee, casted_args);
   auto ret_type = callee->type()->GetReturnType(args_type);
   call->set_type(ret_type->GetTrivialType());
   // create extra load if return type is reference
@@ -240,8 +252,7 @@ SSAPtr Module::CreatePtrAccess(const SSAPtr &ptr, const SSAPtr &index) {
   auto acc_type = AccessSSA::AccessType::Pointer;
   auto access = AddInst<AccessSSA>(acc_type, ptr, index);
   access->set_type(ptr->type());
-  // create load
-  return CreateLoad(access, false);
+  return access;
 }
 
 SSAPtr Module::CreateElemAccess(const SSAPtr &ptr, const SSAPtr &index,
@@ -255,9 +266,8 @@ SSAPtr Module::CreateElemAccess(const SSAPtr &ptr, const SSAPtr &index,
   // create access
   auto acc_type = AccessSSA::AccessType::Element;
   auto access = AddInst<AccessSSA>(acc_type, pointer, index);
-  access->set_type(MakePointer(type->GetTrivialType()));
-  // create load
-  return CreateLoad(access, type->IsReference());
+  access->set_type(MakePointer(type->GetTrivialType(), false));
+  return access;
 }
 
 SSAPtr Module::CreateBinary(BinaryOp op, const SSAPtr &lhs,
@@ -390,7 +400,7 @@ SSAPtr Module::CreateLogicNot(const SSAPtr &opr) {
   const auto &type = opr->type();
   assert(type->IsInteger() || type->IsBool());
   // create logic not operation
-  auto bool_ty = MakePrimType(Keyword::Bool, true);
+  auto bool_ty = MakePrimType(Keyword::Bool, false);
   return CreateUnary(UnaryOp::LogicNot, opr, bool_ty);
 }
 
@@ -420,12 +430,12 @@ SSAPtr Module::GetInt(std::uint64_t value, const TypePtr &type) {
 }
 
 SSAPtr Module::GetInt32(std::uint32_t value) {
-  auto type = MakePrimType(Keyword::Int32, true);
+  auto type = MakePrimType(Keyword::Int32, false);
   return GetInt(value, type);
 }
 
 SSAPtr Module::GetBool(bool value) {
-  auto type = MakePrimType(Keyword::Bool, true);
+  auto type = MakePrimType(Keyword::Bool, false);
   return GetInt(value, type);
 }
 
