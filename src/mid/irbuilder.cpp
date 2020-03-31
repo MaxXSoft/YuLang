@@ -100,7 +100,9 @@ SSAPtr IRBuilder::GenerateOn(FunDefAST &ast) {
   for (const auto &i : ast.args()) {
     auto arg = i->GenerateIR(*this);
     auto arg_ref = module_.CreateArgRef(func, arg_index++);
-    module_.CreateInit(arg_ref, arg, i->ast_type()->IsReference());
+    // NOTE: do not use 'CreateInit' with reference specifier
+    // because argument reference's type will always be right
+    module_.CreateStore(arg_ref, arg);
   }
   // generate return value
   if (ast.type()) {
@@ -491,7 +493,10 @@ SSAPtr IRBuilder::GenerateOn(AccessAST &ast) {
   assert(index);
   // generate access operation
   auto elem_ty = expr_ty->GetElem(*index);
-  return module_.CreateElemAccess(expr, module_.GetInt32(*index), elem_ty);
+  auto index_val = module_.GetInt32(*index);
+  auto ptr = module_.CreateElemAccess(expr, index_val, elem_ty);
+  // generate load
+  return module_.CreateLoad(ptr, elem_ty->IsReference());
 }
 
 SSAPtr IRBuilder::GenerateOn(CastAST &ast) {
@@ -535,12 +540,15 @@ SSAPtr IRBuilder::GenerateOn(IndexAST &ast) {
   if (expr_ty->IsReference()) expr_ty = expr_ty->GetDerefedType();
   auto elem_ty = expr_ty->GetDerefedType();
   // generate indexing operation
+  SSAPtr ptr;
   if (expr_ty->IsArray()) {
-    return module_.CreateElemAccess(expr, index, elem_ty);
+    ptr = module_.CreateElemAccess(expr, index, elem_ty);
   }
   else {
-    return module_.CreatePtrAccess(expr, index);
+    ptr = module_.CreatePtrAccess(expr, index);
   }
+  // generate load
+  return module_.CreateLoad(ptr, elem_ty->IsReference());
 }
 
 SSAPtr IRBuilder::GenerateOn(FunCallAST &ast) {
@@ -570,7 +578,9 @@ SSAPtr IRBuilder::GenerateOn(CharAST &ast) {
 SSAPtr IRBuilder::GenerateOn(IdAST &ast) {
   // get value
   auto val = vals_->GetItem(ast.id());
-  val = module_.CreateLoad(val, ast.ast_type()->IsReference());
+  if (!val->type()->IsFunction()) {
+    val = module_.CreateLoad(val, ast.ast_type()->IsReference());
+  }
   return val;
 }
 
