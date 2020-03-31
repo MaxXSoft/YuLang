@@ -4,19 +4,19 @@
 
 #include "version.h"
 
+#include "define/type.h"
 #include "front/lexman.h"
 #include "front/parser.h"
 #include "front/analyzer.h"
 #include "front/eval.h"
-#include "define/type.h"
-#include "back/llvm/generator.h"
+#include "mid/irbuilder.h"
 
 #include "xstl/argparse.h"
 
 using namespace std;
-using namespace yulang::front;
 using namespace yulang::define;
-using namespace yulang::back::ll;
+using namespace yulang::front;
+using namespace yulang::mid;
 
 namespace {
 
@@ -37,7 +37,7 @@ int main(int argc, const char *argv[]) {
   argp.AddOption<bool>("help", "h", "show this message", false);
   argp.AddOption<bool>("version", "v", "show version info", false);
   argp.AddOption<string>("outtype", "ot",
-                         "type of output (ast/yuir/llvm/obj)", "llvm");
+                         "type of output (ast/yuir/llvm/obj)", "yuir");
   argp.AddOption<string>("output", "o", "output file, default to stdout",
                          "");
   argp.AddOption<string>("imppath", "I", "set directory of import path",
@@ -72,14 +72,13 @@ int main(int argc, const char *argv[]) {
   Parser parser(lex_man);
   Evaluator eval;
   Analyzer ana(eval);
-  LLVMGen gen(file);
-  BaseType::set_ptr_size(gen.GetPointerSize());
+  IRBuilder irb;
 
   // get output info
   auto out_type = argp.GetValue<string>("outtype");
   auto out_file = argp.GetValue<string>("output");
   auto dump_ast = out_type == "ast";
-  auto dump_llvm = out_type == "llvm";
+  auto dump_yuir = out_type == "yuir";
 
   // initialize output stream
   std::ofstream ofs;
@@ -93,12 +92,12 @@ int main(int argc, const char *argv[]) {
     ast->Eval(eval);
     // dump to output
     if (dump_ast) ast->Dump(os);
-    // generate code
-    ast->GenerateCode(gen);
+    // generate IR
+    ast->GenerateIR(irb);
   }
 
   // check if is error
   auto err_num = lex_man.lexer()->logger().error_num();
-  if (!err_num && dump_llvm) gen.Dump(os);
+  if (!err_num && dump_yuir) irb.module().Dump(os);
   return err_num;
 }
