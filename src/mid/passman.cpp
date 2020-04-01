@@ -21,7 +21,7 @@ void PassManager::RunPasses() const {
     changed = false;
     // traverse all passes
     for (const auto &info : GetPasses()) {
-      if (info->min_opt_level() < opt_level_) continue;
+      if (info->min_opt_level() > opt_level_) continue;
       const auto &pass = info->pass();
       // handle by pass type
       if (pass->IsModulePass()) {
