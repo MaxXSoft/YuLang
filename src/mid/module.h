@@ -147,6 +147,10 @@ class Module {
   // dump IRs in current module
   void Dump(std::ostream &os);
 
+  // getters
+  const UserPtrList &vars() const { return vars_; }
+  const UserPtrList &funcs() const { return funcs_; }
+
  private:
   // create a new SSA with current context (logger)
   template <typename T, typename... Args>
