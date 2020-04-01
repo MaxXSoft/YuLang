@@ -77,6 +77,7 @@ SSAPtr IRBuilder::CreateBinOp(Operator op, const SSAPtr &lhs,
 }
 
 SSAPtr IRBuilder::GenerateOn(VarLetDefAST &ast) {
+  auto context = module_.SetContext(ast.logger());
   last_prop_ = ast.prop();
   for (const auto &i : ast.defs()) {
     i->GenerateIR(*this);
@@ -85,6 +86,7 @@ SSAPtr IRBuilder::GenerateOn(VarLetDefAST &ast) {
 }
 
 SSAPtr IRBuilder::GenerateOn(FunDefAST &ast) {
+  auto context = module_.SetContext(ast.logger());
   auto env = NewEnv();
   // get linkage type
   auto link = GetLinkageType(ast.prop());
@@ -131,6 +133,7 @@ SSAPtr IRBuilder::GenerateOn(FunDefAST &ast) {
 }
 
 SSAPtr IRBuilder::GenerateOn(DeclareAST &ast) {
+  auto context = module_.SetContext(ast.logger());
   // get linkage type
   auto link = LinkageTypes::External;
   // get type of declaration
@@ -166,11 +169,13 @@ SSAPtr IRBuilder::GenerateOn(EnumAST &ast) {
 }
 
 SSAPtr IRBuilder::GenerateOn(ImportAST &ast) {
+  auto context = module_.SetContext(ast.logger());
   for (const auto &i : ast.defs()) i->GenerateIR(*this);
   return nullptr;
 }
 
 SSAPtr IRBuilder::GenerateOn(VarLetElemAST &ast) {
+  auto context = module_.SetContext(ast.logger());
   const auto &type = ast.ast_type();
   const auto &init = ast.init();
   SSAPtr val;
@@ -214,6 +219,7 @@ SSAPtr IRBuilder::GenerateOn(VarLetElemAST &ast) {
 }
 
 SSAPtr IRBuilder::GenerateOn(ArgElemAST &ast) {
+  auto context = module_.SetContext(ast.logger());
   // create allocation for arguments
   auto alloca = module_.CreateAlloca(ast.type()->ast_type());
   // add to envrionment
@@ -232,6 +238,7 @@ SSAPtr IRBuilder::GenerateOn(EnumElemAST &ast) {
 }
 
 SSAPtr IRBuilder::GenerateOn(BlockAST &ast) {
+  auto context = module_.SetContext(ast.logger());
   auto env = NewEnv();
   // create new block
   const auto &cur_func = module_.GetInsertPoint()->parent();
@@ -249,6 +256,7 @@ SSAPtr IRBuilder::GenerateOn(BlockAST &ast) {
 }
 
 SSAPtr IRBuilder::GenerateOn(IfAST &ast) {
+  auto context = module_.SetContext(ast.logger());
   // create basic blocks
   const auto &func = module_.GetInsertPoint()->parent();
   auto then_block = module_.CreateBlock(func, "if_then");
@@ -284,6 +292,7 @@ SSAPtr IRBuilder::GenerateOn(IfAST &ast) {
 }
 
 SSAPtr IRBuilder::GenerateOn(WhenAST &ast) {
+  auto context = module_.SetContext(ast.logger());
   // create basic blocks
   const auto &func = module_.GetInsertPoint()->parent();
   when_end_ = module_.CreateBlock(func, "when_end");
@@ -317,6 +326,7 @@ SSAPtr IRBuilder::GenerateOn(WhenAST &ast) {
 }
 
 SSAPtr IRBuilder::GenerateOn(WhileAST &ast) {
+  auto context = module_.SetContext(ast.logger());
   // create basic blocks
   const auto &func = module_.GetInsertPoint()->parent();
   auto cond_block = module_.CreateBlock(func, "while_cond");
@@ -342,6 +352,7 @@ SSAPtr IRBuilder::GenerateOn(WhileAST &ast) {
 }
 
 SSAPtr IRBuilder::GenerateOn(ForInAST &ast) {
+  auto context = module_.SetContext(ast.logger());
   // get iterator function
   const auto &next_func = vals_->GetItem(ast.next_id());
   const auto &last_func = vals_->GetItem(ast.last_id());
@@ -381,11 +392,13 @@ SSAPtr IRBuilder::GenerateOn(ForInAST &ast) {
 }
 
 SSAPtr IRBuilder::GenerateOn(AsmAST &ast) {
+  auto context = module_.SetContext(ast.logger());
   module_.CreateAsm(ast.asm_str());
   return nullptr;
 }
 
 SSAPtr IRBuilder::GenerateOn(ControlAST &ast) {
+  auto context = module_.SetContext(ast.logger());
   // create basic block
   const auto &func = module_.GetInsertPoint()->parent();
   auto block = module_.CreateBlock(func);
@@ -416,6 +429,7 @@ SSAPtr IRBuilder::GenerateOn(ControlAST &ast) {
 }
 
 SSAPtr IRBuilder::GenerateOn(WhenElemAST &ast) {
+  auto context = module_.SetContext(ast.logger());
   // create basic blocks
   const auto &func = module_.GetInsertPoint()->parent();
   auto body_block = module_.CreateBlock(func, "case_body");
@@ -442,6 +456,7 @@ SSAPtr IRBuilder::GenerateOn(WhenElemAST &ast) {
 }
 
 SSAPtr IRBuilder::GenerateOn(BinaryAST &ast) {
+  auto context = module_.SetContext(ast.logger());
   // generate lhs
   auto lhs = ast.lhs()->GenerateIR(*this);
   // get name of overloaded function
@@ -488,6 +503,7 @@ SSAPtr IRBuilder::GenerateOn(BinaryAST &ast) {
 }
 
 SSAPtr IRBuilder::GenerateOn(AccessAST &ast) {
+  auto context = module_.SetContext(ast.logger());
   // generate expression
   auto expr = ast.expr()->GenerateIR(*this);
   const auto &expr_ty = ast.expr()->ast_type();
@@ -504,6 +520,7 @@ SSAPtr IRBuilder::GenerateOn(AccessAST &ast) {
 }
 
 SSAPtr IRBuilder::GenerateOn(CastAST &ast) {
+  auto context = module_.SetContext(ast.logger());
   // generate expression
   auto expr = ast.expr()->GenerateIR(*this);
   // create type casting
@@ -512,6 +529,7 @@ SSAPtr IRBuilder::GenerateOn(CastAST &ast) {
 
 SSAPtr IRBuilder::GenerateOn(UnaryAST &ast) {
   using UnaryOp = UnaryAST::UnaryOp;
+  auto context = module_.SetContext(ast.logger());
   // generate operand
   auto opr = ast.opr()->GenerateIR(*this);
   assert(!ast.opr()->ast_type()->IsReference());
@@ -536,6 +554,7 @@ SSAPtr IRBuilder::GenerateOn(UnaryAST &ast) {
 }
 
 SSAPtr IRBuilder::GenerateOn(IndexAST &ast) {
+  auto context = module_.SetContext(ast.logger());
   // generate expression & index
   auto expr = ast.expr()->GenerateIR(*this);
   auto index = ast.index()->GenerateIR(*this);
@@ -556,6 +575,7 @@ SSAPtr IRBuilder::GenerateOn(IndexAST &ast) {
 }
 
 SSAPtr IRBuilder::GenerateOn(FunCallAST &ast) {
+  auto context = module_.SetContext(ast.logger());
   // generate callee
   auto callee = ast.expr()->GenerateIR(*this);
   // generate arguments
@@ -568,18 +588,22 @@ SSAPtr IRBuilder::GenerateOn(FunCallAST &ast) {
 }
 
 SSAPtr IRBuilder::GenerateOn(IntAST &ast) {
+  auto context = module_.SetContext(ast.logger());
   return module_.GetInt(ast.value(), ast.ast_type());
 }
 
 SSAPtr IRBuilder::GenerateOn(FloatAST &ast) {
+  auto context = module_.SetContext(ast.logger());
   return module_.GetFloat(ast.value(), ast.ast_type());
 }
 
 SSAPtr IRBuilder::GenerateOn(CharAST &ast) {
+  auto context = module_.SetContext(ast.logger());
   return module_.GetInt(ast.c(), ast.ast_type());
 }
 
 SSAPtr IRBuilder::GenerateOn(IdAST &ast) {
+  auto context = module_.SetContext(ast.logger());
   // get value
   auto val = vals_->GetItem(ast.id());
   if (!val->type()->IsFunction()) {
@@ -589,18 +613,22 @@ SSAPtr IRBuilder::GenerateOn(IdAST &ast) {
 }
 
 SSAPtr IRBuilder::GenerateOn(StringAST &ast) {
+  auto context = module_.SetContext(ast.logger());
   return module_.GetString(ast.str(), ast.ast_type());
 }
 
 SSAPtr IRBuilder::GenerateOn(BoolAST &ast) {
+  auto context = module_.SetContext(ast.logger());
   return module_.GetBool(ast.value());
 }
 
 SSAPtr IRBuilder::GenerateOn(NullAST &ast) {
+  auto context = module_.SetContext(ast.logger());
   return module_.GetZero(ast.ast_type());
 }
 
 SSAPtr IRBuilder::GenerateOn(ValInitAST &ast) {
+  auto context = module_.SetContext(ast.logger());
   const auto &type = ast.type()->ast_type();
   if (vals_->is_root() && ast.IsLiteral()) {
     // generate all elements
