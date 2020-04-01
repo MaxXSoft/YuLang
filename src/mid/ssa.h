@@ -35,6 +35,7 @@ class LoadSSA : public User {
   }
 
   void Dump(std::ostream &os, IdManager &idm) const override;
+  void RunPass(PassBase &pass) override;
   SSAPtr GetAddr() const override { return addr_; }
 
  private:
@@ -52,6 +53,7 @@ class StoreSSA : public User {
   }
 
   void Dump(std::ostream &os, IdManager &idm) const override;
+  void RunPass(PassBase &pass) override;
 };
 
 // element accessing (load effective address)
@@ -68,6 +70,7 @@ class AccessSSA : public User {
   }
 
   void Dump(std::ostream &os, IdManager &idm) const override;
+  void RunPass(PassBase &pass) override;
 
   // getters
   AccessType acc_type() const { return acc_type_; }
@@ -97,6 +100,7 @@ class BinarySSA : public User {
   }
 
   void Dump(std::ostream &os, IdManager &idm) const override;
+  void RunPass(PassBase &pass) override;
 
   // getters
   Operator op() const { return op_; }
@@ -119,6 +123,7 @@ class UnarySSA : public User {
   }
 
   void Dump(std::ostream &os, IdManager &idm) const override;
+  void RunPass(PassBase &pass) override;
 
   // getters
   Operator op() const { return op_; }
@@ -138,6 +143,7 @@ class CallSSA : public User {
   }
 
   void Dump(std::ostream &os, IdManager &idm) const override;
+  void RunPass(PassBase &pass) override;
 };
 
 // conditional branch
@@ -153,6 +159,7 @@ class BranchSSA : public User {
   }
 
   void Dump(std::ostream &os, IdManager &idm) const override;
+  void RunPass(PassBase &pass) override;
 };
 
 // unconditional jump
@@ -165,6 +172,7 @@ class JumpSSA : public User {
   }
 
   void Dump(std::ostream &os, IdManager &idm) const override;
+  void RunPass(PassBase &pass) override;
 };
 
 // function return
@@ -177,6 +185,7 @@ class ReturnSSA : public User {
   }
 
   void Dump(std::ostream &os, IdManager &idm) const override;
+  void RunPass(PassBase &pass) override;
 };
 
 // function definition/declaration
@@ -189,6 +198,7 @@ class FunctionSSA : public User {
       : link_(link), name_(name) {}
 
   void Dump(std::ostream &os, IdManager &idm) const override;
+  void RunPass(PassBase &pass) override;
 
   // getters
   LinkageTypes link() const { return link_; }
@@ -211,6 +221,7 @@ class GlobalVarSSA : public User {
   }
 
   void Dump(std::ostream &os, IdManager &idm) const override;
+  void RunPass(PassBase &pass) override;
 
   // setters
   void set_init(const SSAPtr &init) { uses()[0].set_value(init); }
@@ -231,6 +242,7 @@ class AllocaSSA : public Value {
   AllocaSSA() {}
 
   void Dump(std::ostream &os, IdManager &idm) const override;
+  void RunPass(PassBase &pass) override;
 };
 
 // basic block
@@ -242,6 +254,7 @@ class BlockSSA : public Value {
   }
 
   void Dump(std::ostream &os, IdManager &idm) const override;
+  void RunPass(PassBase &pass) override;
 
   // add a new predecessor
   void AddPred(const BlockPtr &pred) { preds_.push_back(pred); }
@@ -276,6 +289,7 @@ class ArgRefSSA : public Value {
       : func_(func), index_(index) {}
 
   void Dump(std::ostream &os, IdManager &idm) const override;
+  void RunPass(PassBase &pass) override;
 
   // getters
   const SSAPtr &func() const { return func_; }
@@ -292,6 +306,7 @@ class AsmSSA : public Value {
   AsmSSA(const std::string &asm_str) : asm_str_(asm_str) {}
 
   void Dump(std::ostream &os, IdManager &idm) const override;
+  void RunPass(PassBase &pass) override;
 
   // getters
   const std::string &asm_str() const { return asm_str_; }
@@ -306,6 +321,7 @@ class ConstIntSSA : public Value {
   ConstIntSSA(std::uint64_t value) : value_(value) {}
 
   void Dump(std::ostream &os, IdManager &idm) const override;
+  void RunPass(PassBase &pass) override;
 
   // getters
   std::uint64_t value() const { return value_; }
@@ -320,6 +336,7 @@ class ConstFloatSSA : public Value {
   ConstFloatSSA(double value) : value_(value) {}
 
   void Dump(std::ostream &os, IdManager &idm) const override;
+  void RunPass(PassBase &pass) override;
 
   // getters
   double value() const { return value_; }
@@ -334,6 +351,7 @@ class ConstStrSSA : public Value {
   ConstStrSSA(const std::string &str) : str_(str) {}
 
   void Dump(std::ostream &os, IdManager &idm) const override;
+  void RunPass(PassBase &pass) override;
 
   // getters
   const std::string &str() const { return str_; }
@@ -352,6 +370,7 @@ class ConstStructSSA : public User {
   }
 
   void Dump(std::ostream &os, IdManager &idm) const override;
+  void RunPass(PassBase &pass) override;
 };
 
 // constant array
@@ -364,6 +383,7 @@ class ConstArraySSA : public User {
   }
 
   void Dump(std::ostream &os, IdManager &idm) const override;
+  void RunPass(PassBase &pass) override;
 };
 
 // constant zero
@@ -372,6 +392,7 @@ class ConstZeroSSA : public Value {
   ConstZeroSSA() {}
 
   void Dump(std::ostream &os, IdManager &idm) const override;
+  void RunPass(PassBase &pass) override;
 };
 
 }  // namespace yulang::mid
