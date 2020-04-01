@@ -2,6 +2,7 @@
 
 using namespace yulang::mid;
 using namespace yulang::define;
+using namespace yulang::front;
 
 #define CREATE_BINARY(op, lhs, rhs)                         \
   do {                                                      \
@@ -55,7 +56,7 @@ UserPtr Module::CreateFunction(LinkageTypes link, const std::string &name,
   // assertion for type checking
   assert(type->IsFunction());
   // create function
-  auto func = std::make_shared<FunctionSSA>(link, name);
+  auto func = MakeSSA<FunctionSSA>(link, name);
   // NOTE: do not get trivial type, we need reference info
   func->set_type(type);
   // add to global variables
@@ -72,7 +73,7 @@ BlockPtr Module::CreateBlock(const UserPtr &parent,
   // assertion for type checking
   assert(parent && parent->type()->IsFunction());
   // create block
-  auto block = std::make_shared<BlockSSA>(parent, name);
+  auto block = MakeSSA<BlockSSA>(parent, name);
   block->set_type(nullptr);
   // update parent function
   parent->AddValue(block);
@@ -84,7 +85,7 @@ SSAPtr Module::CreateArgRef(const SSAPtr &func, std::size_t index) {
   auto args_type = *func->type()->GetArgsType();
   assert(index < args_type.size());
   // create argument reference
-  auto arg_ref = std::make_shared<ArgRefSSA>(func, index);
+  auto arg_ref = MakeSSA<ArgRefSSA>(func, index);
   arg_ref->set_type(args_type[index]->GetTrivialType());
   return arg_ref;
 }
@@ -170,7 +171,7 @@ GlobalVarPtr Module::CreateGlobalVar(LinkageTypes link,
   assert(!init || !type->IsReference() ||
          var_type->IsIdentical(init->type()));
   // create global variable definition
-  auto global = std::make_shared<GlobalVarSSA>(link, name, init);
+  auto global = MakeSSA<GlobalVarSSA>(link, name, init);
   global->set_type(MakePointer(var_type, false));
   // add to global variables
   vars_.push_back(global);
@@ -431,7 +432,7 @@ SSAPtr Module::GetZero(const TypePtr &type) {
   assert(type->IsNull() || type->IsBasic() || type->IsStruct() ||
          type->IsArray());
   // create constant zero
-  auto zero = std::make_shared<ConstZeroSSA>();
+  auto zero = MakeSSA<ConstZeroSSA>();
   zero->set_type(type->GetTrivialType());
   return zero;
 }
@@ -440,7 +441,7 @@ SSAPtr Module::GetInt(std::uint64_t value, const TypePtr &type) {
   // assertion for type checking
   assert(type->IsInteger() || type->IsBool());
   // create constant integer
-  auto const_int = std::make_shared<ConstIntSSA>(value);
+  auto const_int = MakeSSA<ConstIntSSA>(value);
   const_int->set_type(type->GetTrivialType());
   return const_int;
 }
@@ -459,7 +460,7 @@ SSAPtr Module::GetFloat(double value, const TypePtr &type) {
   // assertion for type checking
   assert(type->IsFloat());
   // create constant float
-  auto const_float = std::make_shared<ConstFloatSSA>(value);
+  auto const_float = MakeSSA<ConstFloatSSA>(value);
   const_float->set_type(type->GetTrivialType());
   return const_float;
 }
@@ -469,7 +470,7 @@ SSAPtr Module::GetString(const std::string &str, const TypePtr &type) {
   assert(type->IsPointer() && type->GetDerefedType()->IsInteger() &&
          type->GetDerefedType()->GetSize() == 1);
   // create constant string
-  auto const_str = std::make_shared<ConstStrSSA>(str);
+  auto const_str = MakeSSA<ConstStrSSA>(str);
   const_str->set_type(type->GetTrivialType());
   return const_str;
 }
@@ -482,7 +483,7 @@ SSAPtr Module::GetStruct(const SSAPtrList &elems, const TypePtr &type) {
     assert(struct_ty->GetElem(i)->IsIdentical(elems[i]->type()));
   }
   // create constant struct
-  auto const_struct = std::make_shared<ConstStructSSA>(elems);
+  auto const_struct = MakeSSA<ConstStructSSA>(elems);
   const_struct->set_type(struct_ty);
   return const_struct;
 }
@@ -495,9 +496,15 @@ SSAPtr Module::GetArray(const SSAPtrList &elems, const TypePtr &type) {
     assert(array_ty->GetDerefedType()->IsIdentical(i->type()));
   }
   // create constant array
-  auto const_array = std::make_shared<ConstArraySSA>(elems);
+  auto const_array = MakeSSA<ConstArraySSA>(elems);
   const_array->set_type(array_ty);
   return const_array;
+}
+
+xstl::Guard Module::SetContext(const Logger &logger) {
+  auto log = MakeSSA<Logger>(logger);
+  loggers_.push(log);
+  return xstl::Guard([this] { loggers_.pop(); });
 }
 
 xstl::Guard Module::EnterGlobalCtor() {
@@ -507,7 +514,7 @@ xstl::Guard Module::EnterGlobalCtor() {
   if (!global_ctor_) {
     // create function
     auto link = LinkageTypes::GlobalCtor;
-    auto ty = std::make_shared<FuncType>(TypePtrList(), MakeVoid(), true);
+    auto ty = MakeSSA<FuncType>(TypePtrList(), MakeVoid(), true);
     global_ctor_ = CreateFunction(link, "_$ctor", ty);
     // create basic blocks
     ctor_entry_ = CreateBlock(global_ctor_, "entry");

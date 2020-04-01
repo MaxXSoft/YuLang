@@ -4,10 +4,12 @@
 #include <string>
 #include <ostream>
 #include <utility>
+#include <stack>
 
 #include "define/type.h"
 #include "mid/ssa.h"
 #include "xstl/guard.h"
+#include "front/logger.h"
 
 namespace yulang::mid {
 
@@ -136,6 +138,8 @@ class Module {
   void SetInsertPoint(const BlockPtr &block) { insert_point_ = block; }
   // get current insert point
   const BlockPtr &GetInsertPoint() const { return insert_point_; }
+  // set current context (logger)
+  xstl::Guard SetContext(const front::Logger &logger);
   // set insert point to global constructor
   xstl::Guard EnterGlobalCtor();
 
@@ -143,10 +147,18 @@ class Module {
   void Dump(std::ostream &os);
 
  private:
+  // create a new SSA with current context (logger)
+  template <typename T, typename... Args>
+  auto MakeSSA(Args &&... args) {
+    auto ssa = std::make_shared<T>(std::forward<Args>(args)...);
+    ssa->set_logger(loggers_.top());
+    return ssa;
+  }
+
   // create a new instruction SSA, and push into current block
   template <typename T, typename... Args>
   SSAPtr AddInst(Args &&... args) {
-    auto inst = std::make_shared<T>(std::forward<Args>(args)...);
+    auto inst = MakeSSA<T>(std::forward<Args>(args)...);
     insert_point_->AddInst(inst);
     return inst;
   }
@@ -154,6 +166,8 @@ class Module {
   // seal global constructor
   void SealGlobalCtor();
 
+  // context rerlated stuffs
+  std::stack<front::LogPtr> loggers_;
   // all global variables and functions
   UserPtrList vars_, funcs_;
   // global constructor stuffs
