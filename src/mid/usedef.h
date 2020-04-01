@@ -13,6 +13,7 @@
 #include <optional>
 #include <cstddef>
 
+#include "front/logger.h"
 #include "define/type.h"
 
 namespace yulang::mid {
@@ -71,21 +72,25 @@ class Value {
   void ReplaceBy(const SSAPtr &value);
 
   // getters
+  const front::LogPtr &logger() const { return logger_; }
   const define::TypePtr &type() const { return type_; }
   const std::any &metadata() const { return metadata_; }
   const std::forward_list<Use *> &uses() const { return uses_; }
 
   // setters
+  void set_logger(const front::LogPtr &logger) { logger_ = logger; }
   void set_type(const define::TypePtr &type) { type_ = type; }
   void set_metadata(const std::any &metadata) { metadata_ = metadata; }
 
  private:
-  // singly-linked list of 'Use'
-  std::forward_list<Use *> uses_;
+  // pointer to logger
+  front::LogPtr logger_;
   // type of current value
   define::TypePtr type_;
   // metadata
   std::any metadata_;
+  // singly-linked list of 'Use'
+  std::forward_list<Use *> uses_;
 };
 
 // bidirectional reference between SSA users and values
