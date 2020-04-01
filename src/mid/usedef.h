@@ -16,10 +16,20 @@
 #include "front/logger.h"
 #include "define/type.h"
 
-namespace yulang::mid {
-
 // forward declarations for visitor method
+namespace yulang {
+namespace mid {
 class PassBase;
+}  // namespace mid
+
+namespace back {
+class CodeGenInterface;
+// alias for 'CodeGenInterface'
+using CodeGen = CodeGenInterface;
+}  // namespace back
+}  // namespace yulang
+
+namespace yulang::mid {
 
 // forward declarations of SSA IRs
 class Value;
@@ -66,6 +76,8 @@ class Value {
   virtual void Dump(std::ostream &os, IdManager &idm) const = 0;
   // run pass on current SSA value
   virtual void RunPass(PassBase &pass) = 0;
+  // run code generation
+  virtual void GenerateCode(back::CodeGen &pass) = 0;
   // get address value of current value
   virtual SSAPtr GetAddr() const { return nullptr; }
 
