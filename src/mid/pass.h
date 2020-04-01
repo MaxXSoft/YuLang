@@ -15,7 +15,7 @@ class PassBase {
   // return true if is module pass
   virtual bool IsModulePass() const = 0;
   // run on global values in module, return true if there is modification
-  virtual bool RunOnModule(const UserPtr &global_val) = 0;
+  virtual bool RunOnModule(UserPtrList &global_vals) = 0;
 
   // return true if is function pass
   virtual bool IsFunctionPass() const = 0;
@@ -72,7 +72,7 @@ class FunctionPass : public PassBase {
   bool IsFunctionPass() const override { return true; }
   bool IsBlockPass() const override { return false; }
 
-  bool RunOnModule(const UserPtr &global_val) override { return false; }
+  bool RunOnModule(UserPtrList &global_vals) override { return false; }
   bool RunOnBlock(const BlockPtr &block) override { return false; }
 };
 
@@ -83,7 +83,7 @@ class BlockPass : public PassBase {
   bool IsFunctionPass() const override { return false; }
   bool IsBlockPass() const override { return true; }
 
-  bool RunOnModule(const UserPtr &global_val) override { return false; }
+  bool RunOnModule(UserPtrList &global_vals) override { return false; }
   bool RunOnFunction(const UserPtr &func) override { return false; }
 };
 
