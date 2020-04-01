@@ -18,7 +18,10 @@
 
 namespace yulang::mid {
 
-// forward declarations
+// forward declarations for visitor method
+class PassBase;
+
+// forward declarations of SSA IRs
 class Value;
 class User;
 class Use;
@@ -61,6 +64,8 @@ class Value {
 
   // dump the content of SSA value to output stream
   virtual void Dump(std::ostream &os, IdManager &idm) const = 0;
+  // run pass on current SSA value
+  virtual void RunPass(PassBase &pass) = 0;
   // get address value of current value
   virtual SSAPtr GetAddr() const { return nullptr; }
 
