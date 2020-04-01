@@ -545,6 +545,7 @@ void Module::Dump(std::ostream &os) {
 }
 
 void Module::RunPasses(PassManager &pass_man) {
+  SealGlobalCtor();
   pass_man.set_vars(&vars_);
   pass_man.set_funcs(&funcs_);
   pass_man.RunPasses();
