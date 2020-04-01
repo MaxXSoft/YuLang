@@ -2,6 +2,7 @@
 #define YULANG_FRONT_LOGGER_H_
 
 #include <string_view>
+#include <memory>
 #include <cstddef>
 
 namespace yulang::front {
@@ -53,6 +54,9 @@ class Logger {
   std::string_view cur_file_;
   std::size_t line_pos_, col_pos_;
 };
+
+// pointer of logger
+using LogPtr = std::shared_ptr<Logger>;
 
 }  // namespace yulang::front
 
