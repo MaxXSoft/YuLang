@@ -310,11 +310,8 @@ void BlockSSA::Dump(std::ostream &os, IdManager &idm) const {
 }
 
 void ArgRefSSA::Dump(std::ostream &os, IdManager &idm) const {
-  if (PrintPrefix(os, idm, this)) return;
-  auto inex = InExpr();
-  os << "arg " << index_ << ", ";
-  DumpWithType(os, idm, func_);
-  os << std::endl;
+  assert(in_expr);
+  os << "arg " << index_;
 }
 
 void AsmSSA::Dump(std::ostream &os, IdManager &idm) const {
