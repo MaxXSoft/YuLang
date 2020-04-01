@@ -14,7 +14,6 @@
 #include "define/type.h"
 #include "define/symbol.h"
 #include "mid/usedef.h"
-#include "back/code.h"
 
 // forward declarations for visitor pattern
 namespace yulang {
@@ -26,12 +25,6 @@ class Evaluator;
 namespace mid {
 class IRBuilder;
 }  // namespace mid
-
-namespace back {
-class CodeGenInterface;
-// alias for 'CodeGenInterface'
-using CodeGen = CodeGenInterface;
-}  // namespace back
 }  // namespace yulang
 
 namespace yulang::define {
@@ -57,8 +50,6 @@ class BaseAST {
   virtual std::optional<EvalNum> Eval(front::Evaluator &eval) = 0;
   // generate IR by current AST
   virtual mid::SSAPtr GenerateIR(mid::IRBuilder &irb) = 0;
-  // generate code by current AST
-  virtual back::CodePtr GenerateCode(back::CodeGen &gen) = 0;
 
   // setters
   void set_logger(const front::Logger &logger) { logger_ = logger; }
@@ -91,7 +82,6 @@ class VarLetDefAST : public BaseAST {
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
   mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
-  back::CodePtr GenerateCode(back::CodeGen &gen) override;
 
   // getters
   Property prop() const { return prop_; }
@@ -117,7 +107,6 @@ class FunDefAST : public BaseAST {
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
   mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
-  back::CodePtr GenerateCode(back::CodeGen &gen) override;
 
   // getters
   Property prop() const { return prop_; }
@@ -150,7 +139,6 @@ class DeclareAST : public BaseAST {
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
   mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
-  back::CodePtr GenerateCode(back::CodeGen &gen) override;
 
   // getters
   Property prop() const { return prop_; }
@@ -181,7 +169,6 @@ class TypeAliasAST : public BaseAST {
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
   mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
-  back::CodePtr GenerateCode(back::CodeGen &gen) override;
 
   // getters
   Property prop() const { return prop_; }
@@ -207,7 +194,6 @@ class StructAST : public BaseAST {
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
   mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
-  back::CodePtr GenerateCode(back::CodeGen &gen) override;
 
   // getters
   Property prop() const { return prop_; }
@@ -235,7 +221,6 @@ class EnumAST : public BaseAST {
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
   mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
-  back::CodePtr GenerateCode(back::CodeGen &gen) override;
 
   // getters
   Property prop() const { return prop_; }
@@ -262,7 +247,6 @@ class ImportAST : public BaseAST {
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
   mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
-  back::CodePtr GenerateCode(back::CodeGen &gen) override;
 
   // getters
   const ASTPtrList &defs() const { return defs_; }
@@ -286,7 +270,6 @@ class VarLetElemAST : public BaseAST {
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
   mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
-  back::CodePtr GenerateCode(back::CodeGen &gen) override;
 
   // getters
   const std::string &id() const { return id_; }
@@ -316,7 +299,6 @@ class ArgElemAST : public BaseAST {
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
   mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
-  back::CodePtr GenerateCode(back::CodeGen &gen) override;
 
   // getters
   const std::string &id() const { return id_; }
@@ -340,7 +322,6 @@ class StructElemAST : public BaseAST {
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
   mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
-  back::CodePtr GenerateCode(back::CodeGen &gen) override;
 
   // getters
   const std::string &id() const { return id_; }
@@ -364,7 +345,6 @@ class EnumElemAST : public BaseAST {
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
   mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
-  back::CodePtr GenerateCode(back::CodeGen &gen) override;
 
   // getters
   const std::string &id() const { return id_; }
@@ -390,7 +370,6 @@ class BlockAST : public BaseAST {
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
   mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
-  back::CodePtr GenerateCode(back::CodeGen &gen) override;
 
   // getters
   const ASTPtrList &stmts() const { return stmts_; }
@@ -419,7 +398,6 @@ class IfAST : public BaseAST {
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
   mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
-  back::CodePtr GenerateCode(back::CodeGen &gen) override;
 
   // getters
   const ASTPtr &cond() const { return cond_; }
@@ -451,7 +429,6 @@ class WhenAST : public BaseAST {
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
   mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
-  back::CodePtr GenerateCode(back::CodeGen &gen) override;
 
   // getters
   const ASTPtr &expr() const { return expr_; }
@@ -482,7 +459,6 @@ class WhileAST : public BaseAST {
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
   mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
-  back::CodePtr GenerateCode(back::CodeGen &gen) override;
 
   // getters
   const ASTPtr &cond() const { return cond_; }
@@ -509,7 +485,6 @@ class ForInAST : public BaseAST {
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
   mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
-  back::CodePtr GenerateCode(back::CodeGen &gen) override;
 
   // getters
   const std::string &id() const { return id_; }
@@ -544,7 +519,6 @@ class AsmAST : public BaseAST {
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
   mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
-  back::CodePtr GenerateCode(back::CodeGen &gen) override;
 
   // getters
   const std::string &asm_str() const { return asm_str_; }
@@ -566,7 +540,6 @@ class ControlAST : public BaseAST {
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
   mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
-  back::CodePtr GenerateCode(back::CodeGen &gen) override;
 
   // getters
   Keyword type() const { return type_; }
@@ -593,7 +566,6 @@ class WhenElemAST : public BaseAST {
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
   mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
-  back::CodePtr GenerateCode(back::CodeGen &gen) override;
 
   // getters
   const ASTPtrList &conds() const { return conds_; }
@@ -624,7 +596,6 @@ class BinaryAST : public BaseAST {
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
   mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
-  back::CodePtr GenerateCode(back::CodeGen &gen) override;
 
   // getters
   Operator op() const { return op_; }
@@ -657,7 +628,6 @@ class AccessAST : public BaseAST {
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
   mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
-  back::CodePtr GenerateCode(back::CodeGen &gen) override;
 
   // getters
   const std::string &id() const { return id_; }
@@ -681,7 +651,6 @@ class CastAST : public BaseAST {
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
   mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
-  back::CodePtr GenerateCode(back::CodeGen &gen) override;
 
   // getters
   const ASTPtr &expr() const { return expr_; }
@@ -709,7 +678,6 @@ class UnaryAST : public BaseAST {
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
   mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
-  back::CodePtr GenerateCode(back::CodeGen &gen) override;
 
   // getters
   UnaryOp op() const { return op_; }
@@ -741,7 +709,6 @@ class IndexAST : public BaseAST {
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
   mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
-  back::CodePtr GenerateCode(back::CodeGen &gen) override;
 
   // getters
   const ASTPtr &expr() const { return expr_; }
@@ -767,7 +734,6 @@ class FunCallAST : public BaseAST {
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
   mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
-  back::CodePtr GenerateCode(back::CodeGen &gen) override;
 
   // getters
   const ASTPtr &expr() const { return expr_; }
@@ -796,7 +762,6 @@ class IntAST : public BaseAST {
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
   mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
-  back::CodePtr GenerateCode(back::CodeGen &gen) override;
 
   // getters
   std::uint64_t value() const { return value_; }
@@ -817,7 +782,6 @@ class FloatAST : public BaseAST {
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
   mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
-  back::CodePtr GenerateCode(back::CodeGen &gen) override;
 
   // getters
   double value() const { return value_; }
@@ -838,7 +802,6 @@ class CharAST : public BaseAST {
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
   mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
-  back::CodePtr GenerateCode(back::CodeGen &gen) override;
 
   // getters
   std::uint8_t c() const { return c_; }
@@ -859,7 +822,6 @@ class IdAST : public BaseAST {
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
   mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
-  back::CodePtr GenerateCode(back::CodeGen &gen) override;
 
   // getters
   const std::string &id() const { return id_; }
@@ -883,7 +845,6 @@ class StringAST : public BaseAST {
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
   mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
-  back::CodePtr GenerateCode(back::CodeGen &gen) override;
 
   // getters
   const std::string &str() const { return str_; }
@@ -904,7 +865,6 @@ class BoolAST : public BaseAST {
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
   mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
-  back::CodePtr GenerateCode(back::CodeGen &gen) override;
 
   // getters
   bool value() const { return value_; }
@@ -925,7 +885,6 @@ class NullAST : public BaseAST {
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
   mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
-  back::CodePtr GenerateCode(back::CodeGen &gen) override;
 };
 
 // value initializer
@@ -946,7 +905,6 @@ class ValInitAST : public BaseAST {
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
   mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
-  back::CodePtr GenerateCode(back::CodeGen &gen) override;
 
   // getters
   const ASTPtr &type() const { return type_; }
@@ -975,7 +933,6 @@ class PrimTypeAST : public BaseAST {
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
   mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
-  back::CodePtr GenerateCode(back::CodeGen &gen) override;
 
   // getter
   Keyword type() const { return type_; }
@@ -996,7 +953,6 @@ class UserTypeAST : public BaseAST {
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
   mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
-  back::CodePtr GenerateCode(back::CodeGen &gen) override;
 
   // getters
   const std::string &id() const { return id_; }
@@ -1018,7 +974,6 @@ class FuncTypeAST : public BaseAST {
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
   mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
-  back::CodePtr GenerateCode(back::CodeGen &gen) override;
 
   // getters
   const ASTPtrList &args() const { return args_; }
@@ -1041,7 +996,6 @@ class VolaTypeAST : public BaseAST {
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
   mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
-  back::CodePtr GenerateCode(back::CodeGen &gen) override;
 
   // getters
   const ASTPtr &type() const { return type_; }
@@ -1063,7 +1017,6 @@ class ArrayTypeAST : public BaseAST {
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
   mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
-  back::CodePtr GenerateCode(back::CodeGen &gen) override;
 
   // getters
   const ASTPtr &base() const { return base_; }
@@ -1089,7 +1042,6 @@ class PointerTypeAST : public BaseAST {
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
   mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
-  back::CodePtr GenerateCode(back::CodeGen &gen) override;
 
   // getters
   bool is_var() const { return is_var_; }
@@ -1113,7 +1065,6 @@ class RefTypeAST : public BaseAST {
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
   std::optional<EvalNum> Eval(front::Evaluator &eval) override;
   mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
-  back::CodePtr GenerateCode(back::CodeGen &gen) override;
 
   // getters
   bool is_var() const { return is_var_; }
