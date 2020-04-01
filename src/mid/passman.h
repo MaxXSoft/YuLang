@@ -8,7 +8,7 @@
 #include <cstddef>
 
 #include "mid/pass.h"
-#include "mid/module.h"
+#include "mid/usedef.h"
 
 namespace yulang::mid {
 
@@ -43,12 +43,14 @@ class PassManager {
   static void RegisterPass(PassInfo *info) { passes_.push_back(info); }
 
   // run all passes on specific module
-  void RunPasses(const Module &module);
+  void RunPasses() const;
   // show info of passes
   void ShowInfo(std::ostream &os) const;
 
   // setters
   void set_opt_level(std::size_t opt_level) { opt_level_ = opt_level; }
+  void set_vars(UserPtrList *vars) { vars_ = vars; }
+  void set_funcs(UserPtrList *funcs) { funcs_ = funcs; }
 
   // getters
   std::size_t opt_level() const { return opt_level_; }
@@ -56,6 +58,7 @@ class PassManager {
  private:
   static std::vector<PassInfo *> passes_;
   std::size_t opt_level_;
+  UserPtrList *vars_, *funcs_;
 };
 
 // helper class for registering a pass
