@@ -543,3 +543,9 @@ void Module::Dump(std::ostream &os) {
     os << std::endl;
   }
 }
+
+void Module::RunPasses(PassManager &pass_man) {
+  pass_man.set_vars(&vars_);
+  pass_man.set_funcs(&funcs_);
+  pass_man.RunPasses();
+}

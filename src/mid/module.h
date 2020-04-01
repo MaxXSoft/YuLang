@@ -11,6 +11,7 @@
 #include "mid/ssa.h"
 #include "xstl/guard.h"
 #include "front/logger.h"
+#include "mid/passman.h"
 
 namespace yulang::mid {
 
@@ -146,10 +147,8 @@ class Module {
 
   // dump IRs in current module
   void Dump(std::ostream &os);
-
-  // getters
-  const UserPtrList &vars() const { return vars_; }
-  const UserPtrList &funcs() const { return funcs_; }
+  // run passes on current module
+  void RunPasses(PassManager &pass_man);
 
  private:
   // create a new SSA with current context (logger)
