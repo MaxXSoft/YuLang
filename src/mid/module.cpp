@@ -417,6 +417,7 @@ SSAPtr Module::CreateLogicNot(const SSAPtr &opr) {
   // assertion for type checking
   const auto &type = opr->type();
   assert(type->IsInteger() || type->IsBool());
+  static_cast<void>(type);
   // create logic not operation
   auto bool_ty = MakePrimType(Keyword::Bool, false);
   return CreateUnary(UnaryOp::LogicNot, opr, bool_ty);
@@ -481,8 +482,10 @@ SSAPtr Module::GetStruct(const SSAPtrList &elems, const TypePtr &type) {
   assert(type->IsStruct() && type->GetLength() == elems.size());
   auto struct_ty = type->GetTrivialType();
   int index = 0;
+  static_cast<void>(index);
   for (const auto &i : elems) {
     assert(struct_ty->GetElem(index++)->IsIdentical(i->type()));
+    static_cast<void>(i);
   }
   // create constant struct
   auto const_struct = MakeSSA<ConstStructSSA>(elems);
@@ -496,6 +499,7 @@ SSAPtr Module::GetArray(const SSAPtrList &elems, const TypePtr &type) {
   auto array_ty = type->GetTrivialType();
   for (const auto &i : elems) {
     assert(array_ty->GetDerefedType()->IsIdentical(i->type()));
+    static_cast<void>(i);
   }
   // create constant array
   auto const_array = MakeSSA<ConstArraySSA>(elems);

@@ -350,6 +350,7 @@ llvm::Type *LLVMGen::GenerateType(const TypePtr &type) {
   }
   else {
     assert(false);
+    return nullptr;
   }
 }
 
