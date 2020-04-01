@@ -57,34 +57,38 @@ using PassPtr = std::unique_ptr<PassBase>;
 // module pass
 class ModulePass : public PassBase {
  public:
-  bool IsModulePass() const override { return true; }
-  bool IsFunctionPass() const override { return false; }
-  bool IsBlockPass() const override { return false; }
+  bool IsModulePass() const override final { return true; }
+  bool IsFunctionPass() const override final { return false; }
+  bool IsBlockPass() const override final { return false; }
 
-  bool RunOnFunction(const UserPtr &funcs) override { return false; }
-  bool RunOnBlock(const BlockPtr &block) override { return false; }
+  bool RunOnFunction(const UserPtr &funcs) override final { return false; }
+  bool RunOnBlock(const BlockPtr &block) override final { return false; }
 };
 
 // function pass
 class FunctionPass : public PassBase {
  public:
-  bool IsModulePass() const override { return false; }
-  bool IsFunctionPass() const override { return true; }
-  bool IsBlockPass() const override { return false; }
+  bool IsModulePass() const override final { return false; }
+  bool IsFunctionPass() const override final { return true; }
+  bool IsBlockPass() const override final { return false; }
 
-  bool RunOnModule(UserPtrList &global_vals) override { return false; }
-  bool RunOnBlock(const BlockPtr &block) override { return false; }
+  bool RunOnModule(UserPtrList &global_vals) override final {
+    return false;
+  }
+  bool RunOnBlock(const BlockPtr &block) override final { return false; }
 };
 
 // basic block pass
 class BlockPass : public PassBase {
  public:
-  bool IsModulePass() const override { return false; }
-  bool IsFunctionPass() const override { return false; }
-  bool IsBlockPass() const override { return true; }
+  bool IsModulePass() const override final { return false; }
+  bool IsFunctionPass() const override final { return false; }
+  bool IsBlockPass() const override final { return true; }
 
-  bool RunOnModule(UserPtrList &global_vals) override { return false; }
-  bool RunOnFunction(const UserPtr &func) override { return false; }
+  bool RunOnModule(UserPtrList &global_vals) override final {
+    return false;
+  }
+  bool RunOnFunction(const UserPtr &func) override final { return false; }
 };
 
 }  // namespace yulang::mid
