@@ -11,12 +11,12 @@ class DeadCodeEliminationPass : public FunctionPass {
   DeadCodeEliminationPass() {}
 
   bool RunOnFunction(const UserPtr &func) override {
-    bool changed = false;
+    changed_ = false;
     // traverse all basic blocks
     for (const auto &use : *func) {
       use.value()->RunPass(*this);
     }
-    return changed;
+    return changed_;
   }
 
   void RunOn(BlockSSA &ssa) override {
@@ -27,6 +27,7 @@ class DeadCodeEliminationPass : public FunctionPass {
       // check if need to remove current instruction
       if (remove_flag_) {
         it = ssa.insts().erase(it);
+        changed_ = true;
       }
       else {
         ++it;
@@ -53,10 +54,15 @@ class DeadCodeEliminationPass : public FunctionPass {
   }
 
   void RunOn(AllocaSSA &ssa) override {
-    if (ssa.uses().empty()) remove_flag_ = true;
+    if (ssa.uses().empty()) {
+      remove_flag_ = true;
+      ssa.logger()->LogWarning("unused variable definition");
+    }
   }
 
  private:
+  // set if IR changed
+  bool changed_;
   // set if need to be removed
   bool remove_flag_;
 };
