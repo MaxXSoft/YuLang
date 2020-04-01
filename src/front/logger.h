@@ -19,6 +19,9 @@ class Logger {
     warn_as_err_ = warn_as_err;
   }
 
+  // print error message (with out file info) to stderr
+  static void LogRawError(std::string_view message);
+
   // print error message to stderr
   void LogError(std::string_view message) const;
   // print error message to stderr (with identifier)
@@ -43,8 +46,8 @@ class Logger {
   std::string_view cur_file() const { return cur_file_; }
   std::size_t line_pos() const { return line_pos_; }
   std::size_t col_pos() const { return col_pos_; }
-  std::size_t error_num() const { return error_num_; }
-  std::size_t warning_num() const { return warning_num_; }
+  static std::size_t error_num() { return error_num_; }
+  static std::size_t warning_num() { return warning_num_; }
 
  private:
   void LogFileInfo() const;

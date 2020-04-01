@@ -18,14 +18,18 @@ void Logger::LogFileInfo() const {
   std::cerr << style("B") << line_pos_ << ":" << col_pos_ << ": ";
 }
 
-void Logger::LogError(std::string_view message) const {
+void Logger::LogRawError(std::string_view message) {
   using namespace xstl;
-  LogFileInfo();
   // print error message
   std::cerr << style("Br") << "error: ";
   std::cerr << message << std::endl;
   // increase error number
   ++error_num_;
+}
+
+void Logger::LogError(std::string_view message) const {
+  LogFileInfo();
+  LogRawError(message);
 }
 
 void Logger::LogError(std::string_view message,
