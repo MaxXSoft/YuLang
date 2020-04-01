@@ -5,6 +5,7 @@
 #include <ostream>
 #include <utility>
 #include <stack>
+#include <type_traits>
 
 #include "define/type.h"
 #include "mid/ssa.h"
@@ -150,6 +151,7 @@ class Module {
   // create a new SSA with current context (logger)
   template <typename T, typename... Args>
   auto MakeSSA(Args &&... args) {
+    static_assert(std::is_base_of_v<Value, T>);
     auto ssa = std::make_shared<T>(std::forward<Args>(args)...);
     ssa->set_logger(loggers_.top());
     return ssa;

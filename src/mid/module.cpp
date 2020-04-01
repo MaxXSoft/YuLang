@@ -502,7 +502,7 @@ SSAPtr Module::GetArray(const SSAPtrList &elems, const TypePtr &type) {
 }
 
 xstl::Guard Module::SetContext(const Logger &logger) {
-  auto log = MakeSSA<Logger>(logger);
+  auto log = std::make_shared<Logger>(logger);
   loggers_.push(log);
   return xstl::Guard([this] { loggers_.pop(); });
 }
@@ -514,7 +514,7 @@ xstl::Guard Module::EnterGlobalCtor() {
   if (!global_ctor_) {
     // create function
     auto link = LinkageTypes::GlobalCtor;
-    auto ty = MakeSSA<FuncType>(TypePtrList(), MakeVoid(), true);
+    auto ty = std::make_shared<FuncType>(TypePtrList(), MakeVoid(), true);
     global_ctor_ = CreateFunction(link, "_$ctor", ty);
     // create basic blocks
     ctor_entry_ = CreateBlock(global_ctor_, "entry");
