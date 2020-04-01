@@ -214,18 +214,19 @@ SSAPtr Module::CreateCall(const SSAPtr &callee, const SSAPtrList &args) {
   // assertion for type checking
   assert(callee->type()->IsFunction());
   auto args_type = *callee->type()->GetArgsType();
+  assert(args_type.size() == args.size());
   // get argument list
   SSAPtrList casted_args;
-  assert(args_type.size() == args.size());
-  for (int i = 0; i < args_type.size(); ++i) {
-    auto arg = args[i];
+  auto arg_it = args.begin();
+  for (const auto &i : args_type) {
+    auto arg = *arg_it++;
     // get proper argument value
-    if (args_type[i]->IsReference()) {
+    if (i->IsReference()) {
       arg = arg->GetAddr();
       assert(arg);
     }
     // perform necessary type casting
-    auto arg_ty = args_type[i]->GetTrivialType();
+    auto arg_ty = i->GetTrivialType();
     if (!arg->type()->IsIdentical(arg_ty)) {
       arg = CreateCast(arg, arg_ty);
     }
@@ -479,8 +480,9 @@ SSAPtr Module::GetStruct(const SSAPtrList &elems, const TypePtr &type) {
   // assertions for type checking
   assert(type->IsStruct() && type->GetLength() == elems.size());
   auto struct_ty = type->GetTrivialType();
-  for (int i = 0; i < elems.size(); ++i) {
-    assert(struct_ty->GetElem(i)->IsIdentical(elems[i]->type()));
+  int index = 0;
+  for (const auto &i : elems) {
+    assert(struct_ty->GetElem(index++)->IsIdentical(i->type()));
   }
   // create constant struct
   auto const_struct = MakeSSA<ConstStructSSA>(elems);

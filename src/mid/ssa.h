@@ -2,7 +2,7 @@
 #define YULANG_MID_SSA_H_
 
 #include <string>
-#include <vector>
+#include <list>
 #include <cstddef>
 #include <cstdint>
 
@@ -17,7 +17,7 @@ class GlobalVarSSA;
 
 // type aliases
 using BlockPtr = std::shared_ptr<BlockSSA>;
-using BlockPtrList = std::vector<BlockPtr>;
+using BlockPtrList = std::list<BlockPtr>;
 using GlobalVarPtr = std::shared_ptr<GlobalVarSSA>;
 
 // linkage types
@@ -224,12 +224,12 @@ class GlobalVarSSA : public User {
   void RunPass(PassBase &pass) override;
 
   // setters
-  void set_init(const SSAPtr &init) { uses()[0].set_value(init); }
+  void set_init(const SSAPtr &init) { (*this)[0].set_value(init); }
 
   // getters
   LinkageTypes link() const { return link_; }
   const std::string &name() const { return name_; }
-  const SSAPtr &init() const { return uses()[0].value(); }
+  const SSAPtr &init() const { return (*this)[0].value(); }
 
  private:
   LinkageTypes link_;
@@ -249,9 +249,7 @@ class AllocaSSA : public Value {
 class BlockSSA : public Value {
  public:
   BlockSSA(const UserPtr &parent, const std::string &name)
-      : name_(name), parent_(parent) {
-    succs_.reserve(2);
-  }
+      : name_(name), parent_(parent) {}
 
   void Dump(std::ostream &os, IdManager &idm) const override;
   void RunPass(PassBase &pass) override;
@@ -267,9 +265,9 @@ class BlockSSA : public Value {
   // getters
   const std::string &name() const { return name_; }
   const UserPtr &parent() const { return parent_; }
-  const BlockPtrList &preds() const { return preds_; }
-  const BlockPtrList &succs() const { return succs_; }
-  const SSAPtrList &insts() const { return insts_; }
+  BlockPtrList &preds() { return preds_; }
+  BlockPtrList &succs() { return succs_; }
+  SSAPtrList &insts() { return insts_; }
 
  private:
   // block name

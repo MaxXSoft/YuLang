@@ -6,7 +6,7 @@
 #include <memory>
 #include <vector>
 #include <ostream>
-#include <forward_list>
+#include <list>
 #include <any>
 #include <unordered_map>
 #include <string_view>
@@ -27,9 +27,9 @@ class User;
 class Use;
 
 using SSAPtr = std::shared_ptr<Value>;
-using SSAPtrList = std::vector<SSAPtr>;
+using SSAPtrList = std::list<SSAPtr>;
 using UserPtr = std::shared_ptr<User>;
-using UserPtrList = std::vector<UserPtr>;
+using UserPtrList = std::list<UserPtr>;
 
 // utility class for dumping SSA IR
 class IdManager {
@@ -70,7 +70,7 @@ class Value {
   virtual SSAPtr GetAddr() const { return nullptr; }
 
   // add a use reference to current value
-  void AddUse(Use *use) { uses_.push_front(use); }
+  void AddUse(Use *use) { uses_.push_back(use); }
   // remove use reference from current value
   void RemoveUse(Use *use) { uses_.remove(use); }
   // replace current value by another value
@@ -80,7 +80,7 @@ class Value {
   const front::LogPtr &logger() const { return logger_; }
   const define::TypePtr &type() const { return type_; }
   const std::any &metadata() const { return metadata_; }
-  const std::forward_list<Use *> &uses() const { return uses_; }
+  const std::list<Use *> &uses() const { return uses_; }
 
   // setters
   void set_logger(const front::LogPtr &logger) { logger_ = logger; }
@@ -94,8 +94,8 @@ class Value {
   define::TypePtr type_;
   // metadata
   std::any metadata_;
-  // singly-linked list of 'Use'
-  std::forward_list<Use *> uses_;
+  // linked list of 'Use'
+  std::list<Use *> uses_;
 };
 
 // bidirectional reference between SSA users and values
@@ -162,10 +162,6 @@ class User : public Value {
   std::size_t size() const { return uses_.size(); }
   // return true if no value in current user
   bool empty() const { return uses_.empty(); }
-  // list of all uses
-  std::vector<Use> &uses() { return uses_; }
-  // constant list of all uses
-  const std::vector<Use> &uses() const { return uses_; }
 
  private:
   std::vector<Use> uses_;
