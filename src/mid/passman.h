@@ -3,7 +3,7 @@
 
 #include <string_view>
 #include <ostream>
-#include <vector>
+#include <list>
 #include <memory>
 #include <cstddef>
 
@@ -39,8 +39,10 @@ class PassManager {
  public:
   PassManager() : opt_level_(0) {}
 
+  // get pass info list
+  static std::list<PassInfo *> &GetPasses();
   // register a new pass
-  static void RegisterPass(PassInfo *info) { passes_.push_back(info); }
+  static void RegisterPass(PassInfo *info);
 
   // run all passes on specific module
   void RunPasses() const;
@@ -56,7 +58,6 @@ class PassManager {
   std::size_t opt_level() const { return opt_level_; }
 
  private:
-  static std::vector<PassInfo *> passes_;
   std::size_t opt_level_;
   UserPtrList *vars_, *funcs_;
 };
@@ -74,7 +75,7 @@ class RegisterPass : public PassInfo {
 
 // register a pass
 #define REGISTER_PASS(cls, name, min_opt_level, is_analysis) \
-  static RegisterPass<cls> __pass_##name(#name, min_opt_level, is_analysis)
+  static RegisterPass<cls> pass_##name(#name, min_opt_level, is_analysis)
 
 }  // namespace yulang::mid
 

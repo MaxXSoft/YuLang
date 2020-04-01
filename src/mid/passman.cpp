@@ -5,8 +5,14 @@
 
 using namespace yulang::mid;
 
-// definition of static member in 'PassManager'
-std::vector<PassInfo *> PassManager::passes_;
+std::list<PassInfo *> &PassManager::GetPasses() {
+  static std::list<PassInfo *> passes;
+  return passes;
+}
+
+void PassManager::RegisterPass(PassInfo *info) {
+  GetPasses().push_back(info);
+}
 
 void PassManager::RunPasses() const {
   bool changed = true;
@@ -14,7 +20,7 @@ void PassManager::RunPasses() const {
   while (changed) {
     changed = false;
     // traverse all passes
-    for (const auto &info : passes_) {
+    for (const auto &info : GetPasses()) {
       if (info->min_opt_level() < opt_level_) continue;
       const auto &pass = info->pass();
       // handle by pass type
@@ -49,15 +55,14 @@ void PassManager::ShowInfo(std::ostream &os) const {
   os << std::endl;
   // show registed info
   os << "registed passes:" << std::endl;
-  if (passes_.empty()) {
+  if (GetPasses().empty()) {
     os << "  <none>" << std::endl;
     return;
   }
-  for (const auto &i : passes_) {
+  for (const auto &i : GetPasses()) {
     os << "  ";
-    os << std::setw(32) << std::left << i->name();
-    os << std::setw(18) << std::left
-       << "min_opt_level = " << i->min_opt_level();
+    os << std::setw(20) << std::left << i->name();
+    os << "min_opt_level = " << i->min_opt_level() << ", ";
     os << "is_analysis = " << std::boolalpha << i->is_analysis();
     os << std::endl;
   }
@@ -65,7 +70,7 @@ void PassManager::ShowInfo(std::ostream &os) const {
   // show enabled passes
   int count = 0;
   os << "enabled passes:" << std::endl;
-  for (const auto &i : passes_) {
+  for (const auto &i : GetPasses()) {
     if (opt_level_ >= i->min_opt_level()) {
       if (count % 5 == 0) os << "  ";
       os << std::setw(16) << std::left << i->name();
