@@ -12,6 +12,7 @@
 #include "xstl/guard.h"
 #include "front/logger.h"
 #include "mid/passman.h"
+#include "back/codegen.h"
 
 namespace yulang::mid {
 
@@ -149,6 +150,8 @@ class Module {
   void Dump(std::ostream &os);
   // run passes on current module
   void RunPasses(PassManager &pass_man);
+  // generate current module
+  void GenerateCode(back::CodeGen &gen);
 
  private:
   // create a new SSA with current context (logger)

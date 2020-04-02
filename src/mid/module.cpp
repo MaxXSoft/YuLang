@@ -3,6 +3,7 @@
 using namespace yulang::mid;
 using namespace yulang::define;
 using namespace yulang::front;
+using namespace yulang::back;
 
 #define CREATE_BINARY(op, lhs, rhs)                         \
   do {                                                      \
@@ -555,4 +556,16 @@ void Module::RunPasses(PassManager &pass_man) {
   pass_man.set_vars(&vars_);
   pass_man.set_funcs(&funcs_);
   pass_man.RunPasses();
+}
+
+void Module::GenerateCode(CodeGen &gen) {
+  SealGlobalCtor();
+  // generate global variables
+  for (const auto &i : vars_) {
+    i->GenerateCode(gen);
+  }
+  // generate global functions
+  for (const auto &i : funcs_) {
+    i->GenerateCode(gen);
+  }
 }
