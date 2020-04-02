@@ -250,7 +250,7 @@ bool ArrayType::CanAccept(const TypePtr &type) const {
 }
 
 bool ArrayType::CanCastTo(const TypePtr &type) const {
-  return !type->IsReference() && type->IsPointer();
+  return !is_right_ && !type->IsReference() && type->IsPointer();
 }
 
 bool ArrayType::IsIdentical(const TypePtr &type) const {
