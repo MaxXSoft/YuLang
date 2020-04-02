@@ -17,16 +17,21 @@ using namespace yulang::back;
     }                                                       \
   } while (0)
 
-#define CREATE_RELOP(op, lhs, rhs)                             \
-  do {                                                         \
-    auto bool_ty = MakePrimType(Keyword::Bool, false);         \
-    if (lhs->type()->IsInteger()) {                            \
-      return CreateBinary(BinaryOp::op, lhs, rhs, bool_ty);    \
-    }                                                          \
-    else {                                                     \
-      assert(lhs->type()->IsFloat());                          \
-      return CreateBinary(BinaryOp::F##op, lhs, rhs, bool_ty); \
-    }                                                          \
+#define CREATE_RELOP(op, lhs, rhs)                               \
+  do {                                                           \
+    auto bool_ty = MakePrimType(Keyword::Bool, false);           \
+    if (lhs->type()->IsInteger()) {                              \
+      if (lhs->type()->IsUnsigned()) {                           \
+        return CreateBinary(BinaryOp::U##op, lhs, rhs, bool_ty); \
+      }                                                          \
+      else {                                                     \
+        return CreateBinary(BinaryOp::S##op, lhs, rhs, bool_ty); \
+      }                                                          \
+    }                                                            \
+    else {                                                       \
+      assert(lhs->type()->IsFloat());                            \
+      return CreateBinary(BinaryOp::F##op, lhs, rhs, bool_ty);   \
+    }                                                            \
   } while (0)
 
 #define CREATE_BITOP(op, lhs, rhs)                     \
