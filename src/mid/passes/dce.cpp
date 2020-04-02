@@ -13,9 +13,25 @@ class DeadCodeEliminationPass : public FunctionPass {
   bool RunOnFunction(const UserPtr &func) override {
     changed_ = false;
     // traverse all basic blocks
-    for (const auto &use : *func) {
-      use.value()->RunPass(*this);
+    for (auto it = func->begin(); it != func->end(); ++it) {
+      is_entry_ = it == func->begin();
+      it->value()->RunPass(*this);
+      // check if need to remove current block
+      if (remove_flag_) {
+        it->value()->logger()->LogWarning("unreachable code");
+        it->set_value(nullptr);
+        changed_ = true;
+      }
     }
+    // rearrange uses
+    int len = 0;
+    for (int i = 0; i < func->size(); ++i) {
+      if ((*func)[i].value()) {
+        (*func)[len].set_value((*func)[i].value());
+        ++len;
+      }
+    }
+    func->Resize(len);
     return changed_;
   }
 
@@ -24,13 +40,24 @@ class DeadCodeEliminationPass : public FunctionPass {
     for (auto it = ssa.insts().begin(); it != ssa.insts().end();) {
       remove_flag_ = false;
       (*it)->RunPass(*this);
-      // check if need to remove current instruction
+      // check if need to be removed
       if (remove_flag_) {
         it = ssa.insts().erase(it);
         changed_ = true;
       }
       else {
         ++it;
+      }
+    }
+    // removed blocks with no predecessors
+    if (ssa.preds().empty() && !is_entry_) {
+      remove_flag_ = true;
+      // remove from all successors
+      auto ptr = &ssa;
+      for (const auto &block : ssa.succs()) {
+        block->preds().remove_if([ptr](const BlockPtr &p) {
+          return p.get() == ptr;
+        });
       }
     }
   }
@@ -65,6 +92,8 @@ class DeadCodeEliminationPass : public FunctionPass {
   bool changed_;
   // set if need to be removed
   bool remove_flag_;
+  // set if current block is entry block
+  bool is_entry_;
 };
 
 }  // namespace
