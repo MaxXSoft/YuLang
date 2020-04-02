@@ -134,9 +134,11 @@ class Use {
 
   // setters
   void set_value(const SSAPtr &value) {
-    if (value_) value_->RemoveUse(this);
-    value_ = value;
-    if (value_) value_->AddUse(this);
+    if (value != value_) {
+      if (value_) value_->RemoveUse(this);
+      value_ = value;
+      if (value_) value_->AddUse(this);
+    }
   }
 
   // getters
@@ -153,6 +155,8 @@ class User : public Value {
  public:
   // preallocate some space for values
   void Reserve(std::size_t size) { uses_.reserve(size); }
+  // resize use list
+  void Resize(std::size_t size) { uses_.resize(size, Use(nullptr, this)); }
   // add new value to current user
   void AddValue(const SSAPtr &value) {
     uses_.push_back(Use(value, this));
