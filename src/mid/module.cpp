@@ -411,12 +411,15 @@ SSAPtr Module::CreateCast(const SSAPtr &opr, const TypePtr &type) {
   auto target = type->GetTrivialType();
   assert(opr_ty->CanCastTo(target));
   // check if is redundant type casting
-  if (opr_ty->IsIdentical(target)) {
-    return opr;
+  if (opr_ty->IsIdentical(target)) return opr;
+  // get address of array
+  auto operand = opr;
+  if (opr_ty->IsArray()) {
+    operand = operand->GetAddr();
+    assert(operand);
   }
-  else {
-    return CreateUnary(UnaryOp::Cast, opr, target);
-  }
+  // create type casting
+  return CreateUnary(UnaryOp::Cast, operand, target);
 }
 
 SSAPtr Module::CreateLogicNot(const SSAPtr &opr) {
