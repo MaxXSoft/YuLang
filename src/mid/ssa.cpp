@@ -169,7 +169,7 @@ void AccessSSA::Dump(std::ostream &os, IdManager &idm) const {
   }
   DumpWithType(os, idm, (*this)[0]);
   os << ", ";
-  DumpWithType(os, idm, (*this)[1]);
+  DumpVal(os, idm, (*this)[1]);
   os << std::endl;
 }
 
