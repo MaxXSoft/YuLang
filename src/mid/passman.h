@@ -39,8 +39,6 @@ class PassManager {
  public:
   PassManager() : opt_level_(0) {}
 
-  // get pass info list
-  static std::list<PassInfo *> &GetPasses();
   // register a new pass
   static void RegisterPass(PassInfo *info);
 
@@ -58,6 +56,9 @@ class PassManager {
   std::size_t opt_level() const { return opt_level_; }
 
  private:
+  // get pass info list
+  static std::list<PassInfo *> &GetPasses();
+
   std::size_t opt_level_;
   UserPtrList *vars_, *funcs_;
 };
