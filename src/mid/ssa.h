@@ -87,8 +87,8 @@ class BinarySSA : public User {
  public:
   enum class Operator {
     // integer
-    Add, Sub, Mul, UDiv, SDiv, URem, SRem,
-    Equal, NotEq, Less, LessEq, Great, GreatEq,
+    Add, Sub, Mul, UDiv, SDiv, URem, SRem, Equal, NotEq,
+    ULess, SLess, ULessEq, SLessEq, UGreat, SGreat, UGreatEq, SGreatEq,
     And, Or, Xor, Shl, LShr, AShr,
     // float
     FAdd, FSub, FMul, FDiv, FRem,

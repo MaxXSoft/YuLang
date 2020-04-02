@@ -22,8 +22,8 @@ const char *kLinkTypes[] = {
 
 // binary operators
 const char *kBinOps[] = {
-  "add", "sub", "mul", "udiv", "sdiv", "urem", "srem",
-  "eq", "neq", "lt", "le", "gt", "ge",
+  "add", "sub", "mul", "udiv", "sdiv", "urem", "srem", "eq", "neq",
+  "ult", "slt", "ule", "sle", "ugt", "sgt", "uge", "sge",
   "and", "or", "xor", "shl", "lshr", "ashr",
   "fadd", "fsub", "fmul", "fdiv", "frem",
   "feq", "fne", "flt", "fle", "fgt", "fge",
