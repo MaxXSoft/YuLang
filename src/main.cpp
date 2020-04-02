@@ -32,11 +32,10 @@ void PrintVersion() {
 }
 
 void CompileToIR(const xstl::ArgParser &argp, std::ostream &os,
-                 IRBuilder &irb) {
+                 LexerManager &lex_man, IRBuilder &irb) {
   // initialize lexer manager & logger
   auto file = argp.GetValue<string>("input");
   auto imp_path = argp.GetValue<vector<string>>("imppath");
-  LexerManager lex_man;
   lex_man.LoadSource(file);
   if (!imp_path.empty()) {
     for (const auto &i : imp_path) lex_man.AddImportPath(1, i);
@@ -123,8 +122,9 @@ int main(int argc, const char *argv[]) {
   auto &os = out_file.empty() ? cout : ofs;
 
   // compile source to IR
+  LexerManager lex_man;
   IRBuilder irb;
-  CompileToIR(argp, os, irb);
+  CompileToIR(argp, os, lex_man, irb);
 
   // check if is error after IR generation
   if (auto err_num = Logger::error_num()) return err_num;
