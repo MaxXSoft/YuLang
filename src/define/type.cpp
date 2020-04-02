@@ -90,7 +90,18 @@ bool StructType::CanAccept(const TypePtr &type) const {
 }
 
 bool StructType::IsIdentical(const TypePtr &type) const {
-  return type->IsStruct() && id_ == type->GetTypeId();
+  // prevent infinite loop
+  static void *ptr = nullptr;
+  if (ptr && ptr == type.get()) return true;
+  ptr = type.get();
+  // check if is identical
+  if (!type->IsStruct()) return false;
+  if (elems_.size() != type->GetLength()) return false;
+  for (int i = 0; i < elems_.size(); ++i) {
+    if (!elems_[i].second->IsIdentical(type->GetElem(i))) return false;
+  }
+  ptr = nullptr;
+  return true;
 }
 
 TypePtr StructType::GetElem(const std::string &name) const {
@@ -111,11 +122,20 @@ TypePtr StructType::GetValueType(bool is_right) const {
 }
 
 TypePtr StructType::GetTrivialType() const {
+  // create struct type first to prevent infinite loop
+  static std::shared_ptr<StructType> type;
+  if (type) return type;
+  // initialize as an empty struct type
   TypePairList elems;
+  type = std::make_shared<StructType>(elems, id_, false);
+  // convert elements
   for (const auto &i : elems_) {
     elems.push_back({i.first, i.second->GetTrivialType()});
   }
-  return std::make_shared<StructType>(elems, id_, false);
+  // update type
+  type->set_elems(std::move(elems));
+  auto ret = std::move(type);
+  return ret;
 }
 
 bool EnumType::CanAccept(const TypePtr &type) const {
