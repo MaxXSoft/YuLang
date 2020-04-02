@@ -111,7 +111,7 @@ public def iter(this: DynArray&): __DynArrayIter {
 
 // iterator method
 public def next(it: __DynArrayIter var&): i32 {
-  let data = it.__cur[0]
+  let data = *it.__cur
   it.__cur += 1
   data
 }
