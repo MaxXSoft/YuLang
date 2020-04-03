@@ -9,13 +9,13 @@
 
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/LLVMContext.h"
-#include "llvm/IR/Module.h"
 #include "llvm/IR/Value.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/Type.h"
 
 #include "back/codegen.h"
 #include "define/type.h"
+#include "back/llvm/define.h"
 
 namespace yulang::back::ll {
 
@@ -50,7 +50,7 @@ class LLVMGen : public CodeGenInterface {
   void Dump(std::ostream &os) const override;
 
   // getters
-  const std::unique_ptr<llvm::Module> &module() const { return module_; }
+  const ModulePtr &module() const { return module_; }
 
  private:
   // generate code or get from metadata
@@ -75,7 +75,7 @@ class LLVMGen : public CodeGenInterface {
   // LLVM stuffs
   llvm::LLVMContext context_;
   llvm::IRBuilder<> builder_;
-  std::unique_ptr<llvm::Module> module_;
+  ModulePtr module_;
   // tables for storing structure types
   std::vector<std::pair<define::TypePtr, llvm::Type *>> types_;
   std::unordered_map<define::BaseType *, llvm::Type *> type_lut_;
