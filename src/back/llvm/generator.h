@@ -47,8 +47,10 @@ class LLVMGen : public CodeGenInterface {
   void GenerateOn(mid::ConstArraySSA &ssa) override;
   void GenerateOn(mid::ConstZeroSSA &ssa) override;
 
-  std::size_t GetPointerSize() const override;
   void Dump(std::ostream &os) const override;
+
+  // getters
+  const std::unique_ptr<llvm::Module> &module() const { return module_; }
 
  private:
   // generate code or get from metadata

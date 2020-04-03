@@ -549,11 +549,6 @@ void LLVMGen::GenerateOn(ConstZeroSSA &ssa) {
   SetVal(ssa, val);
 }
 
-std::size_t LLVMGen::GetPointerSize() const {
-  // TODO
-  return sizeof(void *);
-}
-
 void LLVMGen::Dump(std::ostream &os) const {
   llvm::raw_os_ostream raw(os);
   module_->print(raw, nullptr);

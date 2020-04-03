@@ -35,8 +35,6 @@ class CodeGenInterface {
   virtual void GenerateOn(mid::ConstArraySSA &ssa) = 0;
   virtual void GenerateOn(mid::ConstZeroSSA &ssa) = 0;
 
-  // get the size of pointer
-  virtual std::size_t GetPointerSize() const = 0;
   // dump code in current generator
   virtual void Dump(std::ostream &os) const = 0;
 };
