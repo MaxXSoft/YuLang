@@ -144,7 +144,7 @@ llvm::Type *LLVMGen::GenerateType(const TypePtr &type) {
     return GenerateRefType(type);
   }
   else if (type->IsInteger() || type->IsFloat() || type->IsBool() ||
-           type->IsVoid()) {
+           type->IsVoid() || type->IsNull()) {
     return GeneratePrimType(type);
   }
   else if (type->IsStruct()) {
@@ -178,9 +178,12 @@ llvm::Type *LLVMGen::GeneratePrimType(const TypePtr &type) {
   else if (type->IsBool()) {
     return llvm::Type::getInt1Ty(context_);
   }
-  else {
-    assert(type->IsVoid());
+  else if (type->IsVoid()) {
     return llvm::Type::getVoidTy(context_);
+  }
+  else {
+    assert(type->IsNull());
+    return llvm::Type::getInt8PtrTy(context_);
   }
 }
 
@@ -413,9 +416,11 @@ void LLVMGen::GenerateOn(FunctionSSA &ssa) {
     auto entry = BasicBlock::Create(context_, "entry", func);
     builder_.SetInsertPoint(entry);
     // emit other blocks
-    for (const auto &i : ssa) {
-      i.value()->GenerateCode(*this);
-    }
+    for (const auto &i : ssa) GetVal(i.value());
+    // create jump
+    auto first = dyn_cast<BasicBlock>(GetVal(ssa[0].value()));
+    builder_.SetInsertPoint(entry);
+    builder_.CreateBr(first);
   }
 }
 
@@ -453,12 +458,9 @@ void LLVMGen::GenerateOn(BlockSSA &ssa) {
   SetVal(ssa, block);
   // emit current block
   auto last_block = builder_.GetInsertBlock();
-  builder_.CreateBr(block);
   builder_.SetInsertPoint(block);
   // generate instructions
-  for (const auto &i : ssa.insts()) {
-    i->GenerateCode(*this);
-  }
+  for (const auto &i : ssa.insts()) GetVal(i);
   // restore the insert point to last block
   builder_.SetInsertPoint(last_block);
 }
