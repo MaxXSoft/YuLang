@@ -16,6 +16,7 @@
 #include "mid/passman.h"
 #include "back/codegen.h"
 #include "back/llvm/generator.h"
+#include "back/llvm/objgen.h"
 
 #include "xstl/argparse.h"
 
@@ -28,13 +29,17 @@ using namespace yulang::back::ll;
 
 namespace {
 
+enum class OutputType {
+  AST, YuIR, LLVM, Assembly, Object,
+};
+
 xstl::ArgParser GetArgp() {
   xstl::ArgParser argp;
   argp.AddArgument<string>("input", "input source file");
   argp.AddOption<bool>("help", "h", "show this message", false);
   argp.AddOption<bool>("version", "v", "show version info", false);
   argp.AddOption<string>("outtype", "ot",
-                         "type of output (ast/yuir/llvm/obj)", "llvm");
+                         "type of output (ast/yuir/llvm/asm/obj)", "obj");
   argp.AddOption<string>("output", "o", "output file, default to stdout",
                          "");
   argp.AddOption<vector<string>>("imppath", "I", "add directory to "
@@ -43,6 +48,7 @@ xstl::ArgParser GetArgp() {
   argp.AddOption<bool>("verbose", "V", "use verbose output", false);
   argp.AddOption<bool>("warn-error", "Werror", "treat warnings as errors",
                        false);
+  argp.AddOption<string>("target", "tt", "specify target triple", "");
   return argp;
 }
 
@@ -70,17 +76,38 @@ void ParseArgument(xstl::ArgParser &argp, int argc, const char *argv[]) {
     cerr << argp.program_name() << " -h' for help" << endl;
     std::exit(1);
   }
-  // check output type
+}
+
+OutputType GetOutputType(xstl::ArgParser &argp) {
   auto out_type = argp.GetValue<string>("outtype");
-  for (const auto &i : {"ast", "yuir", "llvm", "obj"}) {
-    if (out_type == i) return;
+  int type_index = 0;
+  for (const auto &i : {"ast", "yuir", "llvm", "asm", "obj"}) {
+    if (out_type == i) return static_cast<OutputType>(type_index);
+    ++type_index;
   }
   Logger::LogRawError("invalid output type");
   std::exit(1);
+  return OutputType::AST;
+}
+
+int GetOptLevel(xstl::ArgParser &argp) {
+  auto opt_level = argp.GetValue<int>("opt-level");
+  if (opt_level < 0 || opt_level > 3) {
+    Logger::LogRawError("invalid optimization level");
+    std::exit(1);
+  }
+  return opt_level;
+}
+
+void InitializeTarget(xstl::ArgParser &argp, ObjectGen &obj_gen, int opt) {
+  obj_gen.set_opt_level(opt);
+  if (!obj_gen.SetTargetTriple(argp.GetValue<string>("target"))) {
+    std::exit(1);
+  }
 }
 
 void CompileToIR(const xstl::ArgParser &argp, std::ostream &os,
-                 LexerManager &lex_man, IRBuilder &irb) {
+                 LexerManager &lex_man, IRBuilder &irb, OutputType type) {
   // initialize lexer manager & logger
   auto file = argp.GetValue<string>("input");
   auto imp_path = argp.GetValue<vector<string>>("imppath");
@@ -93,10 +120,8 @@ void CompileToIR(const xstl::ArgParser &argp, std::ostream &os,
   Parser parser(lex_man);
   Evaluator eval;
   Analyzer ana(eval);
-  // get output info
-  auto out_type = argp.GetValue<string>("outtype");
-  auto dump_ast = out_type == "ast";
   // compile source code
+  auto dump_ast = type == OutputType::AST;
   while (auto ast = parser.ParseNext()) {
     // perform semantic analyze
     if (!ast->SemaAnalyze(ana)) break;
@@ -112,36 +137,48 @@ void CompileToIR(const xstl::ArgParser &argp, std::ostream &os,
 }
 
 void RunPasses(const xstl::ArgParser &argp, std::ostream &os,
-               IRBuilder &irb) {
+               IRBuilder &irb, OutputType type, int opt) {
   // set optimization level
   PassManager pass_man;
-  auto opt_level = argp.GetValue<int>("opt-level");
-  if (opt_level < 0 || opt_level > 3) {
-    Logger::LogRawError("invalid optimization level");
-    std::exit(1);
-  }
-  pass_man.set_opt_level(opt_level);
+  pass_man.set_opt_level(opt);
   // run passes on IR
   if (argp.GetValue<bool>("verbose")) pass_man.ShowInfo(cerr);
   irb.module().RunPasses(pass_man);
   // check if need to dump IR
-  auto out_type = argp.GetValue<string>("outtype");
-  auto dump_yuir = out_type == "yuir";
+  auto dump_yuir = type == OutputType::YuIR;
   auto err_num = Logger::error_num();
   if (!err_num && dump_yuir) irb.module().Dump(os);
   if (err_num || dump_yuir) std::exit(err_num);
 }
 
-void GenerateCode(const xstl::ArgParser &argp, std::ostream &os,
-                  IRBuilder &irb, CodeGen &gen) {
+void GenerateCode(std::ostream &os, IRBuilder &irb, CodeGen &gen,
+                  ObjectGen &obj_gen, OutputType type,
+                  const std::string &file) {
   // generate code
   irb.module().GenerateCode(gen);
   // check if need to dump code
-  auto out_type = argp.GetValue<string>("outtype");
-  auto dump_llvm = out_type == "llvm";
-  if (dump_llvm) {
-    gen.Dump(os);
-    std::exit(0);
+  if (type != OutputType::LLVM && file.empty()) {
+    Logger::LogRawError("output file required when generating asm/obj");
+    std::exit(1);
+  }
+  switch (type) {
+    case OutputType::LLVM: {
+      // dump LLVM IR
+      gen.Dump(os);
+      std::exit(0);
+      break;
+    }
+    case OutputType::Assembly: {
+      // dump assembly
+      if (!obj_gen.GenerateAsm(file)) std::exit(1);
+      break;
+    }
+    case OutputType::Object: {
+      // dump assembly
+      if (!obj_gen.GenerateObject(file)) std::exit(1);
+      break;
+    }
+    default:;
   }
 }
 
@@ -153,6 +190,8 @@ int main(int argc, const char *argv[]) {
 
   // parse argument
   ParseArgument(argp, argc, argv);
+  auto out_type = GetOutputType(argp);
+  auto opt_level = GetOptLevel(argp);
 
   // initialize output stream
   auto out_file = argp.GetValue<string>("output");
@@ -164,11 +203,15 @@ int main(int argc, const char *argv[]) {
   LexerManager lex_man;
   IRBuilder irb;
   LLVMGen gen(argp.GetValue<string>("input"));
-  // BaseType::set_ptr_size(gen.GetPointerSize());
+
+  // initialize target
+  ObjectGen obj_gen(gen.module());
+  InitializeTarget(argp, obj_gen, opt_level);
+  BaseType::set_ptr_size(obj_gen.GetPointerSize());
 
   // compile source to target code
-  CompileToIR(argp, os, lex_man, irb);
-  RunPasses(argp, os, irb);
-  GenerateCode(argp, os, irb, gen);
+  CompileToIR(argp, os, lex_man, irb, out_type);
+  RunPasses(argp, os, irb, out_type, opt_level);
+  GenerateCode(os, irb, gen, obj_gen, out_type, out_file);
   return 0;
 }
