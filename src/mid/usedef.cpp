@@ -41,3 +41,14 @@ void Value::ReplaceBy(const SSAPtr &value) {
     use->set_value(value);
   }
 }
+
+void User::RemoveNull() {
+  int len = 0;
+  for (int i = 0; i < uses_.size(); ++i) {
+    if (uses_[i].value()) {
+      uses_[len].set_value(uses_[i].value());
+      ++len;
+    }
+  }
+  uses_.resize(len, Use(nullptr, this));
+}
