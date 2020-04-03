@@ -441,14 +441,16 @@ void LLVMGen::GenerateOn(GlobalVarSSA &ssa) {
 
 void LLVMGen::GenerateOn(AllocaSSA &ssa) {
   // set insert point to entry block
-  auto func = builder_.GetInsertBlock()->getParent();
-  auto &entry = func->getEntryBlock();
-  llvm::IRBuilder<> builder(&entry, entry.begin());
+  auto last_block = builder_.GetInsertBlock();
+  auto &entry = last_block->getParent()->getEntryBlock();
+  builder_.SetInsertPoint(&entry);
   // create alloca
   auto type = ssa.type()->GetDerefedType();
-  auto alloca = builder.CreateAlloca(GenerateType(type));
+  auto alloca = builder_.CreateAlloca(GenerateType(type));
   alloca->setAlignment(type->GetAlignSize());
   SetVal(ssa, alloca);
+  // restore insert point
+  builder_.SetInsertPoint(last_block);
 }
 
 void LLVMGen::GenerateOn(BlockSSA &ssa) {
