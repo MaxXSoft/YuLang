@@ -18,7 +18,9 @@ class DeadCodeEliminationPass : public FunctionPass {
       it->value()->RunPass(*this);
       // check if need to remove current block
       if (remove_flag_) {
-        it->value()->logger()->LogWarning("unreachable code");
+        if (log_warn_) {
+          it->value()->logger()->LogWarning("unreachable code");
+        }
         it->set_value(nullptr);
         changed_ = true;
       }
@@ -50,8 +52,10 @@ class DeadCodeEliminationPass : public FunctionPass {
       }
     }
     // removed blocks with no predecessors
+    remove_flag_ = false;
     if (ssa.preds().empty() && !is_entry_) {
       remove_flag_ = true;
+      log_warn_ = ssa.insts().size() > 1;
       // remove from all successors
       auto ptr = &ssa;
       for (const auto &block : ssa.succs()) {
@@ -94,6 +98,8 @@ class DeadCodeEliminationPass : public FunctionPass {
   bool remove_flag_;
   // set if current block is entry block
   bool is_entry_;
+  // set if need to log warning info
+  bool log_warn_;
 };
 
 }  // namespace
