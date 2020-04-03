@@ -14,7 +14,7 @@ Before building YuLang compiler, please make sure you have installed the followi
 Then you can build this repository by executing the following command lines:
 
 ```
-$ git clone https://github.com/MaxXSoft/YuLang.git
+$ git clone --recursive https://github.com/MaxXSoft/YuLang.git
 $ cd YuLang
 $ mkdir build
 $ cd build
