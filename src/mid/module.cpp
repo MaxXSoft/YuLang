@@ -136,18 +136,17 @@ SSAPtr Module::CreateAlloca(const TypePtr &type) {
 }
 
 SSAPtr Module::CreateJump(const BlockPtr &target) {
-  assert(insert_point_->succs().empty());
+  assert(insert_point_->uses().size() == 1);
   // create jump
   auto jump = AddInst<JumpSSA>(target);
   jump->set_type(nullptr);
-  // update predecessor & successor info
-  target->AddPred(insert_point_);
-  insert_point_->AddSucc(target);
+  // update predecessor info
+  target->AddValue(insert_point_);
   return jump;
 }
 
 SSAPtr Module::CreateReturn(const SSAPtr &value) {
-  assert(insert_point_->succs().empty());
+  assert(insert_point_->uses().size() == 1);
   // get proper return value
   const auto &func_type = insert_point_->parent()->type();
   auto ret_type = func_type->GetReturnType(*func_type->GetArgsType());
@@ -162,8 +161,6 @@ SSAPtr Module::CreateReturn(const SSAPtr &value) {
   // create return
   auto ret = AddInst<ReturnSSA>(val);
   ret->set_type(nullptr);
-  // update successor info
-  insert_point_->AddSucc(nullptr);
   return ret;
 }
 
@@ -192,17 +189,15 @@ GlobalVarPtr Module::CreateGlobalVar(LinkageTypes link,
 
 SSAPtr Module::CreateBranch(const SSAPtr &cond, const BlockPtr &true_block,
                             const BlockPtr &false_block) {
-  assert(insert_point_->succs().empty());
+  assert(insert_point_->uses().size() == 1);
   // assertion for type checking
   assert(cond->type()->IsBool());
   // create branch
   auto branch = AddInst<BranchSSA>(cond, true_block, false_block);
   branch->set_type(nullptr);
-  // update predecessor & successor info
-  true_block->AddPred(insert_point_);
-  false_block->AddPred(insert_point_);
-  insert_point_->AddSucc(true_block);
-  insert_point_->AddSucc(false_block);
+  // update predecessor info
+  true_block->AddValue(insert_point_);
+  false_block->AddValue(insert_point_);
   return branch;
 }
 
