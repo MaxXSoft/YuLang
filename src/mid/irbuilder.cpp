@@ -268,7 +268,7 @@ SSAPtr IRBuilder::GenerateOn(IfAST &ast) {
   if (!if_type->IsVoid()) if_val = module_.CreateAlloca(if_type);
   // create conditional branch
   auto cond = ast.cond()->GenerateIR(*this);
-  module_.CreateBranch(cond, then_block, end_block);
+  module_.CreateBranch(cond, then_block, else_block);
   // emit 'then' block
   module_.SetInsertPoint(then_block);
   auto then_val = ast.then()->GenerateIR(*this);
