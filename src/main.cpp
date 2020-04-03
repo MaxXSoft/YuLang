@@ -164,7 +164,7 @@ int main(int argc, const char *argv[]) {
   LexerManager lex_man;
   IRBuilder irb;
   LLVMGen gen(argp.GetValue<string>("input"));
-  BaseType::set_ptr_size(gen.GetPointerSize());
+  // BaseType::set_ptr_size(gen.GetPointerSize());
 
   // compile source to target code
   CompileToIR(argp, os, lex_man, irb);
