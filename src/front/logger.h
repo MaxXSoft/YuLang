@@ -19,7 +19,7 @@ class Logger {
     warn_as_err_ = warn_as_err;
   }
 
-  // print error message (with out file info) to stderr
+  // print error message (without file info) to stderr
   static void LogRawError(std::string_view message);
 
   // print error message to stderr
