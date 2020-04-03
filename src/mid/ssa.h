@@ -2,7 +2,6 @@
 #define YULANG_MID_SSA_H_
 
 #include <string>
-#include <list>
 #include <cstddef>
 #include <cstdint>
 
@@ -16,7 +15,6 @@ class GlobalVarSSA;
 
 // type aliases
 using BlockPtr = std::shared_ptr<BlockSSA>;
-using BlockPtrList = std::list<BlockPtr>;
 using GlobalVarPtr = std::shared_ptr<GlobalVarSSA>;
 
 // linkage types
@@ -184,6 +182,7 @@ class JumpSSA : public User {
 
 // function return
 // operands: value
+// NOTE: value can be 'nullptr'
 class ReturnSSA : public User {
  public:
   ReturnSSA(const SSAPtr &value) {
@@ -257,7 +256,8 @@ class AllocaSSA : public Value {
 };
 
 // basic block
-class BlockSSA : public Value {
+// operands: pred1, pred2, ...
+class BlockSSA : public User {
  public:
   BlockSSA(const UserPtr &parent, const std::string &name)
       : name_(name), parent_(parent) {}
@@ -266,19 +266,12 @@ class BlockSSA : public Value {
   void RunPass(PassBase &pass) override;
   void GenerateCode(back::CodeGen &gen) override;
 
-  // add a new predecessor
-  void AddPred(const BlockPtr &pred) { preds_.push_back(pred); }
-  // add a new successor
-  // successor can be 'nullptr' (when returning from function)
-  void AddSucc(const BlockPtr &succ) { succs_.push_back(succ); }
   // add a new instruction
   void AddInst(const SSAPtr &inst) { insts_.push_back(inst); }
 
   // getters
   const std::string &name() const { return name_; }
   const UserPtr &parent() const { return parent_; }
-  BlockPtrList &preds() { return preds_; }
-  BlockPtrList &succs() { return succs_; }
   SSAPtrList &insts() { return insts_; }
 
  private:
@@ -286,8 +279,6 @@ class BlockSSA : public Value {
   std::string name_;
   // parent function
   UserPtr parent_;
-  // predecessor and successor blocks
-  BlockPtrList preds_, succs_;
   // instructions in current block
   SSAPtrList insts_;
 };

@@ -295,15 +295,10 @@ void BlockSSA::Dump(std::ostream &os, IdManager &idm) const {
   PrintId(os, idm, this);
   if (in_expr) return;
   os << ':';
-  if (!preds_.empty()) {
+  if (!empty()) {
     auto inex = InExpr();
     os << " ; preds: ";
-    DumpVal(os, idm, preds_.begin(), preds_.end());
-  }
-  if (!succs_.empty() && succs_.front()) {
-    auto inex = InExpr();
-    os << " ; succs: ";
-    DumpVal(os, idm, succs_.begin(), succs_.end());
+    DumpVal(os, idm, begin(), end());
   }
   os << std::endl;
   for (const auto &i : insts_) DumpVal(os, idm, i);
