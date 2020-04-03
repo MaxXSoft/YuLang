@@ -12,28 +12,13 @@ class DeadCodeEliminationPass : public FunctionPass {
 
   bool RunOnFunction(const UserPtr &func) override {
     changed_ = false;
+    cur_func_ = func.get();
     // traverse all basic blocks
-    for (auto it = func->begin(); it != func->end(); ++it) {
-      is_entry_ = it == func->begin();
-      it->value()->RunPass(*this);
-      // check if need to remove current block
-      if (remove_flag_) {
-        if (log_warn_) {
-          it->value()->logger()->LogWarning("unreachable code");
-        }
-        it->set_value(nullptr);
-        changed_ = true;
-      }
+    for (const auto &i : *func) {
+      i.value()->RunPass(*this);
     }
     // rearrange uses
-    int len = 0;
-    for (int i = 0; i < func->size(); ++i) {
-      if ((*func)[i].value()) {
-        (*func)[len].set_value((*func)[i].value());
-        ++len;
-      }
-    }
-    func->Resize(len);
+    func->RemoveNull();
     return changed_;
   }
 
@@ -51,18 +36,19 @@ class DeadCodeEliminationPass : public FunctionPass {
         ++it;
       }
     }
-    // removed blocks with no predecessors
-    remove_flag_ = false;
-    if (ssa.preds().empty() && !is_entry_) {
-      remove_flag_ = true;
-      log_warn_ = ssa.insts().size() > 1;
-      // remove from all successors
-      auto ptr = &ssa;
-      for (const auto &block : ssa.succs()) {
-        block->preds().remove_if([ptr](const BlockPtr &p) {
-          return p.get() == ptr;
-        });
+    // removed non-entry blocks with no predecessors
+    if (ssa.empty() && (*cur_func_)[0].value().get() != &ssa) {
+      if (ssa.insts().size() > 1) {
+        ssa.logger()->LogWarning("unreachable code");
       }
+      // remove current block
+      auto uses = ssa.uses();
+      ssa.ReplaceBy(nullptr);
+      // remove from all successors
+      for (const auto &i : uses) {
+        if (i->user() != cur_func_) i->user()->RemoveNull();
+      }
+      changed_ = true;
     }
   }
 
@@ -94,12 +80,10 @@ class DeadCodeEliminationPass : public FunctionPass {
  private:
   // set if IR changed
   bool changed_;
+  // current function
+  User *cur_func_;
   // set if need to be removed
   bool remove_flag_;
-  // set if current block is entry block
-  bool is_entry_;
-  // set if need to log warning info
-  bool log_warn_;
 };
 
 }  // namespace
