@@ -3,12 +3,19 @@
 
 #include <memory>
 #include <string>
+#include <vector>
+#include <utility>
+#include <unordered_map>
 
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/Module.h"
+#include "llvm/IR/Value.h"
+#include "llvm/IR/Function.h"
+#include "llvm/IR/Type.h"
 
 #include "back/codegen.h"
+#include "define/type.h"
 
 namespace yulang::back::ll {
 
@@ -44,10 +51,32 @@ class LLVMGen : public CodeGenInterface {
   void Dump(std::ostream &os) const override;
 
  private:
+  // generate code or get from metadata
+  llvm::Value *GetVal(const mid::SSAPtr &ssa);
+  // store llvm value to metadata
+  void SetVal(mid::Value &ssa, llvm::Value *val);
+  // create new type casting
+  llvm::Value *CreateCast(llvm::Value *val, const define::TypePtr &src,
+                          const define::TypePtr &dst);
+  // create global ctor array
+  void CreateCtorArray(llvm::Function *ctor);
+
+  // generate on 'yulang::define::TypePtr'
+  llvm::Type *GenerateType(const define::TypePtr &type);
+  llvm::Type *GeneratePrimType(const define::TypePtr &type);
+  llvm::Type *GenerateStructType(const define::TypePtr &type);
+  llvm::Type *GenerateFuncType(const define::TypePtr &type);
+  llvm::Type *GenerateArrayType(const define::TypePtr &type);
+  llvm::Type *GeneratePointerType(const define::TypePtr &type);
+  llvm::Type *GenerateRefType(const define::TypePtr &type);
+
   // LLVM stuffs
   llvm::LLVMContext context_;
   llvm::IRBuilder<> builder_;
   std::unique_ptr<llvm::Module> module_;
+  // tables for storing structure types
+  std::vector<std::pair<define::TypePtr, llvm::Type *>> types_;
+  std::unordered_map<define::BaseType *, llvm::Type *> type_lut_;
 };
 
 }  // namespace yulang::back::ll
