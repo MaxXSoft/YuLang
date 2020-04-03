@@ -2,6 +2,7 @@
 #include <fstream>
 #include <string>
 #include <vector>
+#include <cstdlib>
 
 #include "version.h"
 
@@ -13,6 +14,8 @@
 #include "front/eval.h"
 #include "mid/irbuilder.h"
 #include "mid/passman.h"
+#include "back/codegen.h"
+#include "back/llvm/generator.h"
 
 #include "xstl/argparse.h"
 
@@ -20,6 +23,8 @@ using namespace std;
 using namespace yulang::define;
 using namespace yulang::front;
 using namespace yulang::mid;
+using namespace yulang::back;
+using namespace yulang::back::ll;
 
 namespace {
 
@@ -58,20 +63,43 @@ void CompileToIR(const xstl::ArgParser &argp, std::ostream &os,
     // generate IR
     ast->GenerateIR(irb);
   }
+  // check if need to exit
+  auto err_num = Logger::error_num();
+  if (err_num || dump_ast) std::exit(err_num);
 }
 
-bool RunPasses(const xstl::ArgParser &argp, IRBuilder &irb) {
-  // run passes on IR
+void RunPasses(const xstl::ArgParser &argp, std::ostream &os,
+               IRBuilder &irb) {
+  // set optimization level
   PassManager pass_man;
   auto opt_level = argp.GetValue<int>("opt-level");
   if (opt_level < 0 || opt_level > 3) {
     Logger::LogRawError("invalid optimization level");
-    return false;
+    std::exit(1);
   }
   pass_man.set_opt_level(opt_level);
+  // run passes on IR
   if (argp.GetValue<bool>("verbose")) pass_man.ShowInfo(cerr);
   irb.module().RunPasses(pass_man);
-  return true;
+  // check if need to dump IR
+  auto out_type = argp.GetValue<string>("outtype");
+  auto dump_yuir = out_type == "yuir";
+  auto err_num = Logger::error_num();
+  if (!err_num && dump_yuir) irb.module().Dump(os);
+  if (err_num || dump_yuir) std::exit(err_num);
+}
+
+void GenerateCode(const xstl::ArgParser &argp, std::ostream &os,
+                  IRBuilder &irb, CodeGen &gen) {
+  // generate code
+  irb.module().GenerateCode(gen);
+  // check if need to dump code
+  auto out_type = argp.GetValue<string>("outtype");
+  auto dump_llvm = out_type == "llvm";
+  if (dump_llvm) {
+    gen.Dump(os);
+    std::exit(0);
+  }
 }
 
 }  // namespace
@@ -83,7 +111,7 @@ int main(int argc, const char *argv[]) {
   argp.AddOption<bool>("help", "h", "show this message", false);
   argp.AddOption<bool>("version", "v", "show version info", false);
   argp.AddOption<string>("outtype", "ot",
-                         "type of output (ast/yuir/llvm/obj)", "yuir");
+                         "type of output (ast/yuir/llvm/obj)", "llvm");
   argp.AddOption<string>("output", "o", "output file, default to stdout",
                          "");
   argp.AddOption<vector<string>>("imppath", "I", "add directory to "
@@ -111,31 +139,21 @@ int main(int argc, const char *argv[]) {
     return 1;
   }
 
-  // get output info
-  auto out_type = argp.GetValue<string>("outtype");
-  auto out_file = argp.GetValue<string>("output");
-  auto dump_yuir = out_type == "yuir";
-
   // initialize output stream
+  auto out_file = argp.GetValue<string>("output");
   std::ofstream ofs;
   if (!out_file.empty()) ofs.open(out_file);
   auto &os = out_file.empty() ? cout : ofs;
 
-  // compile source to IR
+  // initialize compilation system
   LexerManager lex_man;
   IRBuilder irb;
+  LLVMGen gen(argp.GetValue<string>("input"));
+  BaseType::set_ptr_size(gen.GetPointerSize());
+
+  // compile source to target code
   CompileToIR(argp, os, lex_man, irb);
-
-  // check if is error after IR generation
-  if (auto err_num = Logger::error_num()) return err_num;
-
-  // run passes on IR
-  RunPasses(argp, irb);
-
-  // check if is error after passes running
-  if (auto err_num = Logger::error_num()) return err_num;
-
-  // dump IR
-  if (dump_yuir) irb.module().Dump(os);
+  RunPasses(argp, os, irb);
+  GenerateCode(argp, os, irb, gen);
   return 0;
 }
