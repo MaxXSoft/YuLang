@@ -50,5 +50,5 @@ void User::RemoveNull() {
       ++len;
     }
   }
-  uses_.resize(len, Use(nullptr, this));
+  if (len < uses_.size()) Resize(len);
 }

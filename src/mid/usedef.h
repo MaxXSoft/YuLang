@@ -155,8 +155,12 @@ class User : public Value {
  public:
   // preallocate some space for values
   void Reserve(std::size_t size) { uses_.reserve(size); }
+  // resize use list
+  void Resize(std::size_t size) { uses_.resize(size, Use(nullptr, this)); }
   // remove null uses
   void RemoveNull();
+  // clear all uses
+  void Clear() { uses_.clear(); }
   // add new value to current user
   void AddValue(const SSAPtr &value) {
     uses_.push_back(Use(value, this));
