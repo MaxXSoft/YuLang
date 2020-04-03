@@ -49,6 +49,8 @@ xstl::ArgParser GetArgp() {
   argp.AddOption<bool>("warn-error", "Werror", "treat warnings as errors",
                        false);
   argp.AddOption<string>("target", "tt", "specify target triple", "");
+  argp.AddOption<string>("cpu", "tc", "specify target CPU", "generic");
+  argp.AddOption<string>("features", "tf", "specify target features", "");
   return argp;
 }
 
@@ -101,6 +103,8 @@ int GetOptLevel(xstl::ArgParser &argp) {
 
 void InitializeTarget(xstl::ArgParser &argp, ObjectGen &obj_gen, int opt) {
   obj_gen.set_opt_level(opt);
+  obj_gen.set_cpu(argp.GetValue<string>("cpu"));
+  obj_gen.set_features(argp.GetValue<string>("features"));
   if (!obj_gen.SetTargetTriple(argp.GetValue<string>("target"))) {
     std::exit(1);
   }
