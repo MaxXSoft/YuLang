@@ -630,7 +630,7 @@ SSAPtr IRBuilder::GenerateOn(NullAST &ast) {
 SSAPtr IRBuilder::GenerateOn(ValInitAST &ast) {
   auto context = module_.SetContext(ast.logger());
   const auto &type = ast.type()->ast_type();
-  if (vals_->is_root() && ast.IsLiteral()) {
+  if (ast.IsLiteral()) {
     // generate all elements
     SSAPtrList elems;
     for (int i = 0; i < type->GetLength(); ++i) {

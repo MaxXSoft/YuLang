@@ -645,7 +645,7 @@ class CastAST : public BaseAST {
       : expr_(std::move(expr)), type_(std::move(type)) {}
 
   bool IsId() const override { return false; }
-  bool IsLiteral() const override { return false; }
+  bool IsLiteral() const override { return expr_->IsLiteral(); }
 
   void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
