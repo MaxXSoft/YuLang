@@ -28,12 +28,55 @@ using namespace yulang::back::ll;
 
 namespace {
 
+xstl::ArgParser GetArgp() {
+  xstl::ArgParser argp;
+  argp.AddArgument<string>("input", "input source file");
+  argp.AddOption<bool>("help", "h", "show this message", false);
+  argp.AddOption<bool>("version", "v", "show version info", false);
+  argp.AddOption<string>("outtype", "ot",
+                         "type of output (ast/yuir/llvm/obj)", "llvm");
+  argp.AddOption<string>("output", "o", "output file, default to stdout",
+                         "");
+  argp.AddOption<vector<string>>("imppath", "I", "add directory to "
+                                 "import search path", {});
+  argp.AddOption<int>("opt-level", "O", "set optimization level (0-3)", 0);
+  argp.AddOption<bool>("verbose", "V", "use verbose output", false);
+  argp.AddOption<bool>("warn-error", "Werror", "treat warnings as errors",
+                       false);
+  return argp;
+}
+
 void PrintVersion() {
   cout << APP_NAME << " version " << APP_VERSION << endl;
   cout << "Compiler of the Yu programming language." << endl;
   cout << endl;
   cout << "Copyright (C) 2010-2020 MaxXing. License GPLv3.";
   cout << endl;
+}
+
+void ParseArgument(xstl::ArgParser &argp, int argc, const char *argv[]) {
+  auto ret = argp.Parse(argc, argv);
+  // check if need to exit program
+  if (argp.GetValue<bool>("help")) {
+    argp.PrintHelp();
+    std::exit(0);
+  }
+  else if (argp.GetValue<bool>("version")) {
+    PrintVersion();
+    std::exit(0);
+  }
+  else if (!ret) {
+    cerr << "invalid input, run '";
+    cerr << argp.program_name() << " -h' for help" << endl;
+    std::exit(1);
+  }
+  // check output type
+  auto out_type = argp.GetValue<string>("outtype");
+  for (const auto &i : {"ast", "yuir", "llvm", "obj"}) {
+    if (out_type == i) return;
+  }
+  Logger::LogRawError("invalid output type");
+  std::exit(1);
 }
 
 void CompileToIR(const xstl::ArgParser &argp, std::ostream &os,
@@ -106,38 +149,10 @@ void GenerateCode(const xstl::ArgParser &argp, std::ostream &os,
 
 int main(int argc, const char *argv[]) {
   // set up argument parser
-  xstl::ArgParser argp;
-  argp.AddArgument<string>("input", "input source file");
-  argp.AddOption<bool>("help", "h", "show this message", false);
-  argp.AddOption<bool>("version", "v", "show version info", false);
-  argp.AddOption<string>("outtype", "ot",
-                         "type of output (ast/yuir/llvm/obj)", "llvm");
-  argp.AddOption<string>("output", "o", "output file, default to stdout",
-                         "");
-  argp.AddOption<vector<string>>("imppath", "I", "add directory to "
-                                 "import search path", {});
-  argp.AddOption<int>("opt-level", "O", "set optimization level (0-3)", 0);
-  argp.AddOption<bool>("verbose", "V", "use verbose output", false);
-  argp.AddOption<bool>("warn-error", "Werror", "treat warnings as errors",
-                       false);
+  auto argp = GetArgp();
 
   // parse argument
-  auto ret = argp.Parse(argc, argv);
-
-  // check if need to exit program
-  if (argp.GetValue<bool>("help")) {
-    argp.PrintHelp();
-    return 0;
-  }
-  else if (argp.GetValue<bool>("version")) {
-    PrintVersion();
-    return 0;
-  }
-  else if (!ret) {
-    cerr << "invalid input, run '";
-    cerr << argp.program_name() << " -h' for help" << endl;
-    return 1;
-  }
+  ParseArgument(argp, argc, argv);
 
   // initialize output stream
   auto out_file = argp.GetValue<string>("output");
