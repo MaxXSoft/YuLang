@@ -5,6 +5,7 @@
 #include "llvm/Transforms/IPO/PassManagerBuilder.h"
 #include "llvm/IR/LegacyPassManager.h"
 #include "llvm/Transforms/IPO.h"
+#include "llvm/Support/TargetSelect.h"
 #include "llvm/Support/TargetRegistry.h"
 #include "llvm/Target/TargetOptions.h"
 #include "llvm/Support/FileSystem.h"
@@ -15,11 +16,14 @@
 using namespace yulang::front;
 using namespace yulang::back::ll;
 
-namespace {
-
-//
-
-}  // namespace
+void ObjectGen::InitTarget() {
+  // initialize target registry
+  llvm::InitializeAllTargetInfos();
+  llvm::InitializeAllTargets();
+  llvm::InitializeAllTargetMCs();
+  llvm::InitializeAllAsmParsers();
+  llvm::InitializeAllAsmPrinters();
+}
 
 bool ObjectGen::GenerateTargetCode(
     const std::string &file, llvm::TargetMachine::CodeGenFileType type) {

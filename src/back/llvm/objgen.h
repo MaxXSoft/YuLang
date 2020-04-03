@@ -13,8 +13,9 @@ namespace yulang::back::ll {
 
 class ObjectGen {
  public:
-  ObjectGen(const ModulePtr &module)
-      : module_(module), machine_(nullptr) {}
+  ObjectGen(const ModulePtr &module) : module_(module), machine_(nullptr) {
+    InitTarget();
+  }
 
   // run optimization on specific module
   void RunOptimization();
@@ -36,6 +37,7 @@ class ObjectGen {
   }
 
  private:
+  void InitTarget();
   bool GenerateTargetCode(const std::string &file,
                           llvm::TargetMachine::CodeGenFileType type);
 
