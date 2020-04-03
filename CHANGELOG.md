@@ -9,7 +9,7 @@ All notable changes to the YuLang compiler will be documented in this file.
 * Yu IR: intermediate representation of YuLang.
 * New mid-end, which can convert AST to Yu IR.
 * Pass manager and passes.
-* Back-end, which can convert Yu IR to LLVM IR.
+* Back-end, which can convert Yu IR to LLVM IR, assembly or object file.
 
 ### Changed
 
