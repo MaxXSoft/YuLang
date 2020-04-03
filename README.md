@@ -94,6 +94,10 @@ ref       ::= type ["var"] "&";
 func      ::= "(" [type {"," type}] ")" [":" type];
 ```
 
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md)
+
 ## License
 
 Copyright (C) 2010-2020 MaxXing. License GPLv3.
