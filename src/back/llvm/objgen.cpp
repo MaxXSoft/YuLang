@@ -79,7 +79,7 @@ bool ObjectGen::SetTargetTriple(const std::string &triple) {
   // initialize target machine
   llvm::TargetOptions opt;
   auto rm = llvm::Optional<llvm::Reloc::Model>();
-  machine_ = target->createTargetMachine(tt, "generic", "", opt, rm);
+  machine_ = target->createTargetMachine(tt, cpu_, features_, opt, rm);
   module_->setDataLayout(machine_->createDataLayout());
   return true;
 }

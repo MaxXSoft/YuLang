@@ -30,6 +30,8 @@ class ObjectGen {
 
   // setters
   void set_opt_level(std::size_t opt_level) { opt_level_ = opt_level; }
+  void set_cpu(const std::string &cpu) { cpu_ = cpu; }
+  void set_features(const std::string &features) { features_ = features; }
 
   // getters
   const std::string &target_triple() const {
@@ -47,6 +49,8 @@ class ObjectGen {
   std::size_t opt_level_;
   // target info
   llvm::TargetMachine *machine_;
+  // CPU & features
+  std::string cpu_, features_;
 };
 
 }  // namespace yulang::back::ll
