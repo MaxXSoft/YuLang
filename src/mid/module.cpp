@@ -136,7 +136,6 @@ SSAPtr Module::CreateAlloca(const TypePtr &type) {
 }
 
 SSAPtr Module::CreateJump(const BlockPtr &target) {
-  assert(insert_point_->uses().size() == 1);
   // create jump
   auto jump = AddInst<JumpSSA>(target);
   jump->set_type(nullptr);
@@ -146,7 +145,6 @@ SSAPtr Module::CreateJump(const BlockPtr &target) {
 }
 
 SSAPtr Module::CreateReturn(const SSAPtr &value) {
-  assert(insert_point_->uses().size() == 1);
   // get proper return value
   const auto &func_type = insert_point_->parent()->type();
   auto ret_type = func_type->GetReturnType(*func_type->GetArgsType());
@@ -189,7 +187,6 @@ GlobalVarPtr Module::CreateGlobalVar(LinkageTypes link,
 
 SSAPtr Module::CreateBranch(const SSAPtr &cond, const BlockPtr &true_block,
                             const BlockPtr &false_block) {
-  assert(insert_point_->uses().size() == 1);
   // assertion for type checking
   assert(cond->type()->IsBool());
   // create branch
