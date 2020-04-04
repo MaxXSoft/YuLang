@@ -645,7 +645,8 @@ TypePtr Analyzer::AnalyzeOn(BinaryAST &ast) {
     case Operator::Less: case Operator::LessEqual:
     case Operator::Great: case Operator::GreatEqual: {
       // int/float binary operation
-      if ((lhs->IsInteger() || lhs->IsFloat()) && lhs->IsIdentical(rhs)) {
+      if ((lhs->IsInteger() || lhs->IsFloat() || lhs->IsPointer()) &&
+          lhs->IsIdentical(rhs)) {
         ret = MakePrimType(Keyword::Bool, true);
       }
       break;
