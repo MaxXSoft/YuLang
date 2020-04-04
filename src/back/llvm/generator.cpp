@@ -193,10 +193,10 @@ llvm::Type *LLVMGen::GenerateStructType(const TypePtr &type) {
   auto it = type_lut_.find(type.get());
   if (it != type_lut_.end()) return it->second;
   // try to find in type table
-  for (const auto &i : types_) {
-    if (type->IsIdentical(i.first)) {
-      type_lut_.insert({type.get(), i.second});
-      return i.second;
+  for (const auto &[ty, ll_ty] : types_) {
+    if (type->IsIdentical(ty)) {
+      type_lut_.insert({type.get(), ll_ty});
+      return ll_ty;
     }
   }
   // not found, create new structure type
