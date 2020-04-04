@@ -300,29 +300,27 @@ SSAPtr IRBuilder::GenerateOn(WhenAST &ast) {
   when_expr_ = ast.expr()->GenerateIR(*this);
   // generate return value
   const auto &when_type = ast.ast_type();
-  SSAPtr when_val;
-  if (!when_type->IsVoid()) when_val = module_.CreateAlloca(when_type);
-  // generate elements
-  for (const auto &i : ast.elems()) {
-    auto elem = i->GenerateIR(*this);
-    if (when_val) {
-      module_.CreateInit(elem, when_val, when_type->IsReference());
-    }
+  when_val_ = nullptr;
+  if (!when_type->IsVoid()) {
+    when_val_ = module_.CreateAlloca(when_type);
+    is_when_val_ref_ = when_type->IsReference();
   }
+  // generate elements
+  for (const auto &i : ast.elems()) i->GenerateIR(*this);
   // generate else branch
   if (ast.else_then()) {
     auto else_val = ast.else_then()->GenerateIR(*this);
-    if (when_val) {
-      module_.CreateInit(else_val, when_val, when_type->IsReference());
+    if (when_val_) {
+      module_.CreateInit(else_val, when_val_, is_when_val_ref_);
     }
   }
   // emit 'end' block
   module_.CreateJump(when_end_);
   module_.SetInsertPoint(when_end_);
-  if (when_val) {
-    when_val = module_.CreateLoad(when_val, when_type->IsReference());
+  if (when_val_) {
+    when_val_ = module_.CreateLoad(when_val_, is_when_val_ref_);
   }
-  return when_val;
+  return when_val_;
 }
 
 SSAPtr IRBuilder::GenerateOn(WhileAST &ast) {
@@ -449,10 +447,11 @@ SSAPtr IRBuilder::GenerateOn(WhenElemAST &ast) {
   // generate body
   module_.SetInsertPoint(body_block);
   auto ret = ast.body()->GenerateIR(*this);
+  if (when_val_) module_.CreateInit(ret, when_val_, is_when_val_ref_);
   module_.CreateJump(when_end_);
   // emit 'exit' block
   module_.SetInsertPoint(exit_block);
-  return ret;
+  return nullptr;
 }
 
 SSAPtr IRBuilder::GenerateOn(BinaryAST &ast) {

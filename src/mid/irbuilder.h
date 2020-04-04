@@ -82,7 +82,8 @@ class IRBuilder {
   BlockPtr func_exit_;
   // used when generating when statement
   BlockPtr when_end_;
-  SSAPtr when_expr_;
+  SSAPtr when_expr_, when_val_;
+  bool is_when_val_ref_;
   // used when generating loops
   std::stack<BreakCont> break_cont_;
 };
