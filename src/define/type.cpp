@@ -3,6 +3,8 @@
 #include <sstream>
 #include <cassert>
 
+#include "xstl/guard.h"
+
 using namespace yulang::define;
 
 // definition of static member variables in 'BaseType'
@@ -94,13 +96,13 @@ bool StructType::IsIdentical(const TypePtr &type) const {
   static void *ptr = nullptr;
   if (ptr && ptr == type.get()) return true;
   ptr = type.get();
+  auto reset_ptr = xstl::Guard([] { ptr = nullptr; });
   // check if is identical
   if (!type->IsStruct()) return false;
   if (elems_.size() != type->GetLength()) return false;
   for (int i = 0; i < elems_.size(); ++i) {
     if (!elems_[i].second->IsIdentical(type->GetElem(i))) return false;
   }
-  ptr = nullptr;
   return true;
 }
 
