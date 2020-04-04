@@ -703,7 +703,7 @@ ASTPtr Parser::ParseAccess(ASTPtr expr) {
   auto id = lexer()->id_val();
   NextToken();
   // check if is a dot function call
-  if (IsTokenChar('(')) {
+  if (IsTokenChar('(') && last_token_ != Token::EOL) {
     NextToken();
     // get argument list
     ASTPtrList args;
