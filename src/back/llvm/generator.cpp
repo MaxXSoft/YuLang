@@ -247,7 +247,7 @@ llvm::Type *LLVMGen::GenerateRefType(const TypePtr &type) {
 
 void LLVMGen::GenerateOn(LoadSSA &ssa) {
   auto ptr = GetVal(ssa[0].value());
-  auto load = builder_.CreateLoad(ptr);
+  auto load = builder_.CreateLoad(ptr, ssa.type()->IsVola());
   load->setAlignment(ssa.type()->GetAlignSize());
   SetVal(ssa, load);
 }
@@ -255,7 +255,7 @@ void LLVMGen::GenerateOn(LoadSSA &ssa) {
 void LLVMGen::GenerateOn(StoreSSA &ssa) {
   auto val = GetVal(ssa[0].value());
   auto ptr = GetVal(ssa[1].value());
-  const auto &type = ssa[0].value()->type();
+  auto type = ssa[1].value()->type()->GetDerefedType();
   auto store = builder_.CreateStore(val, ptr, type->IsVola());
   store->setAlignment(type->GetAlignSize());
   SetVal(ssa, store);
