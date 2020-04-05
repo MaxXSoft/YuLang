@@ -30,6 +30,7 @@ class LLVMGen : public CodeGenInterface {
   void GenerateOn(mid::AccessSSA &ssa) override;
   void GenerateOn(mid::BinarySSA &ssa) override;
   void GenerateOn(mid::UnarySSA &ssa) override;
+  void GenerateOn(mid::CastSSA &ssa) override;
   void GenerateOn(mid::CallSSA &ssa) override;
   void GenerateOn(mid::BranchSSA &ssa) override;
   void GenerateOn(mid::JumpSSA &ssa) override;
@@ -57,9 +58,6 @@ class LLVMGen : public CodeGenInterface {
   llvm::Value *GetVal(const mid::SSAPtr &ssa);
   // store llvm value to metadata
   void SetVal(mid::Value &ssa, llvm::Value *val);
-  // create new type casting
-  llvm::Value *CreateCast(llvm::Value *val, const define::TypePtr &src,
-                          const define::TypePtr &dst);
   // create global ctor array
   void CreateCtorArray(llvm::Function *ctor);
 

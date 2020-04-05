@@ -67,61 +67,6 @@ void LLVMGen::SetVal(mid::Value &ssa, llvm::Value *val) {
   ssa.set_metadata(val);
 }
 
-llvm::Value *LLVMGen::CreateCast(llvm::Value *val, const TypePtr &src,
-                                 const TypePtr &dst) {
-  llvm::Value *ret = nullptr;
-  auto type = GenerateType(dst);
-  auto src_ct = GetTypeCategory(src);
-  auto dst_ct = GetTypeCategory(dst);
-  if (src_ct == TypeCategory::Int && dst_ct == TypeCategory::Int) {
-    // int -> int
-    if (src->GetSize() < dst->GetSize()) {
-      ret = src->IsUnsigned() ? builder_.CreateZExt(val, type)
-                              : builder_.CreateSExt(val, type);
-    }
-    else if (src->GetSize() > dst->GetSize()) {
-      ret = builder_.CreateTrunc(val, type);
-    }
-    else {
-      // do nothing
-      ret = val;
-    }
-  }
-  else if (src_ct == TypeCategory::Int && dst_ct == TypeCategory::Float) {
-    // int -> float
-    ret = src->IsUnsigned() ? builder_.CreateUIToFP(val, type)
-                            : builder_.CreateSIToFP(val, type);
-  }
-  else if (src_ct == TypeCategory::Float && dst_ct == TypeCategory::Int) {
-    // float -> int
-    ret = dst->IsUnsigned() ? builder_.CreateFPToUI(val, type)
-                            : builder_.CreateFPToSI(val, type);
-  }
-  else if (src_ct == TypeCategory::Float &&
-           dst_ct == TypeCategory::Float) {
-    // float -> float
-    ret = src->GetSize() < dst->GetSize()
-              ? builder_.CreateFPExt(val, type)
-              : builder_.CreateFPTrunc(val, type);
-  }
-  else if (src_ct == TypeCategory::Ptr && dst_ct == TypeCategory::Ptr) {
-    // ptr -> ptr
-    ret = builder_.CreateBitCast(val, type);
-  }
-  else if (src_ct == TypeCategory::Ptr && dst_ct == TypeCategory::Int) {
-    // ptr -> int
-    ret = builder_.CreatePtrToInt(val, type);
-  }
-  else if (src_ct == TypeCategory::Int && dst_ct == TypeCategory::Ptr) {
-    // int -> ptr
-    ret = builder_.CreateIntToPtr(val, type);
-  }
-  else {
-    assert(false);
-  }
-  return ret;
-}
-
 void LLVMGen::CreateCtorArray(llvm::Function *ctor) {
   using namespace llvm;
   auto type = ctor->getType();
@@ -342,10 +287,67 @@ void LLVMGen::GenerateOn(UnarySSA &ssa) {
     }
     case UnaryOp::Not: val = builder_.CreateNot(opr); break;
     case UnaryOp::FNeg: val = builder_.CreateFNeg(opr); break;
-    case UnaryOp::Cast: val = CreateCast(opr, type, ssa.type()); break;
     default: assert(false); break;
   }
   SetVal(ssa, val);
+}
+
+void LLVMGen::GenerateOn(CastSSA &ssa) {
+  // get operand
+  auto val = GetVal(ssa[0].value());
+  const auto &src = ssa[0].value()->type(), &dst = ssa.type();
+  // generate type casting
+  llvm::Value *ret = nullptr;
+  auto type = GenerateType(dst);
+  auto src_ct = GetTypeCategory(src);
+  auto dst_ct = GetTypeCategory(dst);
+  if (src_ct == TypeCategory::Int && dst_ct == TypeCategory::Int) {
+    // int -> int
+    if (src->GetSize() < dst->GetSize()) {
+      ret = src->IsUnsigned() ? builder_.CreateZExt(val, type)
+                              : builder_.CreateSExt(val, type);
+    }
+    else if (src->GetSize() > dst->GetSize()) {
+      ret = builder_.CreateTrunc(val, type);
+    }
+    else {
+      // do nothing
+      ret = val;
+    }
+  }
+  else if (src_ct == TypeCategory::Int && dst_ct == TypeCategory::Float) {
+    // int -> float
+    ret = src->IsUnsigned() ? builder_.CreateUIToFP(val, type)
+                            : builder_.CreateSIToFP(val, type);
+  }
+  else if (src_ct == TypeCategory::Float && dst_ct == TypeCategory::Int) {
+    // float -> int
+    ret = dst->IsUnsigned() ? builder_.CreateFPToUI(val, type)
+                            : builder_.CreateFPToSI(val, type);
+  }
+  else if (src_ct == TypeCategory::Float &&
+           dst_ct == TypeCategory::Float) {
+    // float -> float
+    ret = src->GetSize() < dst->GetSize()
+              ? builder_.CreateFPExt(val, type)
+              : builder_.CreateFPTrunc(val, type);
+  }
+  else if (src_ct == TypeCategory::Ptr && dst_ct == TypeCategory::Ptr) {
+    // ptr -> ptr
+    ret = builder_.CreateBitCast(val, type);
+  }
+  else if (src_ct == TypeCategory::Ptr && dst_ct == TypeCategory::Int) {
+    // ptr -> int
+    ret = builder_.CreatePtrToInt(val, type);
+  }
+  else if (src_ct == TypeCategory::Int && dst_ct == TypeCategory::Ptr) {
+    // int -> ptr
+    ret = builder_.CreateIntToPtr(val, type);
+  }
+  else {
+    assert(false);
+  }
+  SetVal(ssa, ret);
 }
 
 void LLVMGen::GenerateOn(CallSSA &ssa) {
