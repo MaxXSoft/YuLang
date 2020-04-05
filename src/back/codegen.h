@@ -18,6 +18,7 @@ class CodeGenInterface {
   virtual void GenerateOn(mid::AccessSSA &ssa) = 0;
   virtual void GenerateOn(mid::BinarySSA &ssa) = 0;
   virtual void GenerateOn(mid::UnarySSA &ssa) = 0;
+  virtual void GenerateOn(mid::CastSSA &ssa) = 0;
   virtual void GenerateOn(mid::CallSSA &ssa) = 0;
   virtual void GenerateOn(mid::BranchSSA &ssa) = 0;
   virtual void GenerateOn(mid::JumpSSA &ssa) = 0;

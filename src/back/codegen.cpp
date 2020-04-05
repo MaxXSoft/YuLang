@@ -25,6 +25,10 @@ void UnarySSA::GenerateCode(CodeGen &gen) {
   gen.GenerateOn(*this);
 }
 
+void CastSSA::GenerateCode(CodeGen &gen) {
+  gen.GenerateOn(*this);
+}
+
 void CallSSA::GenerateCode(CodeGen &gen) {
   gen.GenerateOn(*this);
 }
