@@ -119,7 +119,7 @@ class BinarySSA : public User {
 class UnarySSA : public User {
  public:
   enum class Operator {
-    Neg, LogicNot, Not, FNeg, Cast,
+    Neg, LogicNot, Not, FNeg,
   };
 
   UnarySSA(Operator op, const SSAPtr &opr) : op_(op) {
@@ -137,6 +137,21 @@ class UnarySSA : public User {
 
  private:
   Operator op_;
+};
+
+// type casting
+// operands: opr
+class CastSSA : public User {
+ public:
+  CastSSA(const SSAPtr &opr) {
+    Reserve(1);
+    AddValue(opr);
+  }
+
+  void Dump(std::ostream &os, IdManager &idm) const override;
+  void RunPass(PassBase &pass) override;
+  void GenerateCode(back::CodeGen &gen) override;
+  bool IsConst() const override { return (*this)[0].value()->IsConst(); }
 };
 
 // function call

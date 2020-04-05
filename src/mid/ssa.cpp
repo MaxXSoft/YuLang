@@ -31,7 +31,7 @@ const char *kBinOps[] = {
 
 // unary operators
 const char *kUnaOps[] = {
-  "neg", "lnot", "not", "fneg", "cast",
+  "neg", "lnot", "not", "fneg",
 };
 
 // null stream buffer
@@ -193,6 +193,16 @@ void UnarySSA::Dump(std::ostream &os, IdManager &idm) const {
   os << ' ';
   DumpVal(os, idm, (*this)[0]);
   os << std::endl;
+}
+
+void CastSSA::Dump(std::ostream &os, IdManager &idm) const {
+  if (!IsConst() && PrintPrefix(os, idm, this)) return;
+  auto inex = InExpr();
+  os << "cast ";
+  PrintType(os, type());
+  os << ' ';
+  DumpVal(os, idm, (*this)[0]);
+  if (!IsConst()) os << std::endl;
 }
 
 void CallSSA::Dump(std::ostream &os, IdManager &idm) const {
