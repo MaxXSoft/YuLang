@@ -34,6 +34,7 @@ class LoadSSA : public User {
   void Dump(std::ostream &os, IdManager &idm) const override;
   void RunPass(PassBase &pass) override;
   void GenerateCode(back::CodeGen &gen) override;
+  bool IsConst() const override { return false; }
   SSAPtr GetAddr() const override { return addr_; }
 
  private:
@@ -53,6 +54,7 @@ class StoreSSA : public User {
   void Dump(std::ostream &os, IdManager &idm) const override;
   void RunPass(PassBase &pass) override;
   void GenerateCode(back::CodeGen &gen) override;
+  bool IsConst() const override { return false; }
 };
 
 // element accessing (load effective address)
@@ -71,6 +73,7 @@ class AccessSSA : public User {
   void Dump(std::ostream &os, IdManager &idm) const override;
   void RunPass(PassBase &pass) override;
   void GenerateCode(back::CodeGen &gen) override;
+  bool IsConst() const override { return false; }
 
   // getters
   AccessType acc_type() const { return acc_type_; }
@@ -102,6 +105,7 @@ class BinarySSA : public User {
   void Dump(std::ostream &os, IdManager &idm) const override;
   void RunPass(PassBase &pass) override;
   void GenerateCode(back::CodeGen &gen) override;
+  bool IsConst() const override { return false; }
 
   // getters
   Operator op() const { return op_; }
@@ -126,6 +130,7 @@ class UnarySSA : public User {
   void Dump(std::ostream &os, IdManager &idm) const override;
   void RunPass(PassBase &pass) override;
   void GenerateCode(back::CodeGen &gen) override;
+  bool IsConst() const override { return false; }
 
   // getters
   Operator op() const { return op_; }
@@ -147,6 +152,7 @@ class CallSSA : public User {
   void Dump(std::ostream &os, IdManager &idm) const override;
   void RunPass(PassBase &pass) override;
   void GenerateCode(back::CodeGen &gen) override;
+  bool IsConst() const override { return false; }
 };
 
 // conditional branch
@@ -164,6 +170,7 @@ class BranchSSA : public User {
   void Dump(std::ostream &os, IdManager &idm) const override;
   void RunPass(PassBase &pass) override;
   void GenerateCode(back::CodeGen &gen) override;
+  bool IsConst() const override { return false; }
 };
 
 // unconditional jump
@@ -178,6 +185,7 @@ class JumpSSA : public User {
   void Dump(std::ostream &os, IdManager &idm) const override;
   void RunPass(PassBase &pass) override;
   void GenerateCode(back::CodeGen &gen) override;
+  bool IsConst() const override { return false; }
 };
 
 // function return
@@ -193,6 +201,7 @@ class ReturnSSA : public User {
   void Dump(std::ostream &os, IdManager &idm) const override;
   void RunPass(PassBase &pass) override;
   void GenerateCode(back::CodeGen &gen) override;
+  bool IsConst() const override { return false; }
 };
 
 // function definition/declaration
@@ -207,6 +216,7 @@ class FunctionSSA : public User {
   void Dump(std::ostream &os, IdManager &idm) const override;
   void RunPass(PassBase &pass) override;
   void GenerateCode(back::CodeGen &gen) override;
+  bool IsConst() const override { return false; }
 
   // getters
   LinkageTypes link() const { return link_; }
@@ -231,6 +241,7 @@ class GlobalVarSSA : public User {
   void Dump(std::ostream &os, IdManager &idm) const override;
   void RunPass(PassBase &pass) override;
   void GenerateCode(back::CodeGen &gen) override;
+  bool IsConst() const override { return false; }
 
   // setters
   void set_init(const SSAPtr &init) { (*this)[0].set_value(init); }
@@ -253,6 +264,7 @@ class AllocaSSA : public Value {
   void Dump(std::ostream &os, IdManager &idm) const override;
   void RunPass(PassBase &pass) override;
   void GenerateCode(back::CodeGen &gen) override;
+  bool IsConst() const override { return false; }
 };
 
 // basic block
@@ -265,6 +277,7 @@ class BlockSSA : public User {
   void Dump(std::ostream &os, IdManager &idm) const override;
   void RunPass(PassBase &pass) override;
   void GenerateCode(back::CodeGen &gen) override;
+  bool IsConst() const override { return false; }
 
   // add a new instruction
   void AddInst(const SSAPtr &inst) { insts_.push_back(inst); }
@@ -292,6 +305,7 @@ class ArgRefSSA : public Value {
   void Dump(std::ostream &os, IdManager &idm) const override;
   void RunPass(PassBase &pass) override;
   void GenerateCode(back::CodeGen &gen) override;
+  bool IsConst() const override { return false; }
 
   // getters
   const SSAPtr &func() const { return func_; }
@@ -310,6 +324,7 @@ class AsmSSA : public Value {
   void Dump(std::ostream &os, IdManager &idm) const override;
   void RunPass(PassBase &pass) override;
   void GenerateCode(back::CodeGen &gen) override;
+  bool IsConst() const override { return false; }
 
   // getters
   const std::string &asm_str() const { return asm_str_; }
@@ -326,6 +341,7 @@ class ConstIntSSA : public Value {
   void Dump(std::ostream &os, IdManager &idm) const override;
   void RunPass(PassBase &pass) override;
   void GenerateCode(back::CodeGen &gen) override;
+  bool IsConst() const override { return true; }
 
   // getters
   std::uint64_t value() const { return value_; }
@@ -342,6 +358,7 @@ class ConstFloatSSA : public Value {
   void Dump(std::ostream &os, IdManager &idm) const override;
   void RunPass(PassBase &pass) override;
   void GenerateCode(back::CodeGen &gen) override;
+  bool IsConst() const override { return true; }
 
   // getters
   double value() const { return value_; }
@@ -358,6 +375,7 @@ class ConstStrSSA : public Value {
   void Dump(std::ostream &os, IdManager &idm) const override;
   void RunPass(PassBase &pass) override;
   void GenerateCode(back::CodeGen &gen) override;
+  bool IsConst() const override { return true; }
 
   // getters
   const std::string &str() const { return str_; }
@@ -378,6 +396,7 @@ class ConstStructSSA : public User {
   void Dump(std::ostream &os, IdManager &idm) const override;
   void RunPass(PassBase &pass) override;
   void GenerateCode(back::CodeGen &gen) override;
+  bool IsConst() const override { return true; }
 };
 
 // constant array
@@ -392,6 +411,7 @@ class ConstArraySSA : public User {
   void Dump(std::ostream &os, IdManager &idm) const override;
   void RunPass(PassBase &pass) override;
   void GenerateCode(back::CodeGen &gen) override;
+  bool IsConst() const override { return true; }
 };
 
 // constant zero
@@ -402,6 +422,7 @@ class ConstZeroSSA : public Value {
   void Dump(std::ostream &os, IdManager &idm) const override;
   void RunPass(PassBase &pass) override;
   void GenerateCode(back::CodeGen &gen) override;
+  bool IsConst() const override { return true; }
 };
 
 }  // namespace yulang::mid

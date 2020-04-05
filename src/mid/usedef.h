@@ -78,6 +78,8 @@ class Value {
   virtual void RunPass(PassBase &pass) = 0;
   // run code generation
   virtual void GenerateCode(back::CodeGen &pass) = 0;
+  // return true if current value is a constant
+  virtual bool IsConst() const = 0;
   // get address value of current value
   virtual SSAPtr GetAddr() const { return nullptr; }
 
