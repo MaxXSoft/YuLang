@@ -33,6 +33,7 @@ class PassBase {
   virtual void RunOn(AccessSSA &ssa) {}
   virtual void RunOn(BinarySSA &ssa) {}
   virtual void RunOn(UnarySSA &ssa) {}
+  virtual void RunOn(CastSSA &ssa) {}
   virtual void RunOn(CallSSA &ssa) {}
   virtual void RunOn(BranchSSA &ssa) {}
   virtual void RunOn(JumpSSA &ssa) {}

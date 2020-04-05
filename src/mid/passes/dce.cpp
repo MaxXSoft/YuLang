@@ -71,6 +71,10 @@ class DeadCodeEliminationPass : public FunctionPass {
     if (ssa.uses().empty()) remove_flag_ = true;
   }
 
+  void RunOn(CastSSA &ssa) override {
+    if (ssa.uses().empty()) remove_flag_ = true;
+  }
+
   void RunOn(AllocaSSA &ssa) override {
     if (ssa.uses().empty()) {
       remove_flag_ = true;

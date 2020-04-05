@@ -24,6 +24,10 @@ void UnarySSA::RunPass(PassBase &pass) {
   pass.RunOn(*this);
 }
 
+void CastSSA::RunPass(PassBase &pass) {
+  pass.RunOn(*this);
+}
+
 void CallSSA::RunPass(PassBase &pass) {
   pass.RunOn(*this);
 }
