@@ -171,6 +171,7 @@ GlobalVarPtr Module::CreateGlobalVar(LinkageTypes link,
   auto var_type = type->GetTrivialType();
   assert(!init || !type->IsReference() ||
          var_type->IsIdentical(init->type()));
+  assert(!init || init->IsConst());
   // create global variable definition
   auto global = MakeSSA<GlobalVarSSA>(link, name, init);
   global->set_type(MakePointer(var_type, false));
@@ -411,7 +412,18 @@ SSAPtr Module::CreateCast(const SSAPtr &opr, const TypePtr &type) {
     assert(operand);
   }
   // create type casting
-  return CreateUnary(UnaryOp::Cast, operand, target);
+  SSAPtr cast;
+  if (operand->IsConst()) {
+    // create a constant type casting, do not insert as an instruction
+    cast = MakeSSA<CastSSA>(operand);
+  }
+  else {
+    // create a non-constant type casting
+    assert(insert_point_);
+    cast = AddInst<CastSSA>(operand);
+  }
+  cast->set_type(target);
+  return cast;
 }
 
 SSAPtr Module::CreateLogicNot(const SSAPtr &opr) {
@@ -485,6 +497,7 @@ SSAPtr Module::GetStruct(const SSAPtrList &elems, const TypePtr &type) {
   int index = 0;
   static_cast<void>(index);
   for (const auto &i : elems) {
+    assert(i->IsConst());
     assert(struct_ty->GetElem(index++)->IsIdentical(i->type()));
     static_cast<void>(i);
   }
@@ -499,6 +512,7 @@ SSAPtr Module::GetArray(const SSAPtrList &elems, const TypePtr &type) {
   assert(type->IsArray() && type->GetLength() == elems.size());
   auto array_ty = type->GetTrivialType();
   for (const auto &i : elems) {
+    assert(i->IsConst());
     assert(array_ty->GetDerefedType()->IsIdentical(i->type()));
     static_cast<void>(i);
   }
