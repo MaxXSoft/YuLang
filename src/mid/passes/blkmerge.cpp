@@ -12,6 +12,8 @@ namespace {
   merge blocks with only one jump instruction,
   replace branch with two equal targets to jump
 
+  TODO: do not skip entry blocks
+
   e.g.
     %0:
       ...                       %0:
@@ -29,13 +31,14 @@ class BlockMerge : public FunctionPass {
   bool RunOnFunction(const UserPtr &func) override {
     changed_ = false;
     // traverse all basic blocks
-    for (auto &&use : *func) {
-      use.value()->RunPass(*this);
+    for (auto it = func->begin(); it != func->end(); ++it) {
+      is_entry_ = it == func->begin();
+      it->value()->RunPass(*this);
       if (op_ == Op::ReplaceBlock) {
         // replace current block with target
-        use.value()->ReplaceBy(target_);
+        it->value()->ReplaceBy(target_);
         // remove block from current function
-        use.set_value(nullptr);
+        it->set_value(nullptr);
       }
     }
     if (changed_) func->RemoveNull();
@@ -50,7 +53,7 @@ class BlockMerge : public FunctionPass {
     ssa.insts().back()->RunPass(*this);
     switch (op_) {
       case Op::IsJump: {
-        if (ssa.insts().size() == 1) {
+        if (!is_entry_ && ssa.insts().size() == 1) {
           op_ = Op::ReplaceBlock;
           auto target_block = static_cast<BlockSSA *>(target_.get());
           // get new predecessor set
@@ -100,7 +103,7 @@ class BlockMerge : public FunctionPass {
     Nop, IsJump, ReplaceBlock, ReplaceWithJump,
   };
 
-  bool changed_;
+  bool changed_, is_entry_;
   SSAPtr target_;
   Op op_;
 };
