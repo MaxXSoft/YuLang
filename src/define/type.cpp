@@ -1,11 +1,22 @@
 #include "define/type.h"
 
 #include <sstream>
+#include <utility>
+#include <stack>
 #include <cassert>
 
 #include "xstl/guard.h"
 
 using namespace yulang::define;
+
+namespace {
+
+// used in 'StructType::IsIdentical' to prevent infinite loop
+std::stack<std::pair<const void *, const void *>> ident_types;
+// used in 'StructType::GetTrivialType' to prevent infinite loop
+std::stack<std::pair<const void *, TypePtr>> trival_types;
+
+}  // namespace
 
 // definition of static member variables in 'BaseType'
 std::size_t BaseType::ptr_size_ = sizeof(void *);
@@ -92,11 +103,14 @@ bool StructType::CanAccept(const TypePtr &type) const {
 }
 
 bool StructType::IsIdentical(const TypePtr &type) const {
+  // check if is in recursion
+  if (!ident_types.empty() && ident_types.top().first == this &&
+      ident_types.top().second == type.get()) {
+    return true;
+  }
   // prevent infinite loop
-  static void *ptr = nullptr;
-  if (ptr && ptr == type.get()) return true;
-  ptr = type.get();
-  auto reset_ptr = xstl::Guard([] { ptr = nullptr; });
+  ident_types.push({this, type.get()});
+  auto pop = xstl::Guard([] { ident_types.pop(); });
   // check if is identical
   if (!type->IsStruct()) return false;
   if (elems_.size() != type->GetLength()) return false;
@@ -124,20 +138,22 @@ TypePtr StructType::GetValueType(bool is_right) const {
 }
 
 TypePtr StructType::GetTrivialType() const {
-  // create struct type first to prevent infinite loop
-  static std::shared_ptr<StructType> type;
-  if (type) return type;
+  // check if is in recursion
+  if (!trival_types.empty() && trival_types.top().first == this) {
+    return trival_types.top().second;
+  }
   // initialize as an empty struct type
   TypePairList elems;
-  type = std::make_shared<StructType>(elems, id_, false);
+  auto type = std::make_shared<StructType>(elems, id_, false);
+  trival_types.push({this, type});
   // convert elements
   for (const auto &i : elems_) {
     elems.push_back({i.first, i.second->GetTrivialType()});
   }
   // update type
   type->set_elems(std::move(elems));
-  auto ret = std::move(type);
-  return ret;
+  trival_types.pop();
+  return type;
 }
 
 bool EnumType::CanAccept(const TypePtr &type) const {
