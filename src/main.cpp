@@ -160,6 +160,7 @@ void GenerateCode(std::ostream &os, IRBuilder &irb, CodeGen &gen,
                   const std::string &file) {
   // generate code
   irb.module().GenerateCode(gen);
+  obj_gen.RunOptimization();
   // check if need to dump code
   if (type != OutputType::LLVM && file.empty()) {
     Logger::LogRawError("output file required when generating asm/obj");
