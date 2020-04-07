@@ -435,7 +435,7 @@ void LLVMGen::GenerateOn(GlobalVarSSA &ssa) {
   if (ssa.init()) init = dyn_cast<Constant>(GetVal(ssa.init()));
   // create global variable
   auto type = GenerateType(ssa.type()->GetDerefedType());
-  auto global = new GlobalVariable(*module_, type, !!init, link,
+  auto global = new GlobalVariable(*module_, type, !ssa.is_var(), link,
                                    nullptr, ssa.name());
   global->setInitializer(init);
   SetVal(ssa, global);
