@@ -246,9 +246,9 @@ class FunctionSSA : public User {
 // operands: initializer
 class GlobalVarSSA : public User {
  public:
-  GlobalVarSSA(LinkageTypes link, const std::string &name,
+  GlobalVarSSA(LinkageTypes link, bool is_var, const std::string &name,
                const SSAPtr &init)
-      : link_(link), name_(name) {
+      : link_(link), is_var_(is_var), name_(name) {
     Reserve(1);
     AddValue(init);
   }
@@ -263,11 +263,13 @@ class GlobalVarSSA : public User {
 
   // getters
   LinkageTypes link() const { return link_; }
+  bool is_var() const { return is_var_; }
   const std::string &name() const { return name_; }
   const SSAPtr &init() const { return (*this)[0].value(); }
 
  private:
   LinkageTypes link_;
+  bool is_var_;
   std::string name_;
 };
 

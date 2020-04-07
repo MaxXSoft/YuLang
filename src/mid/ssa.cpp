@@ -283,6 +283,7 @@ void GlobalVarSSA::Dump(std::ostream &os, IdManager &idm) const {
   PrintId(os, idm, this);
   if (in_expr) return;
   os << " = " << kLinkTypes[static_cast<int>(link_)] << " global ";
+  os << (is_var_ ? "var" : "const") << ' ';
   PrintType(os, type());
   if ((*this)[0].value()) {
     auto inex = InExpr();
