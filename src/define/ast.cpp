@@ -175,6 +175,7 @@ void ImportAST::Dump(std::ostream &os) const {
 }
 
 void VarLetElemAST::Dump(std::ostream &os) const {
+  if (!is_var_) os << "const ";
   if (type_) {
     type_->Dump(os);
   }
