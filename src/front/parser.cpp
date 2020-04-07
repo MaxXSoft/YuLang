@@ -588,7 +588,7 @@ ASTPtr Parser::ParseCast() {
   auto expr = ParseUnary();
   if (!expr) return nullptr;
   // check if need to cast
-  if (IsTokenKeyword(Keyword::As)) {
+  while (IsTokenKeyword(Keyword::As)) {
     NextToken();
     auto type = ParseType();
     if (!type) return nullptr;
