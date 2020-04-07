@@ -52,11 +52,13 @@ class Module {
   // create a return instruction
   SSAPtr CreateReturn(const SSAPtr &value);
   // create a global variable definition
-  GlobalVarPtr CreateGlobalVar(LinkageTypes link, const std::string &name,
+  GlobalVarPtr CreateGlobalVar(LinkageTypes link, bool is_var,
+                               const std::string &name,
                                const define::TypePtr &type,
                                const SSAPtr &init);
   // create a global variable declaration
-  GlobalVarPtr CreateGlobalVar(LinkageTypes link, const std::string &name,
+  GlobalVarPtr CreateGlobalVar(LinkageTypes link, bool is_var,
+                               const std::string &name,
                                const define::TypePtr &type);
   // create a branch instruction
   SSAPtr CreateBranch(const SSAPtr &cond, const BlockPtr &true_block,

@@ -162,7 +162,7 @@ SSAPtr Module::CreateReturn(const SSAPtr &value) {
   return ret;
 }
 
-GlobalVarPtr Module::CreateGlobalVar(LinkageTypes link,
+GlobalVarPtr Module::CreateGlobalVar(LinkageTypes link, bool is_var,
                                      const std::string &name,
                                      const TypePtr &type,
                                      const SSAPtr &init) {
@@ -173,17 +173,17 @@ GlobalVarPtr Module::CreateGlobalVar(LinkageTypes link,
          var_type->IsIdentical(init->type()));
   assert(!init || init->IsConst());
   // create global variable definition
-  auto global = MakeSSA<GlobalVarSSA>(link, name, init);
+  auto global = MakeSSA<GlobalVarSSA>(link, is_var, name, init);
   global->set_type(MakePointer(var_type, false));
   // add to global variables
   vars_.push_back(global);
   return global;
 }
 
-GlobalVarPtr Module::CreateGlobalVar(LinkageTypes link,
+GlobalVarPtr Module::CreateGlobalVar(LinkageTypes link, bool is_var,
                                      const std::string &name,
                                      const TypePtr &type) {
-  return CreateGlobalVar(link, name, type, nullptr);
+  return CreateGlobalVar(link, is_var, name, type, nullptr);
 }
 
 SSAPtr Module::CreateBranch(const SSAPtr &cond, const BlockPtr &true_block,

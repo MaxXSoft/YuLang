@@ -146,7 +146,7 @@ SSAPtr IRBuilder::GenerateOn(DeclareAST &ast) {
   else {
     assert(vals_->is_root());
     // external global variable
-    val = module_.CreateGlobalVar(link, ast.id(), type);
+    val = module_.CreateGlobalVar(link, ast.is_var(), ast.id(), type);
   }
   // add to environment
   vals_->AddItem(ast.id(), val);
@@ -184,7 +184,7 @@ SSAPtr IRBuilder::GenerateOn(VarLetElemAST &ast) {
   // check if is global definition
   if (vals_->is_root()) {
     // global variables/constants
-    auto var = module_.CreateGlobalVar(link, ast.id(), type);
+    auto var = module_.CreateGlobalVar(link, ast.is_var(), ast.id(), type);
     if (init) {
       if (init->IsLiteral()) {
         // generate initializer
