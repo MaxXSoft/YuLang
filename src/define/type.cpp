@@ -197,7 +197,7 @@ bool FuncType::CanAccept(const TypePtr &type) const {
 }
 
 bool FuncType::CanCastTo(const TypePtr &type) const {
-  return !type->IsReference() && type->IsPointer();
+  return !type->IsReference() && (type->IsInteger() || type->IsPointer());
 }
 
 bool FuncType::IsIdentical(const TypePtr &type) const {
@@ -268,7 +268,8 @@ bool ArrayType::CanAccept(const TypePtr &type) const {
 }
 
 bool ArrayType::CanCastTo(const TypePtr &type) const {
-  return !is_right_ && !type->IsReference() && type->IsPointer();
+  return !is_right_ && !type->IsReference() &&
+         (type->IsInteger() || type->IsPointer());
 }
 
 bool ArrayType::IsIdentical(const TypePtr &type) const {
