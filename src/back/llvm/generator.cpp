@@ -95,6 +95,9 @@ llvm::Type *LLVMGen::GenerateType(const TypePtr &type) {
   else if (type->IsStruct()) {
     return GenerateStructType(type);
   }
+  else if (type->IsEnum()) {
+    return GenerateEnumType(type);
+  }
   else if (type->IsFunction()) {
     return GenerateFuncType(type);
   }
@@ -159,6 +162,11 @@ llvm::Type *LLVMGen::GenerateStructType(const TypePtr &type) {
   // update structure type
   struct_ty->setBody(elems);
   return struct_ty;
+}
+
+llvm::Type *LLVMGen::GenerateEnumType(const TypePtr &type) {
+  // treat enumerations as integers
+  return llvm::Type::getIntNTy(context_, type->GetSize() * 8);
 }
 
 llvm::Type *LLVMGen::GenerateFuncType(const TypePtr &type) {

@@ -454,7 +454,7 @@ SSAPtr Module::GetZero(const TypePtr &type) {
 
 SSAPtr Module::GetInt(std::uint64_t value, const TypePtr &type) {
   // assertion for type checking
-  assert(type->IsInteger() || type->IsBool());
+  assert(type->IsInteger() || type->IsBool() || type->IsEnum());
   // create constant integer
   auto const_int = MakeSSA<ConstIntSSA>(value);
   const_int->set_type(type->GetTrivialType());
