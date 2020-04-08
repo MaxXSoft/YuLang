@@ -65,11 +65,9 @@ class LLVMGen : public CodeGenInterface {
   llvm::Type *GenerateType(const define::TypePtr &type);
   llvm::Type *GeneratePrimType(const define::TypePtr &type);
   llvm::Type *GenerateStructType(const define::TypePtr &type);
-  llvm::Type *GenerateEnumType(const define::TypePtr &type);
   llvm::Type *GenerateFuncType(const define::TypePtr &type);
   llvm::Type *GenerateArrayType(const define::TypePtr &type);
   llvm::Type *GeneratePointerType(const define::TypePtr &type);
-  llvm::Type *GenerateRefType(const define::TypePtr &type);
 
   // LLVM stuffs
   llvm::LLVMContext context_;

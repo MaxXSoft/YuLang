@@ -85,18 +85,12 @@ void LLVMGen::CreateCtorArray(llvm::Function *ctor) {
 
 llvm::Type *LLVMGen::GenerateType(const TypePtr &type) {
   // dispatcher
-  if (type->IsReference()) {
-    return GenerateRefType(type);
-  }
-  else if (type->IsInteger() || type->IsFloat() || type->IsBool() ||
-           type->IsVoid() || type->IsNull()) {
+  if (type->IsInteger() || type->IsFloat() || type->IsBool() ||
+      type->IsVoid() || type->IsNull()) {
     return GeneratePrimType(type);
   }
   else if (type->IsStruct()) {
     return GenerateStructType(type);
-  }
-  else if (type->IsEnum()) {
-    return GenerateEnumType(type);
   }
   else if (type->IsFunction()) {
     return GenerateFuncType(type);
@@ -164,22 +158,17 @@ llvm::Type *LLVMGen::GenerateStructType(const TypePtr &type) {
   return struct_ty;
 }
 
-llvm::Type *LLVMGen::GenerateEnumType(const TypePtr &type) {
-  // treat enumerations as integers
-  return llvm::Type::getIntNTy(context_, type->GetSize() * 8);
-}
-
 llvm::Type *LLVMGen::GenerateFuncType(const TypePtr &type) {
   // get return type
   auto args = type->GetArgsType();
-  auto result = GenerateType(type->GetReturnType(*args));
+  auto ret = GenerateType(type->GetReturnType(*args)->GetTrivialType());
   // get type of parameters
   std::vector<llvm::Type *> params;
   for (const auto &i : *args) {
-    params.push_back(GenerateType(i));
+    params.push_back(GenerateType(i->GetTrivialType()));
   }
   // create function pointer
-  auto func = llvm::FunctionType::get(result, params, false);
+  auto func = llvm::FunctionType::get(ret, params, false);
   return func->getPointerTo();
 }
 
@@ -191,11 +180,6 @@ llvm::Type *LLVMGen::GenerateArrayType(const TypePtr &type) {
 llvm::Type *LLVMGen::GeneratePointerType(const TypePtr &type) {
   auto base = type->GetDerefedType();
   return GenerateType(base)->getPointerTo();
-}
-
-llvm::Type *LLVMGen::GenerateRefType(const TypePtr &type) {
-  // treat references as pointers
-  return GeneratePointerType(type);
 }
 
 void LLVMGen::GenerateOn(LoadSSA &ssa) {
