@@ -14,7 +14,7 @@ namespace {
 // used in 'StructType::IsIdentical' to prevent infinite loop
 std::stack<std::pair<const void *, const void *>> ident_types;
 // used in 'StructType::GetTrivialType' to prevent infinite loop
-std::stack<std::pair<const void *, TypePtr>> trival_types;
+std::stack<std::pair<const void *, TypePtr>> trivial_types;
 
 }  // namespace
 
@@ -139,20 +139,20 @@ TypePtr StructType::GetValueType(bool is_right) const {
 
 TypePtr StructType::GetTrivialType() const {
   // check if is in recursion
-  if (!trival_types.empty() && trival_types.top().first == this) {
-    return trival_types.top().second;
+  if (!trivial_types.empty() && trivial_types.top().first == this) {
+    return trivial_types.top().second;
   }
   // initialize as an empty struct type
   TypePairList elems;
   auto type = std::make_shared<StructType>(elems, id_, false);
-  trival_types.push({this, type});
+  trivial_types.push({this, type});
   // convert elements
   for (const auto &i : elems_) {
     elems.push_back({i.first, i.second->GetTrivialType()});
   }
   // update type
   type->set_elems(std::move(elems));
-  trival_types.pop();
+  trivial_types.pop();
   return type;
 }
 
