@@ -316,6 +316,8 @@ TypePtr Analyzer::AnalyzeOn(EnumAST &ast) {
 TypePtr Analyzer::AnalyzeOn(ImportAST &ast) {
   for (const auto &i : ast.defs()) {
     if (!i->SemaAnalyze(*this)) return nullptr;
+    // run evaluation on imported ASTs for constant definitions
+    i->Eval(eval_);
   }
   return ast.set_ast_type(MakeVoid());
 }
