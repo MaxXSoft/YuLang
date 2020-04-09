@@ -75,7 +75,7 @@ class LLVMGen : public CodeGenInterface {
   ModulePtr module_;
   // tables for storing structure types
   std::vector<std::pair<define::TypePtr, llvm::Type *>> types_;
-  std::unordered_map<define::BaseType *, llvm::Type *> type_lut_;
+  std::unordered_map<define::TypePtr, llvm::Type *> type_lut_;
 };
 
 }  // namespace yulang::back::ll

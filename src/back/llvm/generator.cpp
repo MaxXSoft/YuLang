@@ -132,12 +132,12 @@ llvm::Type *LLVMGen::GeneratePrimType(const TypePtr &type) {
 llvm::Type *LLVMGen::GenerateStructType(const TypePtr &type) {
   // TODO: optimize
   // try to find in look up table
-  auto it = type_lut_.find(type.get());
+  auto it = type_lut_.find(type);
   if (it != type_lut_.end()) return it->second;
   // try to find in type table
   for (const auto &[ty, ll_ty] : types_) {
     if (type->IsIdentical(ty)) {
-      type_lut_.insert({type.get(), ll_ty});
+      type_lut_.insert({type, ll_ty});
       return ll_ty;
     }
   }
@@ -147,7 +147,7 @@ llvm::Type *LLVMGen::GenerateStructType(const TypePtr &type) {
   auto id = type->GetTypeId();
   auto struct_ty = llvm::StructType::create(context_, id);
   types_.push_back({type, struct_ty});
-  type_lut_.insert({type.get(), struct_ty});
+  type_lut_.insert({type, struct_ty});
   // create type of elements
   for (int i = 0; i < type->GetLength(); ++i) {
     auto elem = GenerateType(type->GetElem(i));
