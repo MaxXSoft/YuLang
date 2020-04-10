@@ -220,7 +220,12 @@ SSAPtr Module::CreateCall(const SSAPtr &callee, const SSAPtrList &args) {
   for (const auto &i : args_type) {
     auto arg = *arg_it++;
     // get proper argument value
-    if (i->IsReference()) {
+    if (i->IsReference() ||
+        // TODO: function types in structs are trivial types
+        //       i.e. there is no reference info, all types are pointers
+        //       so we should add the following snippet
+        //       until we found an acceptable resolution
+        (i->IsPointer() && i->GetDerefedType()->IsIdentical(arg->type()))) {
       arg = arg->GetAddr();
       assert(arg);
     }
