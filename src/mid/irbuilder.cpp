@@ -531,7 +531,6 @@ SSAPtr IRBuilder::GenerateOn(UnaryAST &ast) {
   auto context = module_.SetContext(ast.logger());
   // generate operand
   auto opr = ast.opr()->GenerateIR(*this);
-  assert(!ast.opr()->ast_type()->IsReference());
   // try to handle operator overloading
   auto op_func = ast.op_func_id();
   if (op_func) {
@@ -546,6 +545,8 @@ SSAPtr IRBuilder::GenerateOn(UnaryAST &ast) {
     case UnaryOp::Neg: return module_.CreateNeg(opr);
     case UnaryOp::LogicNot: return module_.CreateLogicNot(opr);
     case UnaryOp::Not: return module_.CreateNot(opr);
+    // NOTE: do not create load with reference
+    //       because 'opr' is already dereferenced
     case UnaryOp::DeRef: return module_.CreateLoad(opr, false);
     case UnaryOp::AddrOf: return opr->GetAddr();
     default: assert(false); return nullptr;
