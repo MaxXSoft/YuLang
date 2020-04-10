@@ -110,14 +110,16 @@ void InitializeTarget(xstl::ArgParser &argp, ObjectGen &obj_gen, int opt) {
   }
 }
 
-void CompileToIR(const xstl::ArgParser &argp, std::ostream &os,
+bool CompileToIR(const xstl::ArgParser &argp, std::ostream &os,
                  LexerManager &lex_man, IRBuilder &irb, OutputType type) {
   // initialize lexer manager & logger
   auto file = argp.GetValue<string>("input");
   auto imp_path = argp.GetValue<vector<string>>("imppath");
-  lex_man.LoadSource(file);
+  if (!lex_man.LoadSource(file)) return false;
   if (!imp_path.empty()) {
-    for (const auto &i : imp_path) lex_man.AddImportPath(1, i);
+    for (const auto &i : imp_path) {
+      if (!lex_man.AddImportPath(1, i)) return false;
+    }
   }
   Logger::ResetErrorNum(argp.GetValue<bool>("warn-error"));
   // initialize other stuffs
@@ -138,6 +140,7 @@ void CompileToIR(const xstl::ArgParser &argp, std::ostream &os,
   // check if need to exit
   auto err_num = Logger::error_num();
   if (err_num || dump_ast) std::exit(err_num);
+  return true;
 }
 
 void RunPasses(const xstl::ArgParser &argp, std::ostream &os,
@@ -215,7 +218,9 @@ int main(int argc, const char *argv[]) {
   BaseType::set_ptr_size(obj_gen.GetPointerSize());
 
   // compile source to target code
-  CompileToIR(argp, os, lex_man, irb, out_type);
+  if (!CompileToIR(argp, os, lex_man, irb, out_type)) {
+    Logger::LogRawError("invalid input file or import path");
+  }
   RunPasses(argp, os, irb, out_type, opt_level);
   GenerateCode(os, irb, gen, obj_gen, out_type, out_file);
   return 0;

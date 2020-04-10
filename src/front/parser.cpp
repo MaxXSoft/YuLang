@@ -250,7 +250,7 @@ ASTPtr Parser::ParseImport() {
   // switch lexer
   auto last_token = last_token_, cur_token = cur_token_;
   auto last_lex = lex_man_.SetLexer(mod_path);
-  assert(last_lex);
+  assert(last_lex && *last_lex);
   NextToken();
   // get all public/extern/inline definitions
   ASTPtrList defs;
@@ -268,7 +268,7 @@ ASTPtr Parser::ParseImport() {
   }
   --in_import_;
   // reset to original status
-  lex_man_.SetLexer(last_lex);
+  lex_man_.SetLexer(*last_lex);
   last_token_ = last_token;
   cur_token_ = cur_token;
   return MakeAST<ImportAST>(log, std::move(defs));
