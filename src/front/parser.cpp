@@ -544,7 +544,7 @@ ASTPtr Parser::ParseBinary() {
   if (!expr) return nullptr;
   oprs.push(std::move(expr));
   // convert to postfix expression
-  while (cur_token_ == Token::Operator) {
+  while (cur_token_ == Token::Operator && last_token_ != Token::EOL) {
     // get operator
     auto op = lexer()->op_val();
     if (GetOpPrec(op) < 0) break;
