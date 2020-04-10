@@ -104,9 +104,12 @@ bool StructType::CanAccept(const TypePtr &type) const {
 
 bool StructType::IsIdentical(const TypePtr &type) const {
   // check if is in recursion
-  if (!ident_types.empty() && ident_types.top().first == this &&
-      ident_types.top().second == type.get()) {
-    return true;
+  if (!ident_types.empty()) {
+    const auto &[t1, t2] = ident_types.top();
+    if ((t1 == this && t2 == type.get()) ||
+        (t2 == this && t1 == type.get())) {
+      return true;
+    }
   }
   // prevent infinite loop
   ident_types.push({this, type.get()});
