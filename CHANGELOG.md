@@ -2,6 +2,28 @@
 
 All notable changes to the YuLang compiler will be documented in this file.
 
+## Unreleased
+
+### Added
+
+* Relational operations between pointers.
+* Perform multiple type casting operations at once (e.g. `x as u8 as i32`).
+
+### Changed
+
+* Allowed type casting from functions/arrays to pointers
+
+### Fixed
+
+* Bugs about IR generation on `when` statements, global variables/constants, enumerations and function calls.
+* Bugs about loads/stores of `volatile` type.
+* Comparison between `struct` types (`IsIdentical`).
+* Some details when the parser encounters a newline character.
+* Bugs about type casting.
+* Bugs about CFG simplification (`BlockMerge` pass).
+* Value evaluation process on `ImportAST`.
+* Bugs about file existence check.
+
 ## 0.0.3 - 2020-04-03
 
 ### Added
