@@ -94,19 +94,30 @@ class Value {
   // getters
   const front::LogPtr &logger() const { return logger_; }
   const define::TypePtr &type() const { return type_; }
+  const define::TypePtr &org_type() const { return org_type_; }
   const std::any &metadata() const { return metadata_; }
   const std::list<Use *> &uses() const { return uses_; }
 
   // setters
   void set_logger(const front::LogPtr &logger) { logger_ = logger; }
+  // set 'type' only
   void set_type(const define::TypePtr &type) { type_ = type; }
+  // set 'org_type' only
+  void set_org_type(const define::TypePtr &org_type) {
+    org_type_ = org_type;
+  }
+  // set both 'type' and 'org_type'
+  void set_types(const define::TypePtr &type) {
+    type_ = type ? type->GetTrivialType() : nullptr;
+    org_type_ = type;
+  }
   void set_metadata(const std::any &metadata) { metadata_ = metadata; }
 
  private:
   // pointer to logger
   front::LogPtr logger_;
-  // type of current value
-  define::TypePtr type_;
+  // trivial/orginal type of current value
+  define::TypePtr type_, org_type_;
   // metadata
   std::any metadata_;
   // linked list of 'Use'
