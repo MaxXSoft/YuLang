@@ -161,11 +161,11 @@ llvm::Type *LLVMGen::GenerateStructType(const TypePtr &type) {
 llvm::Type *LLVMGen::GenerateFuncType(const TypePtr &type) {
   // get return type
   auto args = type->GetArgsType();
-  auto ret = GenerateType(type->GetReturnType(*args)->GetTrivialType());
+  auto ret = GenerateType(type->GetReturnType(*args));
   // get type of parameters
   std::vector<llvm::Type *> params;
   for (const auto &i : *args) {
-    params.push_back(GenerateType(i->GetTrivialType()));
+    params.push_back(GenerateType(i));
   }
   // create function pointer
   auto func = llvm::FunctionType::get(ret, params, false);
@@ -389,7 +389,7 @@ void LLVMGen::GenerateOn(FunctionSSA &ssa) {
   auto func = Function::Create(type, link, ssa.name(), module_.get());
   SetVal(ssa, func);
   // create argument attributes
-  auto args = *ssa.type()->GetArgsType();
+  auto args = *ssa.org_type()->GetArgsType();
   unsigned int arg_index = AttributeList::AttrIndex::FirstArgIndex;
   for (const auto &i : args) {
     if (i->IsReference()) {
@@ -397,7 +397,7 @@ void LLVMGen::GenerateOn(FunctionSSA &ssa) {
     }
   }
   // create return value attributes
-  auto ret = ssa.type()->GetReturnType(args);
+  auto ret = ssa.org_type()->GetReturnType(args);
   if (ret->IsReference()) {
     auto index = AttributeList::AttrIndex::ReturnIndex;
     func->addDereferenceableAttr(index, ret->GetSize());
