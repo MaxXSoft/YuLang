@@ -328,10 +328,12 @@ class ConstType : public BaseType {
     return type_->IsReference() ? type_->CanAccept(type) : false;
   }
   bool CanCastTo(const TypePtr &type) const override {
-    return type_->CanCastTo(type);
+    return type_->CanCastTo(type->IsConst() ? type->GetDeconstedType()
+                                            : type);
   }
   bool IsIdentical(const TypePtr &type) const override {
-    return type_->IsIdentical(type);
+    return type_->IsIdentical(type->IsConst() ? type->GetDeconstedType()
+                                              : type);
   }
   std::size_t GetSize() const override { return type_->GetSize(); }
   std::size_t GetAlignSize() const override {
