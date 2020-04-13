@@ -393,8 +393,9 @@ void LLVMGen::GenerateOn(FunctionSSA &ssa) {
   unsigned int arg_index = AttributeList::AttrIndex::FirstArgIndex;
   for (const auto &i : args) {
     if (i->IsReference()) {
-      func->addDereferenceableAttr(arg_index++, i->GetSize());
+      func->addDereferenceableAttr(arg_index, i->GetSize());
     }
+    arg_index++;
   }
   // create return value attributes
   auto ret = ssa.org_type()->GetReturnType(args);
