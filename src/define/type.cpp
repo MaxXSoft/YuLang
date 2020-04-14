@@ -36,7 +36,7 @@ bool PrimType::CanCastTo(const TypePtr &type) const {
   if (type->IsFloat() && (IsNull() || IsPointer() || IsFunction())) {
     return false;
   }
-  return !type->IsReference() && type->IsBasic();
+  return !type->IsReference() && (type->IsBasic() || type->IsEnum());
 }
 
 bool PrimType::IsIdentical(const TypePtr &type) const {
