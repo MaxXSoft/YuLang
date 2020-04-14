@@ -11,7 +11,8 @@ All notable changes to the YuLang compiler will be documented in this file.
 
 ### Changed
 
-* Allowed type casting from functions/arrays to pointers
+* Allowed type casting from functions/arrays to pointers.
+* Allowed type casting from basic types to enumerations.
 
 ### Fixed
 
