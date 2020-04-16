@@ -10,6 +10,8 @@ public struct Queue {
   __head: __QueueElem var*,
 }
 
+
+// constructor
 public def newQueue(): Queue {
   let head = malloc(sizeof __QueueElem) as __QueueElem var*
   (*head).prev = head
@@ -17,12 +19,13 @@ public def newQueue(): Queue {
   [Queue] {head}
 }
 
+// destructor
 public def del(this: Queue var&) {
   free(this.__head as u8*)
 }
 
 // check if current queue is empty
-public def empty(this: Queue var&): bool {
+public def empty(this: Queue&): bool {
   (*this.__head).next == this.__head
 }
 
