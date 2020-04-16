@@ -1,0 +1,51 @@
+import sys.stdlib
+
+public struct __QueueElem {
+  val: i32,
+  prev: __QueueElem var*,
+  next: __QueueElem var*,
+}
+
+public struct Queue {
+  __head: __QueueElem var*,
+}
+
+public def newQueue(): Queue {
+  let head = malloc(sizeof __QueueElem) as __QueueElem var*
+  (*head).prev = head
+  (*head).next = head
+  [Queue] {head}
+}
+
+public def del(this: Queue var&) {
+  free(this.__head as u8*)
+}
+
+// check if current queue is empty
+public def empty(this: Queue var&): bool {
+  (*this.__head).next == this.__head
+}
+
+// push element to back of queue
+public def push(this: Queue var&, val: i32) {
+  let elem = malloc(sizeof __QueueElem) as __QueueElem var*
+  (*elem).val = val
+  // push into queue
+  let prev = (*this.__head).prev
+  (*prev).next = elem
+  (*elem).prev = prev
+  (*this.__head).prev = elem
+  (*elem).next = this.__head
+}
+
+// pop element from front of queue
+public def pop(this: Queue var&): i32 {
+  // get result
+  let elem = (*this.__head).next, val = (*elem).val
+  // pop from queue
+  let prev = (*elem).prev, next = (*elem).next
+  (*next).prev = prev
+  (*prev).next = next
+  free(elem as u8*)
+  val
+}
