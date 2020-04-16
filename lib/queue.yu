@@ -19,11 +19,6 @@ public def newQueue(): Queue {
   [Queue] {head}
 }
 
-// destructor
-public def del(this: Queue var&) {
-  free(this.__head as u8*)
-}
-
 // check if current queue is empty
 public def empty(this: Queue&): bool {
   (*this.__head).next == this.__head
@@ -51,4 +46,12 @@ public def pop(this: Queue var&): i32 {
   (*prev).next = next
   free(elem as u8*)
   val
+}
+
+// destructor
+public def del(this: Queue var&) {
+  while !this.empty() {
+    this.pop()
+  }
+  free(this.__head as u8*)
 }
