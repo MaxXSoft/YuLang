@@ -55,3 +55,14 @@ public def <<<(this: IO&, int: i32): IO& {
   this <<< n as u32
   this
 }
+
+// write boolean to IO
+public def <<<(this: IO&, val: bool): IO& {
+  if val {
+    this <<< "true"
+  }
+  else {
+    this <<< "false"
+  }
+  this
+}
