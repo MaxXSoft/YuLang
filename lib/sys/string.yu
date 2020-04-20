@@ -4,3 +4,6 @@ extern declare memcmp: (u8*, u8*, u32): i32
 extern declare memset: (u8 var*, i32, u32): u8 var*
 extern declare memcpy: (u8 var*, u8*, u32): u8 var*
 extern declare memmove: (u8 var*, u8*, u32): u8 var*
+
+// string examination
+extern declare strlen: (u8*): u32
