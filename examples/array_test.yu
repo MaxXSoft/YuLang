@@ -31,7 +31,7 @@ extern def main(argc: i32, argv: u8**): i32 {
   arr.map(addOne)
   arr.print()
   out <<< "sum: " <<< arr.reduce(add) <<< '\n'
-  out <<< "len: " <<< arr.len()
+  out <<< "size: " <<< arr.size()
   out <<< ", capacity: " <<< arr.capacity() <<< '\n'
   // release
   arr.del()
