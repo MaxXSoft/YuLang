@@ -13,18 +13,31 @@ def remove(this: HashMap var&, key: i32): bool {
   this.remove(key as u32)
 }
 
+def print(this: HashMap&) {
+  out <<< "size: " <<< this.size() <<< '\n'
+  out <<< "contents:\n"
+  for kv in this.iter() {
+    out <<< "  " <<< kv.key() <<< " -> " <<< kv.value() <<< '\n'
+  }
+  out <<< '\n'
+}
+
 extern def main(argc: i32, argv: u8**): i32 {
   var map = newHashMap()
+
   map.insert(1, "test1")
   map.insert(3, "test3")
   map.insert(100, "test100")
   map.insert(33, "test33")
   map.insert(42, "test42")
-  out <<< "size: " <<< map.size() <<< '\n'
-  out <<< "contents:\n"
-  for kv in map.iter() {
-    out <<< "  " <<< kv.key() <<< " -> " <<< kv.value() <<< '\n'
-  }
+  map.print()
+
+  map.remove(3)
+  out <<< "removed #3\n"
+  map.print()
+
+  out <<< "#42 = " <<< map.get(42) <<< '\n'
+
   map.del()
   0
 }
