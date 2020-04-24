@@ -1,0 +1,260 @@
+import sys.stdlib
+import sys.string
+
+// key-value pair
+public struct __KeyValue {
+  key: u32,
+  value: u8 var*,
+  next: __KeyValue var*,
+}
+
+// table of pairs
+public struct __KvPairTable {
+  table: __KeyValue var* var*,
+  size: u32,
+  // number of non-null elements in table
+  occupied: u32,
+}
+
+// table iterator
+public struct __KvPairTableIter {
+  table: __KvPairTable*,
+  cur_index: u32,
+  cur_pair: __KeyValue var*,
+}
+
+// hash map (dynamic table size)
+public struct HashMap {
+  __table: __KvPairTable,
+  // size of hash map
+  __size: u32,
+  // hash function
+  __hash_func: (HashMap var&, u32): u32,
+}
+
+// hash function
+public type HashFunc = (HashMap var&, u32): u32
+
+
+/*
+ * key-value pair related implementations
+ */
+inline def key(this: __KeyValue*): u32 {
+  (*this).key
+}
+
+inline def value(this: __KeyValue*): u8 var* {
+  (*this).value
+}
+
+
+/*
+ * iterator related implementations
+ */
+// set 'cur_index' and 'cur_pair' to next avaliable index
+// which means 'table[cur_index]' is not null
+def findNextIndex(this: __KvPairTableIter var&) {
+  while this.cur_index < (*this.table).size {
+    if (*this.table).table[this.cur_index] != null as __KeyValue var* {
+      this.cur_pair = (*this.table).table[this.cur_index]
+      break
+    }
+    this.cur_index += 1 as u32
+  }
+}
+
+// iterator method 'next'
+public def next(this: __KvPairTableIter var&): __KeyValue var* {
+  let cur = this.cur_pair
+  // find next key-value pair
+  this.cur_pair = (*this.cur_pair).next
+  if this.cur_pair == null as __KeyValue var* {
+    this.cur_index += 1 as u32
+    this.findNextIndex()
+  }
+  cur
+}
+
+// iterator method 'last'
+inline def last(this: __KvPairTableIter&): bool {
+  this.cur_index >= (*this.table).size
+}
+
+
+/*
+ * table related implementations
+ */
+// internal constructor
+def newTable(size: u32): __KvPairTable {
+  let mem_size = size * sizeof __KeyValue var*
+  let table = malloc(mem_size) as __KeyValue var* var*
+  memset(table as u8 var*, 0, mem_size)
+  [__KvPairTable] {table, size, 0 as u32}
+}
+
+// internal destructor
+def del(this: __KvPairTable var&) {
+  var i = 0
+  while i as u32 < this.size {
+    var cur = this.table[i]
+    while cur != null as __KeyValue var* {
+      let next = (*cur).next
+      free(cur as u8*)
+      cur = next
+    }
+    i += 1
+  }
+  free(this.table as u8*)
+}
+
+// insert existing pair to table
+def insert(this: __KvPairTable var&, index: u32, pair: __KeyValue var*) {
+  if this.table[index] == null as __KeyValue var* {
+    this.occupied += 1 as u32
+  }
+  (*pair).next = this.table[index]
+  this.table[index] = pair
+}
+
+// insert key-value pair to table
+def insert(this: __KvPairTable var&, index: u32,
+           key: u32, value: u8 var*) {
+  // allocate a new key-value pair
+  let pair = malloc(sizeof __KeyValue) as __KeyValue var*
+  (*pair).key = key
+  (*pair).value = value
+  // insert to table
+  this.insert(index, pair)
+}
+
+// get value by key
+def get(this: __KvPairTable&, index: u32, key: u32): u8 var* {
+  var cur = this.table[index]
+  while cur != null as __KeyValue var* {
+    if (*cur).key == key {
+      return (*cur).value
+    }
+    cur = (*cur).next
+  }
+  null as u8 var*
+}
+
+// remove value by key
+def remove(this: __KvPairTable var&, index: u32, key: u32): bool {
+  var cur = this.table[index], last = this.table + index
+  while cur != null as __KeyValue var* {
+    if (*cur).key == key {
+      (*last) = (*cur).next
+      free(cur as u8*)
+      if this.table[index] == null as __KeyValue var* {
+        this.occupied -= 1 as u32
+      }
+      return true
+    }
+    last = &((*cur).next)
+    cur = (*cur).next
+  }
+  false
+}
+
+// get iterator
+def iter(this: __KvPairTable&): __KvPairTableIter {
+  var iter = [__KvPairTableIter] {&this, 0 as u32, null as __KeyValue var*}
+  iter.findNextIndex()
+  iter
+}
+
+
+/*
+ * hash map related implementations
+ */
+// default table size
+let TABLE_SIZE = 32 as u32
+
+// default hash function
+def defaultHasher(this: HashMap var&, key: u32): u32 {
+  var x = ((key >> 16 as u32) ^ key) * 0x119de1f3 as u32
+  x = ((x >> 16 as u32) ^ x) * 0x119de1f3 as u32
+  (x >> 16 as u32) ^ x
+}
+
+// call hash function and returns table index
+def hash(this: HashMap var&, key: u32): u32 {
+  let val = (this.__hash_func)(this, key)
+  key % this.__table.size
+}
+
+// rehash when table is full, otherwise do nothing
+def rehash(this: HashMap var&) {
+  if this.__table.occupied == this.__table.size {
+    // allocate new table
+    let size = this.__table.size * 2 as u32
+    var table = newTable(size)
+    // move key-value pairs to new table
+    for kv in this.__table.iter() {
+      let hash_val = (this.__hash_func)(this, kv.key()) % size
+      table.insert(hash_val, kv)
+    }
+    // update table
+    this.__table.del()
+    this.__table = table
+  }
+}
+
+// constructor (with parameters)
+public def newHashMap(hash_func: HashFunc): HashMap {
+  [HashMap] {newTable(TABLE_SIZE), 0 as u32, hash_func}
+}
+
+// constructor
+public def newHashMap(): HashMap {
+  newHashMap(defaultHasher)
+}
+
+// destructor
+public def del(this: HashMap var&) {
+  this.__table.del()
+}
+
+inline def size(this: HashMap&): u32 {
+  this.__size
+}
+
+inline def empty(this: HashMap&): bool {
+  this.__size == 0 as u32
+}
+
+// insert key value pair to hash map
+public def insert(this: HashMap var&, key: u32, value: u8 var*): bool {
+  let hash_val = this.hash(key)
+  if this.__table.get(hash_val, key) == null as u8 var* {
+    this.rehash()
+    this.__table.insert(hash_val, key, value)
+    this.__size += 1 as u32
+    true
+  }
+  else {
+    false
+  }
+}
+
+// get value by key
+public def get(this: HashMap var&, key: u32): u8 var* {
+  let hash_val = this.hash(key)
+  this.__table.get(hash_val, key)
+}
+
+// remove value by key
+public def remove(this: HashMap var&, key: u32): bool {
+  let hash_val = this.hash(key)
+  let ret = this.__table.remove(hash_val, key)
+  if ret {
+    this.__size -= 1 as u32
+  }
+  ret
+}
+
+// get iterator
+public def iter(this: HashMap&): __KvPairTableIter {
+  this.__table.iter()
+}
