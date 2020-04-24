@@ -1,0 +1,30 @@
+import io
+import hashmap
+
+def insert(this: HashMap var&, key: i32, value: u8*): bool {
+  this.insert(key as u32, value as () as u8 var*)
+}
+
+def get(this: HashMap var&, key: i32): u8* {
+  this.get(key as u32)
+}
+
+def remove(this: HashMap var&, key: i32): bool {
+  this.remove(key as u32)
+}
+
+extern def main(argc: i32, argv: u8**): i32 {
+  var map = newHashMap()
+  map.insert(1, "test1")
+  map.insert(3, "test3")
+  map.insert(100, "test100")
+  map.insert(33, "test33")
+  map.insert(42, "test42")
+  out <<< "size: " <<< map.size() <<< '\n'
+  out <<< "contents:\n"
+  for kv in map.iter() {
+    out <<< "  " <<< kv.key() <<< " -> " <<< kv.value() <<< '\n'
+  }
+  map.del()
+  0
+}
