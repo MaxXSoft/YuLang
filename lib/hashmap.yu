@@ -260,6 +260,13 @@ public def remove(this: HashMap var&, key: u32): bool {
   ret
 }
 
+// remove all key-value pairs
+public def clear(this: HashMap var&) {
+  this.__table.del()
+  this.__table = newTable(TABLE_SIZE)
+  this.__size = 0 as u32
+}
+
 // get iterator
 public def iter(this: HashMap&): __KvPairTableIter {
   this.__table.iter()
