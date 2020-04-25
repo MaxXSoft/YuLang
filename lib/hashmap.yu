@@ -196,7 +196,9 @@ def rehash(this: HashMap var&) {
       table.insert(hash_val, kv)
     }
     // update table
-    this.__table.del()
+    // NOTE: do not use 'del' method
+    //       because it will release all existing pairs
+    free(this.__table.table as u8*)
     this.__table = table
   }
 }
