@@ -12,7 +12,7 @@ Before building YuLang compiler, please make sure you have installed the followi
 * `llvm` 8.0 or later
 * C++ compiler supporting C++17
 
-Then you can build this repository by executing the following command lines:
+You may want to check the toolchain configuration in `toolchain.mk`. Then you can build this repository by executing the following command lines:
 
 ```
 $ git clone --recursive https://github.com/MaxXSoft/YuLang.git
