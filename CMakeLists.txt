@@ -42,3 +42,10 @@ file(GLOB_RECURSE SOURCES "src/*.cpp")
 add_executable(yuc ${SOURCES})
 llvm_map_components_to_libnames(LLVM_LIBS all)
 target_link_libraries(yuc ${LLVM_LIBS})
+
+# build Yu standard library and examples after generation
+add_custom_command(
+  TARGET yuc
+  POST_BUILD
+  COMMAND make -C ${CMAKE_SOURCE_DIR} BUILD_DIR=${CMAKE_BINARY_DIR}
+)
