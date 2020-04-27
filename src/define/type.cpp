@@ -90,8 +90,7 @@ void StructType::CalcSize() {
   for (const auto &[_, t] : elems_) {
     sum += t->GetSize();
     // update 'max_base_size'
-    auto base_size = t->IsArray() ? t->GetDerefedType()->GetSize()
-                                  : t->GetSize();
+    auto base_size = t->GetAlignSize();
     if (base_size > max_base_size) max_base_size = base_size;
   }
   size_ = (((sum - 1) / max_base_size) + 1) * max_base_size;
