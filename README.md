@@ -10,6 +10,7 @@ Before building YuLang compiler, please make sure you have installed the followi
 
 * `cmake` 3.5 or later
 * `llvm` 8.0 or later
+* C++ compiler supporting C++17
 
 Then you can build this repository by executing the following command lines:
 
