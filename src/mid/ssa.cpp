@@ -70,7 +70,7 @@ void ConvertChar(std::ostream &os, char c) {
       }
       else {
         os << "\\x" << std::setw(2) << std::setfill('0') << std::hex
-           << static_cast<int>(c);
+           << static_cast<int>(c) << std::dec;
       }
       break;
     }
