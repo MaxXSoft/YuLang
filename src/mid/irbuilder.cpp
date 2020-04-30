@@ -664,7 +664,7 @@ SSAPtr IRBuilder::GenerateOn(ValInitAST &ast) {
     // generate elements
     for (int i = 0; i < ast.elems().size(); ++i) {
       auto elem = ast.elems()[i]->GenerateIR(*this);
-      const auto &ty = ast.elems()[i]->ast_type();
+      const auto &ty = elem->type();
       auto ptr = module_.CreateElemAccess(val, module_.GetInt32(i), ty);
       module_.CreateStore(elem, ptr);
     }
