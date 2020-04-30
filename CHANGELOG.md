@@ -8,6 +8,7 @@ All notable changes to the YuLang compiler will be documented in this file.
 
 * Relational operations between pointers.
 * Perform multiple type casting operations at once (e.g. `x as u8 as i32`).
+* Modules in standard library (`Queue`, `StrView`, `HashMap`)
 
 ### Changed
 
@@ -24,6 +25,7 @@ All notable changes to the YuLang compiler will be documented in this file.
 * Bugs about CFG simplification (`BlockMerge` pass).
 * Value evaluation process on `ImportAST`.
 * Bugs about file existence check.
+* Bugs about alignment of structures.
 
 ## 0.0.3 - 2020-04-03
 
