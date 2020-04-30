@@ -14,15 +14,16 @@ else
 endif
 
 # compile toolchain prefix
-LLVM_BIN := /usr/local/opt/llvm/bin
+LLVM_HOME := /usr/local/opt/llvm/bin
 
 # Yu compiler
 YUFLAGS := -Werror $(YU_OPT_ARG)
-export YUC := $(BUILD_DIR)/yuc $(YUFLAGS)
+export YUC_BIN := $(BUILD_DIR)/yuc
+export YUC := $(YUC_BIN) $(YUFLAGS)
 
 # LLVM compiler
 LLCFLAGS := $(C_OPT_ARG) -filetype=obj
-export LLC := $(LLVM_BIN)/llc $(LLCFLAGS)
+export LLC := $(LLVM_HOME)/llc $(LLCFLAGS)
 
 # linker
 LDFLAGS :=
