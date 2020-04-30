@@ -64,6 +64,13 @@ class IRBuilder {
   // pair for storing target block of break & continue
   using BreakCont = std::pair<BlockPtr, BlockPtr>;
 
+  // information of when statement
+  struct WhenInfo {
+    BlockPtr end_block;
+    SSAPtr expr, ret_val;
+    bool is_ret_val_ref;
+  };
+
   // switch to a new environment
   xstl::Guard NewEnv();
   // create binary operation
@@ -81,9 +88,7 @@ class IRBuilder {
   bool ret_is_ref_;
   BlockPtr func_exit_;
   // used when generating when statement
-  BlockPtr when_end_;
-  SSAPtr when_expr_, when_val_;
-  bool is_when_val_ref_;
+  std::stack<WhenInfo> when_info_;
   // used when generating loops
   std::stack<BreakCont> break_cont_;
 };

@@ -293,34 +293,37 @@ SSAPtr IRBuilder::GenerateOn(IfAST &ast) {
 
 SSAPtr IRBuilder::GenerateOn(WhenAST &ast) {
   auto context = module_.SetContext(ast.logger());
+  WhenInfo info;
   // create basic blocks
   const auto &func = module_.GetInsertPoint()->parent();
-  when_end_ = module_.CreateBlock(func, "when_end");
+  info.end_block = module_.CreateBlock(func, "when_end");
   // generate expression
-  when_expr_ = ast.expr()->GenerateIR(*this);
+  info.expr = ast.expr()->GenerateIR(*this);
   // generate return value
   const auto &when_type = ast.ast_type();
-  when_val_ = nullptr;
+  info.ret_val = nullptr;
   if (!when_type->IsVoid()) {
-    when_val_ = module_.CreateAlloca(when_type);
-    is_when_val_ref_ = when_type->IsReference();
+    info.ret_val = module_.CreateAlloca(when_type);
+    info.is_ret_val_ref = when_type->IsReference();
   }
   // generate elements
+  when_info_.push(info);
   for (const auto &i : ast.elems()) i->GenerateIR(*this);
+  when_info_.pop();
   // generate else branch
   if (ast.else_then()) {
     auto else_val = ast.else_then()->GenerateIR(*this);
-    if (when_val_) {
-      module_.CreateInit(else_val, when_val_, is_when_val_ref_);
+    if (info.ret_val) {
+      module_.CreateInit(else_val, info.ret_val, info.is_ret_val_ref);
     }
   }
   // emit 'end' block
-  module_.CreateJump(when_end_);
-  module_.SetInsertPoint(when_end_);
-  if (when_val_) {
-    when_val_ = module_.CreateLoad(when_val_, is_when_val_ref_);
+  module_.CreateJump(info.end_block);
+  module_.SetInsertPoint(info.end_block);
+  if (info.ret_val) {
+    info.ret_val = module_.CreateLoad(info.ret_val, info.is_ret_val_ref);
   }
-  return when_val_;
+  return info.ret_val;
 }
 
 SSAPtr IRBuilder::GenerateOn(WhileAST &ast) {
@@ -428,6 +431,7 @@ SSAPtr IRBuilder::GenerateOn(ControlAST &ast) {
 
 SSAPtr IRBuilder::GenerateOn(WhenElemAST &ast) {
   auto context = module_.SetContext(ast.logger());
+  const auto &info = when_info_.top();
   // create basic blocks
   const auto &func = module_.GetInsertPoint()->parent();
   auto body_block = module_.CreateBlock(func, "case_body");
@@ -436,7 +440,7 @@ SSAPtr IRBuilder::GenerateOn(WhenElemAST &ast) {
   for (const auto &i : ast.conds()) {
     // generate comparison
     auto rhs = i->GenerateIR(*this);
-    auto eq = module_.CreateEqual(when_expr_, rhs);
+    auto eq = module_.CreateEqual(info.expr, rhs);
     // generate branch
     auto next_block = module_.CreateBlock(func);
     module_.CreateBranch(eq, body_block, next_block);
@@ -447,8 +451,10 @@ SSAPtr IRBuilder::GenerateOn(WhenElemAST &ast) {
   // generate body
   module_.SetInsertPoint(body_block);
   auto ret = ast.body()->GenerateIR(*this);
-  if (when_val_) module_.CreateInit(ret, when_val_, is_when_val_ref_);
-  module_.CreateJump(when_end_);
+  if (info.ret_val) {
+    module_.CreateInit(ret, info.ret_val, info.is_ret_val_ref);
+  }
+  module_.CreateJump(info.end_block);
   // emit 'exit' block
   module_.SetInsertPoint(exit_block);
   return nullptr;
