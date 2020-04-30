@@ -366,9 +366,11 @@ TypePtr Analyzer::AnalyzeOn(VarLetElemAST &ast) {
     if (init->IsVoid() || init->IsNull()) {
       return LogError(log, "initializing with invalid type", id);
     }
+    // remove reference because the type is not specified explicitly
+    if (init->IsReference()) init = init->GetDerefedType();
     // cast to left value type
+    if (init->IsRightValue()) init = init->GetValueType(false);
     sym_type = std::move(init);
-    if (sym_type->IsRightValue()) sym_type = sym_type->GetValueType(false);
   }
   // add symbol info
   if (ast.is_var()) {
