@@ -1,0 +1,18 @@
+import io
+import stack
+
+extern def main(argc: i32, argv: u8**): i32 {
+  var s = newStack()
+  s.push("test1" as () as u8 var*)
+  s.push("test2" as () as u8 var*)
+  s.push("test3" as () as u8 var*)
+  out <<< "empty? " <<< s.empty() <<< '\n'
+  out <<< "top = " <<< s.top() as u8* <<< '\n'
+  s.top() = "test4" as () as u8 var*
+  out <<< "top = " <<< s.top() as u8* <<< '\n'
+  while !s.empty() {
+    out <<< s.pop() <<< '\n'
+  }
+  s.del()
+  0
+}

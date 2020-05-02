@@ -1,0 +1,101 @@
+import sys.stdlib
+
+// length of stack frame
+inline let STACK_FRAME_LEN = 32
+
+public struct __StackFrame {
+  data: u8 var*[STACK_FRAME_LEN],
+  next: __StackFrame var*,
+}
+
+public struct Stack {
+  __frames: __StackFrame var*,
+  __sp: i32,
+}
+
+
+/*
+ * stack frame related stuffs
+ */
+def newStackFrame(next: __StackFrame var*): __StackFrame var* {
+  let frame = malloc(sizeof __StackFrame) as  __StackFrame var*
+  (*frame).next = next
+  frame
+}
+
+def empty(this: __StackFrame var*): bool {
+  this == null as __StackFrame var*
+}
+
+def push(this: __StackFrame var*): __StackFrame var* {
+  let frame = newStackFrame((*this).next)
+  (*this).next = frame
+  frame
+}
+
+def pop(this: __StackFrame var*): __StackFrame var* {
+  let frame = (*this).next
+  free(this as u8*)
+  frame
+}
+
+def at(this: __StackFrame var*, index: i32): u8 var* var& {
+  (*this).data[index]
+}
+
+def del(this: __StackFrame var*) {
+  var cur = this
+  while !cur.empty() {
+    cur = cur.pop()
+  }
+}
+
+
+/*
+ * stack related stuffs
+ */
+public def newStack(): Stack {
+  [Stack] {newStackFrame(null as __StackFrame var*), 0}
+}
+
+public def del(this: Stack var&) {
+  this.__frames.del()
+}
+
+public def empty(this: Stack&): bool {
+  this.__sp == 0 && (*this.__frames).next.empty()
+}
+
+public def top(this: Stack var&): u8 var* var& {
+  if this.__sp == 0 {
+    (*this.__frames).next.at(STACK_FRAME_LEN - 1)
+  }
+  else {
+    this.__frames.at(this.__sp - 1)
+  }
+}
+
+public def push(this: Stack var&, data: u8 var*) {
+  this.__frames.at(this.__sp) = data
+  this.__sp += 1
+  if this.__sp == STACK_FRAME_LEN {
+    this.__frames = this.__frames.push()
+    this.__sp == 0
+  }
+}
+
+public def pop(this: Stack var&): u8 var* {
+  if this.__sp == 0 {
+    this.__frames = this.__frames.pop()
+    this.__sp = STACK_FRAME_LEN
+  }
+  this.__sp -= 1
+  let top = this.__frames.at(this.__sp)
+  top
+}
+
+public def clear(this: Stack var&) {
+  (*this.__frames).next.del()
+  (*this.__frames).next = null as __StackFrame var*
+  this.__sp = 0
+}
