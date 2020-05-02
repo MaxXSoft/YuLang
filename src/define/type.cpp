@@ -226,6 +226,13 @@ TypePtr FuncType::GetReturnType(const TypePtrList &args) const {
         return nullptr;
       }
     }
+    else if (args_[i]->IsPointer()) {
+      // check pointer's const cast
+      if (args[i]->GetDerefedType()->IsConst() &&
+          !args_[i]->GetDerefedType()->IsConst()) {
+        return nullptr;
+      }
+    }
   }
   return ret_;
 }
