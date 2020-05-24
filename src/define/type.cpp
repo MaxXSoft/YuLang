@@ -116,7 +116,7 @@ bool StructType::IsIdentical(const TypePtr &type) const {
   // check if is identical
   if (!type->IsStruct()) return false;
   if (elems_.size() != type->GetLength()) return false;
-  for (int i = 0; i < elems_.size(); ++i) {
+  for (std::size_t i = 0; i < elems_.size(); ++i) {
     if (!elems_[i].second->IsIdentical(type->GetElem(i))) return false;
   }
   return true;
@@ -214,7 +214,7 @@ std::size_t FuncType::GetSize() const {
 
 TypePtr FuncType::GetReturnType(const TypePtrList &args) const {
   if (args_.size() != args.size()) return nullptr;
-  for (int i = 0; i < args_.size(); ++i) {
+  for (std::size_t i = 0; i < args_.size(); ++i) {
     if (!args_[i]->IsIdentical(args[i])) return nullptr;
     if (args_[i]->IsReference()) {
       // check referencing right value

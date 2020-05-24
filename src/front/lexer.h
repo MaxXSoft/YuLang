@@ -16,7 +16,9 @@ namespace yulang::front {
 
 class Lexer {
  public:
-  Lexer(std::string_view file) : in_(file), logger_(file) { Reset(); }
+  Lexer(std::string_view file) : in_(std::string(file)), logger_(file) {
+    Reset();
+  }
 
   // reset lexer status
   void Reset();

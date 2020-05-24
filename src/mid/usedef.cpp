@@ -43,8 +43,8 @@ void Value::ReplaceBy(const SSAPtr &value) {
 }
 
 void User::RemoveNull() {
-  int len = 0;
-  for (int i = 0; i < uses_.size(); ++i) {
+  std::size_t len = 0;
+  for (std::size_t i = 0; i < uses_.size(); ++i) {
     if (uses_[i].value()) {
       uses_[len].set_value(uses_[i].value());
       ++len;

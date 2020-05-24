@@ -149,7 +149,7 @@ llvm::Type *LLVMGen::GenerateStructType(const TypePtr &type) {
   types_.push_back({type, struct_ty});
   type_lut_.insert({type, struct_ty});
   // create type of elements
-  for (int i = 0; i < type->GetLength(); ++i) {
+  for (std::size_t i = 0; i < type->GetLength(); ++i) {
     auto elem = GenerateType(type->GetElem(i));
     elems.push_back(elem);
   }
@@ -347,7 +347,7 @@ void LLVMGen::GenerateOn(CallSSA &ssa) {
   auto callee = GetVal(ssa[0].value());
   // get arguments
   std::vector<llvm::Value *> args;
-  for (int i = 1; i < ssa.size(); ++i) {
+  for (std::size_t i = 1; i < ssa.size(); ++i) {
     args.push_back(GetVal(ssa[i].value()));
   }
   // create call

@@ -247,7 +247,7 @@ SSAPtr IRBuilder::GenerateOn(BlockAST &ast) {
   module_.SetInsertPoint(block);
   // generate statements
   SSAPtr ret;
-  for (int i = 0; i < ast.stmts().size(); ++i) {
+  for (std::size_t i = 0; i < ast.stmts().size(); ++i) {
     const auto &stmt = ast.stmts()[i];
     auto val = stmt->GenerateIR(*this);
     if (i == ast.stmts().size() - 1) ret = val;
@@ -639,7 +639,7 @@ SSAPtr IRBuilder::GenerateOn(ValInitAST &ast) {
   if (ast.IsLiteral()) {
     // generate all elements
     SSAPtrList elems;
-    for (int i = 0; i < type->GetLength(); ++i) {
+    for (std::size_t i = 0; i < type->GetLength(); ++i) {
       auto e = i < ast.elems().size() ? ast.elems()[i]->GenerateIR(*this)
                                       : module_.GetZero(type->GetElem(i));
       elems.push_back(std::move(e));
@@ -662,7 +662,7 @@ SSAPtr IRBuilder::GenerateOn(ValInitAST &ast) {
     auto zero = module_.GetZero(type);
     module_.CreateStore(zero, val);
     // generate elements
-    for (int i = 0; i < ast.elems().size(); ++i) {
+    for (std::size_t i = 0; i < ast.elems().size(); ++i) {
       auto elem = ast.elems()[i]->GenerateIR(*this);
       const auto &ty = elem->type();
       auto ptr = module_.CreateElemAccess(val, module_.GetInt32(i), ty);

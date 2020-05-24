@@ -1,6 +1,7 @@
 #include "front/eval.h"
 
 #include <type_traits>
+#include <cmath>
 #include <cassert>
 
 using namespace yulang::front;
@@ -277,7 +278,7 @@ std::optional<EvalNum> Evaluator::EvalOn(EnumElemAST &ast) {
 std::optional<EvalNum> Evaluator::EvalOn(BlockAST &ast) {
   auto env = NewEnv();
   bool valid = true;
-  for (int i = 0; i < ast.stmts().size(); ++i) {
+  for (std::size_t i = 0; i < ast.stmts().size(); ++i) {
     // evaluate current statement
     auto val = ast.stmts()[i]->Eval(*this);
     if (val) {
@@ -295,7 +296,7 @@ std::optional<EvalNum> Evaluator::EvalOn(BlockAST &ast) {
 
 std::optional<EvalNum> Evaluator::EvalOn(IfAST &ast) {
   // evaluate condition
-  std::uint64_t cond_val;
+  std::uint64_t cond_val = 0;
   auto cond = ast.cond()->Eval(*this);
   if (cond) {
     // get value of condition
@@ -379,7 +380,7 @@ std::optional<EvalNum> Evaluator::EvalOn(ControlAST &ast) {
 std::optional<EvalNum> Evaluator::EvalOn(WhenElemAST &ast) {
   bool valid = false;
   // evaluate conditions
-  for (int i = 0; i < ast.conds().size(); ++i) {
+  for (std::size_t i = 0; i < ast.conds().size(); ++i) {
     auto val = ast.conds()[i]->Eval(*this);
     if (val) {
       // update condition
@@ -552,7 +553,7 @@ std::optional<EvalNum> Evaluator::EvalOn(FunCallAST &ast) {
   // evaluate expression
   ast.expr()->Eval(*this);
   // evaluate & update arguments
-  for (int i = 0; i < ast.args().size(); ++i) {
+  for (std::size_t i = 0; i < ast.args().size(); ++i) {
     auto val = ast.args()[i]->Eval(*this);
     if (val) ast.set_arg(i, MakeAST(*val, ast.args()[i]));
   }
@@ -590,7 +591,7 @@ std::optional<EvalNum> Evaluator::EvalOn(NullAST &ast) {
 
 std::optional<EvalNum> Evaluator::EvalOn(ValInitAST &ast) {
   // evaluate elements
-  for (int i = 0; i < ast.elems().size(); ++i) {
+  for (std::size_t i = 0; i < ast.elems().size(); ++i) {
     auto val = ast.elems()[i]->Eval(*this);
     if (val) {
       ast.set_elem(i, MakeAST(*val, ast.elems()[i]));

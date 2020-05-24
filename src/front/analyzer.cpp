@@ -433,7 +433,7 @@ TypePtr Analyzer::AnalyzeOn(EnumElemAST &ast) {
 TypePtr Analyzer::AnalyzeOn(BlockAST &ast) {
   auto env = NewEnv();
   auto ret = MakeVoid();
-  for (int i = 0; i < ast.stmts().size(); ++i) {
+  for (std::size_t i = 0; i < ast.stmts().size(); ++i) {
     auto type = ast.stmts()[i]->SemaAnalyze(*this);
     if (!type) return nullptr;
     if (i == ast.stmts().size() - 1) ret = std::move(type);
@@ -919,7 +919,7 @@ TypePtr Analyzer::AnalyzeOn(ValInitAST &ast) {
   if (ast.elems().size() > type->GetLength()) {
     return LogError(ast.logger(), "initializer list length exceeded");
   }
-  for (int i = 0; i < ast.elems().size(); ++i) {
+  for (std::size_t i = 0; i < ast.elems().size(); ++i) {
     // get type of element
     auto elem = ast.elems()[i]->SemaAnalyze(*this);
     if (!elem) return nullptr;

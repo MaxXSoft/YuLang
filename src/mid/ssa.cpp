@@ -210,7 +210,7 @@ void CallSSA::Dump(std::ostream &os, IdManager &idm) const {
   auto inex = InExpr();
   os << "call ";
   DumpWithType(os, idm, (*this)[0].value());
-  for (int i = 1; i < size(); ++i) {
+  for (std::size_t i = 1; i < size(); ++i) {
     os << ", ";
     DumpVal(os, idm, (*this)[i]);
   }
@@ -354,7 +354,7 @@ void ConstStructSSA::Dump(std::ostream &os, IdManager &idm) const {
   os << "constant ";
   PrintType(os, type());
   os << " {";
-  for (int i = 0; i < size(); ++i) {
+  for (std::size_t i = 0; i < size(); ++i) {
     if (i) os << ", ";
     DumpVal(os, idm, (*this)[i]);
   }
@@ -366,7 +366,7 @@ void ConstArraySSA::Dump(std::ostream &os, IdManager &idm) const {
   os << "constant ";
   PrintType(os, type());
   os << " {";
-  for (int i = 0; i < size(); ++i) {
+  for (std::size_t i = 0; i < size(); ++i) {
     if (i) os << ", ";
     DumpVal(os, idm, (*this)[i]);
   }

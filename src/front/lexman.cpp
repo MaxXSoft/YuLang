@@ -40,7 +40,7 @@ bool LexerManager::LoadSource(const Path &file) {
 Path LexerManager::GetModPath(const ModName &mod_name) {
   // get relative path of specific module
   Path mod_path;
-  for (int i = 0; i < mod_name.size(); ++i) {
+  for (std::size_t i = 0; i < mod_name.size(); ++i) {
     if (i == mod_name.size() - 1) {
       mod_path /= mod_name[i] + ".yu";
     }

@@ -146,6 +146,31 @@ class Use {
     if (value_) value_->RemoveUse(this);
   }
 
+  // copy assignment operator
+  Use &operator=(const Use &use) {
+    if (this != &use) {
+      value_ = use.value_;
+      user_ = use.user_;
+      // update reference
+      if (value_) value_->AddUse(this);
+    }
+    return *this;
+  }
+
+  // move assignment operator
+  Use &operator=(Use &&use) noexcept {
+    if (this != &use) {
+      value_ = std::move(use.value_);
+      user_ = use.user_;
+      // update reference
+      if (value_) {
+        value_->RemoveUse(&use);
+        value_->AddUse(this);
+      }
+    }
+    return *this;
+  }
+
   // setters
   void set_value(const SSAPtr &value) {
     if (value != value_) {

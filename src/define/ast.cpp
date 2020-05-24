@@ -105,7 +105,7 @@ void FunDefAST::Dump(std::ostream &os) const {
     os << "void";
   }
   os << ' ' << id_ << '(';
-  for (int i = 0; i < args_.size(); ++i) {
+  for (std::size_t i = 0; i < args_.size(); ++i) {
     if (i) os << ", ";
     args_[i]->Dump(os);
   }
@@ -378,7 +378,7 @@ void FunCallAST::Dump(std::ostream &os) const {
   auto inex = InExpr(os);
   expr_->Dump(os);
   os << '(';
-  for (int i = 0; i < args_.size(); ++i) {
+  for (std::size_t i = 0; i < args_.size(); ++i) {
     if (i) os << ", ";
     args_[i]->Dump(os);
   }
@@ -428,7 +428,7 @@ void ValInitAST::Dump(std::ostream &os) const {
   auto inex = InExpr(os);
   type_->Dump(os);
   os << " {";
-  for (int i = 0; i < elems_.size(); ++i) {
+  for (std::size_t i = 0; i < elems_.size(); ++i) {
     if (i) os << ", ";
     elems_[i]->Dump(os);
   }
@@ -464,7 +464,7 @@ void FuncTypeAST::Dump(std::ostream &os) const {
     os << "void";
   }
   os << " (*)(";
-  for (int i = 0; i < args_.size(); ++i) {
+  for (std::size_t i = 0; i < args_.size(); ++i) {
     if (i) os << ", ";
     args_[i]->Dump(os);
   }

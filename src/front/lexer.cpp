@@ -23,7 +23,7 @@ const char *kOperators[] = {YULANG_OPERATORS(YULANG_EXPAND_SECOND)};
 // get index of a string in string array
 template <typename T, std::size_t N>
 int GetIndex(const char *str, T (&str_array)[N]) {
-  for (int i = 0; i < N; ++i) {
+  for (std::size_t i = 0; i < N; ++i) {
     if (!std::strcmp(str, str_array[i])) return i;
   }
   return -1;
