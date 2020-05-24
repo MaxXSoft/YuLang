@@ -148,7 +148,7 @@ inline EvalNum CastToType(const EvalNum &num, const TypePtr &type) {
     }
     else {
       assert(false);
-      return 0ull;
+      return static_cast<std::uint64_t>(0);
     }
   }, num);
 }
@@ -586,7 +586,7 @@ std::optional<EvalNum> Evaluator::EvalOn(BoolAST &ast) {
 }
 
 std::optional<EvalNum> Evaluator::EvalOn(NullAST &ast) {
-  return 0ull;
+  return static_cast<std::uint64_t>(0);
 }
 
 std::optional<EvalNum> Evaluator::EvalOn(ValInitAST &ast) {
