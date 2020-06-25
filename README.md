@@ -64,7 +64,7 @@ when_elem ::= expr {"," expr} block;
 expr      ::= binary {id binary};
 binary    ::= cast {bin_op cast};
 cast      ::= unary {"as" type};
-unary     ::= [unary_op factor | "sizeof" type];
+unary     ::= [unary_op] factor | "sizeof" type;
 factor    ::= value | block     | if_else   | when
             | index | fun_call  | access    | "(" expr ")";
 
