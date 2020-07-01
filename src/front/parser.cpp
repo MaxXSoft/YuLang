@@ -1027,7 +1027,7 @@ bool Parser::ExpectId() {
 }
 
 bool Parser::ExpectEOL() {
-  if (last_token_ != Token::EOL) {
+  if (last_token_ != Token::EOL && cur_token_ != Token::End) {
     LogError("expected line break or ';'");
     return false;
   }
