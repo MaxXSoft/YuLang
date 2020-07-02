@@ -21,15 +21,7 @@ class Module {
   Module() { Reset(); }
 
   // reset module status & content
-  void Reset() {
-    vars_.clear();
-    funcs_.clear();
-    global_ctor_ = nullptr;
-    ctor_entry_ = nullptr;
-    ctor_exit_ = nullptr;
-    is_ctor_sealed_ = false;
-    insert_point_ = nullptr;
-  }
+  void Reset();
 
   // create a function declaration
   UserPtr CreateFunction(LinkageTypes link, const std::string &name,
@@ -176,7 +168,7 @@ class Module {
   // seal global constructor
   void SealGlobalCtor();
 
-  // context rerlated stuffs
+  // context related stuffs
   std::stack<front::LogPtr> loggers_;
   // all global variables and functions
   UserPtrList vars_, funcs_;

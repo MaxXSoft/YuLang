@@ -57,6 +57,21 @@ void Module::SealGlobalCtor() {
   }
 }
 
+void Module::Reset() {
+  vars_.clear();
+  funcs_.clear();
+  global_ctor_ = nullptr;
+  ctor_entry_ = nullptr;
+  ctor_exit_ = nullptr;
+  is_ctor_sealed_ = false;
+  insert_point_ = nullptr;
+  // reset logger stack
+  while (!loggers_.empty()) loggers_.pop();
+  // add a default logger
+  // TODO: not very elegant, fixme?
+  loggers_.push(std::make_shared<Logger>());
+}
+
 UserPtr Module::CreateFunction(LinkageTypes link, const std::string &name,
                               const TypePtr &type) {
   // assertion for type checking
