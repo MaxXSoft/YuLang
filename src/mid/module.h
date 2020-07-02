@@ -188,6 +188,14 @@ class Module {
   BlockPtr insert_point_;
 };
 
+// make a temporary module to create specific IR, for one-time use only
+inline Module MakeTempModule() {
+  auto mod = Module();
+  auto block = std::make_shared<BlockSSA>(nullptr, "");
+  mod.SetInsertPoint(block);
+  return mod;
+}
+
 }  // namespace yulang::mid
 
 #endif  // YULANG_MID_MODULE_H_
