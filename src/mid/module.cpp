@@ -51,7 +51,7 @@ using UnaryOp = UnarySSA::Operator;
 
 void Module::SealGlobalCtor() {
   if (global_ctor_ && !is_ctor_sealed_) {    
-    insert_point_ = ctor_entry_;
+    SetInsertPoint(ctor_entry_);
     CreateJump(ctor_exit_);
     is_ctor_sealed_ = true;
   }
@@ -64,7 +64,8 @@ void Module::Reset() {
   ctor_entry_ = nullptr;
   ctor_exit_ = nullptr;
   is_ctor_sealed_ = false;
-  insert_point_ = nullptr;
+  insert_block_ = nullptr;
+  insert_pos_ = SSAPtrList::iterator();
   // reset logger stack
   while (!loggers_.empty()) loggers_.pop();
   // add a default logger
@@ -154,13 +155,13 @@ SSAPtr Module::CreateJump(const BlockPtr &target) {
   auto jump = AddInst<JumpSSA>(target);
   jump->set_types(nullptr);
   // update predecessor info
-  target->AddValue(insert_point_);
+  target->AddValue(insert_block_);
   return jump;
 }
 
 SSAPtr Module::CreateReturn(const SSAPtr &value) {
   // get proper return value
-  const auto &func_type = insert_point_->parent()->org_type();
+  const auto &func_type = insert_block_->parent()->org_type();
   auto ret_type = func_type->GetReturnType(*func_type->GetArgsType());
   auto val = value;
   if (ret_type->IsReference()) {
@@ -209,8 +210,8 @@ SSAPtr Module::CreateBranch(const SSAPtr &cond, const BlockPtr &true_block,
   auto branch = AddInst<BranchSSA>(cond, true_block, false_block);
   branch->set_types(nullptr);
   // update predecessor info
-  true_block->AddValue(insert_point_);
-  false_block->AddValue(insert_point_);
+  true_block->AddValue(insert_block_);
+  false_block->AddValue(insert_block_);
   return branch;
 }
 
@@ -435,7 +436,6 @@ SSAPtr Module::CreateCast(const SSAPtr &opr, const TypePtr &type) {
   }
   else {
     // create a non-constant type casting
-    assert(insert_point_);
     cast = AddInst<CastSSA>(operand);
   }
   cast->set_type(target);
@@ -549,7 +549,7 @@ xstl::Guard Module::SetContext(const Logger &logger) {
 
 xstl::Guard Module::EnterGlobalCtor() {
   // get current insert point
-  auto cur_block = insert_point_;
+  auto cur_block = insert_block_;
   // initialize global function if it does not exist
   if (!global_ctor_) {
     // create function
@@ -559,14 +559,14 @@ xstl::Guard Module::EnterGlobalCtor() {
     // create basic blocks
     ctor_entry_ = CreateBlock(global_ctor_, "entry");
     ctor_exit_ = CreateBlock(global_ctor_, "exit");
-    insert_point_ = ctor_exit_;
+    SetInsertPoint(ctor_exit_);
     CreateReturn(nullptr);
     // mark as not sealed
     is_ctor_sealed_ = false;
   }
   // switch to global function's body block
-  insert_point_ = ctor_entry_;
-  return xstl::Guard([this, cur_block] { insert_point_ = cur_block; });
+  SetInsertPoint(ctor_entry_);
+  return xstl::Guard([this, cur_block] { SetInsertPoint(cur_block); });
 }
 
 void Module::Dump(std::ostream &os) {
