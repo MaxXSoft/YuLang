@@ -266,7 +266,9 @@ TypePtr Analyzer::AnalyzeOn(StructAST &ast) {
                       last_struct_elem_name_);
     }
     // check if is recursive type
-    if (elem->IsStruct() && elem->GetTypeId() == ast.id()) {
+    auto ty = elem;
+    while (ty->IsArray()) ty = ty->GetDerefedType();
+    if (ty->IsStruct() && ty->GetTypeId() == ast.id()) {
       return LogError(i->logger(), "recursive type is not allowed",
                       last_struct_elem_name_);
     }
@@ -810,7 +812,7 @@ TypePtr Analyzer::AnalyzeOn(IndexAST &ast) {
   if (expr->IsReference()) expr = expr->GetDerefedType();
   // get type of index
   auto index = ast.index()->SemaAnalyze(*this);
-  if (!index->IsInteger()) {
+  if (!index || !index->IsInteger()) {
     return LogError(ast.index()->logger(), "invalid index");
   }
   // get return type
