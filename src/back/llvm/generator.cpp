@@ -185,7 +185,7 @@ llvm::Type *LLVMGen::GeneratePointerType(const TypePtr &type) {
 void LLVMGen::GenerateOn(LoadSSA &ssa) {
   auto ptr = GetVal(ssa[0].value());
   auto load = builder_.CreateLoad(ptr, ssa.type()->IsVola());
-  load->setAlignment(ssa.type()->GetAlignSize());
+  load->setAlignment(llvm::MaybeAlign(ssa.type()->GetAlignSize()));
   SetVal(ssa, load);
 }
 
@@ -194,7 +194,7 @@ void LLVMGen::GenerateOn(StoreSSA &ssa) {
   auto ptr = GetVal(ssa[1].value());
   auto type = ssa[1].value()->type()->GetDerefedType();
   auto store = builder_.CreateStore(val, ptr, type->IsVola());
-  store->setAlignment(type->GetAlignSize());
+  store->setAlignment(llvm::MaybeAlign(type->GetAlignSize()));
   SetVal(ssa, store);
 }
 
@@ -442,7 +442,7 @@ void LLVMGen::GenerateOn(AllocaSSA &ssa) {
   // create alloca
   auto type = ssa.type()->GetDerefedType();
   auto alloca = builder_.CreateAlloca(GenerateType(type));
-  alloca->setAlignment(type->GetAlignSize());
+  alloca->setAlignment(llvm::MaybeAlign(type->GetAlignSize()));
   SetVal(ssa, alloca);
   // restore insert point
   builder_.SetInsertPoint(last_block);

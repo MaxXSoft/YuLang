@@ -41,7 +41,7 @@ class ObjectGen {
  private:
   void InitTarget();
   bool GenerateTargetCode(const std::string &file,
-                          llvm::TargetMachine::CodeGenFileType type);
+                          llvm::CodeGenFileType type);
 
   // LLVM module
   const ModulePtr &module_;

@@ -25,8 +25,8 @@ void ObjectGen::InitTarget() {
   llvm::InitializeAllAsmPrinters();
 }
 
-bool ObjectGen::GenerateTargetCode(
-    const std::string &file, llvm::TargetMachine::CodeGenFileType type) {
+bool ObjectGen::GenerateTargetCode(const std::string &file,
+                                   llvm::CodeGenFileType type) {
   // open object file
   std::error_code ec;
   llvm::raw_fd_ostream raw(file, ec, llvm::sys::fs::F_None);
@@ -85,12 +85,12 @@ bool ObjectGen::SetTargetTriple(const std::string &triple) {
 }
 
 bool ObjectGen::GenerateAsm(const std::string &file) {
-  auto file_type = llvm::TargetMachine::CGFT_AssemblyFile;
+  auto file_type = llvm::CodeGenFileType::CGFT_AssemblyFile;
   return GenerateTargetCode(file, file_type);
 }
 
 bool ObjectGen::GenerateObject(const std::string &file) {
-  auto file_type = llvm::TargetMachine::CGFT_ObjectFile;
+  auto file_type = llvm::CodeGenFileType::CGFT_ObjectFile;
   return GenerateTargetCode(file, file_type);
 }
 
