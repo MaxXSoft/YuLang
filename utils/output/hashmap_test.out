@@ -1,0 +1,17 @@
+size: 5
+contents:
+  100 -> test100
+  3 -> test3
+  33 -> test33
+  1 -> test1
+  42 -> test42
+
+removed #3
+size: 4
+contents:
+  100 -> test100
+  33 -> test33
+  1 -> test1
+  42 -> test42
+
+#42 = test42

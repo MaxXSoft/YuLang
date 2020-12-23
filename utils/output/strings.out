@@ -1,0 +1,11 @@
+sv1: test1, sv2: test2
+sv1 == sv2? false
+
+removed, sv1: test, sv2: test
+sv1 == sv2? true
+
+path:
+  ~
+  sam
+  documents
+  todo-list.txt
