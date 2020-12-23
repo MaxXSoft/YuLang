@@ -1,0 +1,70 @@
+/*
+  An example showing natural language style programming,
+  although it seems useless (facepalm)...
+*/
+
+
+import io
+import range
+
+struct Please {
+  __buf: u8[256],
+  __size: i32,
+}
+
+var please = [Please] {}
+let thanks = 0, stdout = 1, stderr = 2
+
+def push(this: Please var&, c: u8) {
+  this.__buf[this.__size] = c
+  this.__size += 1
+}
+
+def pushNumRecursively(this: Please var&, int: i32): Please var& {
+  if int != 0 {
+    this.pushNumRecursively(int / 10)
+    this.push((int % 10) as u8 + '0')
+  }
+  this
+}
+
+def put(this: Please var&, str: u8*): Please var& {
+  var i = 0
+  while str[i] != '\0' {
+    this.push(str[i])
+    i += 1
+  }
+  this
+}
+
+def and(this: Please var&, int: i32): Please var& {
+  if int == 0 {
+    this.push('0')
+  }
+  else {
+    this.pushNumRecursively(if int < 0 {
+      this.push('-')
+      -int
+    }
+    else {
+      int
+    })
+  }
+  this
+}
+
+def to(this: Please var&, fd: i32) {
+  let io: IO& = if fd == stdout { out } else { err }
+  for i in 0 to this.__size {
+    io <<< this.__buf[i]
+  }
+  io <<< '\n'
+  this.__size = 0
+}
+
+
+extern def main(argc: i32, argv: u8**): i32 {
+  // be polite
+  please put "Hello world! " and 123 to stdout
+  thanks
+}
