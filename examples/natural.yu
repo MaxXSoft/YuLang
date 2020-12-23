@@ -55,7 +55,7 @@ def and(this: Please var&, int: i32): Please var& {
 
 def to(this: Please var&, fd: i32) {
   let io: IO& = if fd == stdout { out } else { err }
-  for i in 0 to this.__size {
+  for i in 0 until this.__size {
     io <<< this.__buf[i]
   }
   io <<< '\n'
