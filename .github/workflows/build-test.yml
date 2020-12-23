@@ -26,6 +26,9 @@ jobs:
         - {cc: gcc-10, cxx: g++-10}
 
     steps:
+    - name: Install Dependencies
+      run: sudo apt-get install -y libedit-dev
+
     - name: Cache LLVM and Clang
       id: cache-llvm
       uses: actions/cache@v2
@@ -49,17 +52,17 @@ jobs:
       run: cmake -E make_directory ${{runner.workspace}}/build
 
     - name: Configure CMake
+      working-directory: ${{runner.workspace}}/build
       shell: bash
       env:
         CC: ${{matrix.config.cc}}
         CXX: ${{matrix.config.cxx}}
-      working-directory: ${{runner.workspace}}/build
       run: cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE
 
     - name: Build
       working-directory: ${{runner.workspace}}/build
       shell: bash
-      run: cmake --build . --config $BUILD_TYPE -j8
+      run: sudo make -j8 LLVM_HOME=${{runner.temp}}/llvm/bin LD=${{runner.temp}}/llvm/bin/clang AR="${{runner.temp}}/llvm/bin/llvm-ar ru" RANLIB=LD=${{runner.temp}}/llvm/bin/llvm-ranlib
 
     - name: Test
       working-directory: ${{runner.workspace}}/build
