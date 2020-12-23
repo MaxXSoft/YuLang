@@ -8,6 +8,7 @@
 #include "llvm/IR/InlineAsm.h"
 #include "llvm/IR/Constant.h"
 #include "llvm/Support/raw_os_ostream.h"
+#include "llvm/Config/llvm-config.h"
 
 using namespace yulang::define;
 using namespace yulang::mid;
@@ -185,7 +186,11 @@ llvm::Type *LLVMGen::GeneratePointerType(const TypePtr &type) {
 void LLVMGen::GenerateOn(LoadSSA &ssa) {
   auto ptr = GetVal(ssa[0].value());
   auto load = builder_.CreateLoad(ptr, ssa.type()->IsVola());
-  load->setAlignment(llvm::MaybeAlign(ssa.type()->GetAlignSize()));
+#if LLVM_VERSION_MAJOR >= 10
+  load->setAlignment(llvm::Align(ssa.type()->GetAlignSize()));
+#else
+  load->setAlignment(ssa.type()->GetAlignSize());
+#endif
   SetVal(ssa, load);
 }
 
@@ -194,7 +199,11 @@ void LLVMGen::GenerateOn(StoreSSA &ssa) {
   auto ptr = GetVal(ssa[1].value());
   auto type = ssa[1].value()->type()->GetDerefedType();
   auto store = builder_.CreateStore(val, ptr, type->IsVola());
-  store->setAlignment(llvm::MaybeAlign(type->GetAlignSize()));
+#if LLVM_VERSION_MAJOR >= 10
+  store->setAlignment(llvm::Align(type->GetAlignSize()));
+#else
+  store->setAlignment(type->GetAlignSize());
+#endif
   SetVal(ssa, store);
 }
 
@@ -442,7 +451,11 @@ void LLVMGen::GenerateOn(AllocaSSA &ssa) {
   // create alloca
   auto type = ssa.type()->GetDerefedType();
   auto alloca = builder_.CreateAlloca(GenerateType(type));
-  alloca->setAlignment(llvm::MaybeAlign(type->GetAlignSize()));
+#if LLVM_VERSION_MAJOR >= 10
+  alloca->setAlignment(llvm::Align(type->GetAlignSize()));
+#else
+  alloca->setAlignment(type->GetAlignSize());
+#endif
   SetVal(ssa, alloca);
   // restore insert point
   builder_.SetInsertPoint(last_block);
