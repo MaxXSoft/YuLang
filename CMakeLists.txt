@@ -32,6 +32,18 @@ find_package(LLVM REQUIRED CONFIG)
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
 message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
 
+# get LLVM libraries
+llvm_map_components_to_libnames(LLVM_LIBS all)
+if(NOT LLVM_LIBS)
+  execute_process(COMMAND ${LLVM_TOOLS_BINARY_DIR}/llvm-config --libs all
+                  OUTPUT_VARIABLE LLVM_LIBS)
+  execute_process(COMMAND ${LLVM_TOOLS_BINARY_DIR}/llvm-config --libdir
+                  OUTPUT_VARIABLE LLVM_LIB_DIR)
+  string(STRIP ${LLVM_LIBS} LLVM_LIBS)
+  string(REPLACE "-l" "" LLVM_LIBS ${LLVM_LIBS})
+  string(REPLACE " " ";" LLVM_LIBS ${LLVM_LIBS})
+endif()
+
 # project include directories
 include_directories(src)
 include_directories(3rdparty/xstl)
@@ -43,7 +55,7 @@ file(GLOB_RECURSE SOURCES "src/*.cpp")
 
 # executable
 add_executable(yuc ${SOURCES})
-llvm_map_components_to_libnames(LLVM_LIBS all)
+link_directories(${LLVM_LIB_DIR})
 target_link_libraries(yuc ${LLVM_LIBS})
 
 # build Yu standard library and examples after generation
