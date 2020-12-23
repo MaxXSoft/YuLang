@@ -17,13 +17,29 @@ jobs:
     if: "!contains(github.event.head_commit.message, 'skip-ci')"
     strategy:
       matrix:
+        llvm:
+        - {id: llvm-9, version: '9.0'}
+        - {id: llvm-10, version: '10.0'}
         config:
         - {cc: gcc-8, cxx: g++-8}
         - {cc: gcc-9, cxx: g++-9}
         - {cc: gcc-10, cxx: g++-10}
-        - {cc: clang-9, cxx: clang++-9}
 
     steps:
+    - name: Cache LLVM and Clang
+      id: cache-llvm
+      uses: actions/cache@v2
+      with:
+        path: ${{runner.temp}}/llvm
+        key: ${{matrix.llvm.id}}
+
+    - name: Install LLVM and Clang
+      uses: KyleMayes/install-llvm-action@v1
+      with:
+        version: ${{matrix.llvm.version}}
+        directory: ${{runner.temp}}/llvm
+        cached: ${{steps.cache-llvm.outputs.cache-hit}}
+
     - name: Checkout YuLang
       uses: actions/checkout@v2
       with:
