@@ -62,7 +62,7 @@ extern def main(argc: i32, argv: u8**): i32 {
 }
 ```
 
-Natural language style (see [natrual.yu](examples/natural.yu)):
+Natural language style (see [natural.yu](examples/natural.yu)):
 
 ```yu
 extern def main(argc: i32, argv: u8**): i32 {
