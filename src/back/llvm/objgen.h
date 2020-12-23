@@ -39,9 +39,13 @@ class ObjectGen {
   }
 
  private:
+  // file type of code generation
+  enum class CodeGenFileType {
+    Asm, Object,
+  };
+
   void InitTarget();
-  bool GenerateTargetCode(const std::string &file,
-                          llvm::CodeGenFileType type);
+  bool GenerateTargetCode(const std::string &file, CodeGenFileType type);
 
   // LLVM module
   const ModulePtr &module_;

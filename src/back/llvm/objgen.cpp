@@ -1,6 +1,7 @@
 #include "back/llvm/objgen.h"
 
 #include <system_error>
+#include <cassert>
 
 #include "llvm/Transforms/IPO/PassManagerBuilder.h"
 #include "llvm/IR/LegacyPassManager.h"
@@ -10,6 +11,7 @@
 #include "llvm/Target/TargetOptions.h"
 #include "llvm/Support/FileSystem.h"
 #include "llvm/IR/Type.h"
+#include "llvm/Config/llvm-config.h"
 
 #include "front/logger.h"
 
@@ -26,7 +28,7 @@ void ObjectGen::InitTarget() {
 }
 
 bool ObjectGen::GenerateTargetCode(const std::string &file,
-                                   llvm::CodeGenFileType type) {
+                                   CodeGenFileType type) {
   // open object file
   std::error_code ec;
   llvm::raw_fd_ostream raw(file, ec, llvm::sys::fs::F_None);
@@ -35,9 +37,20 @@ bool ObjectGen::GenerateTargetCode(const std::string &file,
     Logger::LogRawError(ec.message());
     return false;
   }
+  // get file type
+#if LLVM_VERSION_MAJOR >= 10
+  auto file_type = type == CodeGenFileType::Asm
+                       ? llvm::CodeGenFileType::CGFT_AssemblyFile
+                       : llvm::CodeGenFileType::CGFT_ObjectFile;
+#else
+  auto file_type =
+      type == CodeGenFileType::Asm
+          ? llvm::TargetMachine::CodeGenFileType::CGFT_AssemblyFile
+          : llvm::TargetMachine::CodeGenFileType::CGFT_ObjectFile;
+#endif
   // compile to object file
   llvm::legacy::PassManager pass;
-  if (machine_->addPassesToEmitFile(pass, raw, nullptr, type)) {
+  if (machine_->addPassesToEmitFile(pass, raw, nullptr, file_type)) {
     Logger::LogRawError("target machine cannot emit file of this type");
     return false;
   }
@@ -85,13 +98,11 @@ bool ObjectGen::SetTargetTriple(const std::string &triple) {
 }
 
 bool ObjectGen::GenerateAsm(const std::string &file) {
-  auto file_type = llvm::CodeGenFileType::CGFT_AssemblyFile;
-  return GenerateTargetCode(file, file_type);
+  return GenerateTargetCode(file, CodeGenFileType::Asm);
 }
 
 bool ObjectGen::GenerateObject(const std::string &file) {
-  auto file_type = llvm::CodeGenFileType::CGFT_ObjectFile;
-  return GenerateTargetCode(file, file_type);
+  return GenerateTargetCode(file, CodeGenFileType::Object);
 }
 
 std::size_t ObjectGen::GetPointerSize() const {
