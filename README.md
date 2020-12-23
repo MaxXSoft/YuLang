@@ -4,11 +4,79 @@
 
 Yu (羽) is a simple system programming language.
 
+## Features
+
+* Block expression
+* Modules and `import` statement
+* Type deduction and reference type
+* Inline function/variable/constant
+* Function/operator overloading
+* Operator-formed identifier
+* Dot function and infix function
+* Iterator
+
+## Examples: Hello World
+
+C style:
+
+```yu
+import sys.unistd
+import sys.string
+
+extern def main(argc: i32, argv: u8**): i32 {
+  let hello = "Hello world!\n", len = strlen(hello)
+  write(FD_STDOUT, hello, len)
+  0
+}
+```
+
+OOP-like style (but not real OOP):
+
+```yu
+import sys.unistd
+import sys.string
+
+struct Output {}
+
+def println(this: Output&, str: u8*) {
+  write(FD_STDOUT, str, strlen(str))
+  write(FD_STDOUT, "\n", 1 as u32)
+}
+
+let out = [Output] {}
+
+extern def main(argc: i32, argv: u8**): i32 {
+  out.println("Hello world!")
+  0
+}
+```
+
+C++ `cout` style with custom operator `<<<`:
+
+```yu
+import io
+
+extern def main(argc: i32, argv: u8**): i32 {
+  out <<< "Hello world! " <<< 123 <<< '\n'
+  0
+}
+```
+
+Natural language style (see [natrual.yu](examples/natural.yu)):
+
+```yu
+extern def main(argc: i32, argv: u8**): i32 {
+  // be polite
+  please put "Hello world! " and 123 to stdout
+  thanks
+}
+```
+
 ## Building from Source
 
 Before building YuLang compiler, please make sure you have installed the following dependencies:
 
-* `cmake` 3.5 or later
+* `cmake` 3.13 or later
 * `llvm` 8.0 or later
 * C++ compiler supporting C++17
 
