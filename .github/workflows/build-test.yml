@@ -17,9 +17,8 @@ jobs:
     if: "!contains(github.event.head_commit.message, 'skip-ci')"
     strategy:
       matrix:
-        llvm: ['9', '10']
+        llvm: ['9', '10', '11']
         config:
-        - {cc: gcc-8, cxx: g++-8}
         - {cc: gcc-9, cxx: g++-9}
         - {cc: gcc-10, cxx: g++-10}
 
@@ -53,7 +52,7 @@ jobs:
     - name: Build
       working-directory: ${{runner.workspace}}/build
       shell: bash
-      run: make -j8 LLVM_HOME=`llvm-config-${{matrix.llvm}} --bindir` LD="clang-${{matrix.llvm}} -v" AR="llvm-ar-${{matrix.llvm}} ru" RANLIB=llvm-ranlib-${{matrix.llvm}}
+      run: make LLVM_HOME=`llvm-config-${{matrix.llvm}} --bindir` LD="clang-${{matrix.llvm}}"
 
     - name: Test
       working-directory: ${{runner.workspace}}/build
