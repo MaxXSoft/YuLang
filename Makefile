@@ -45,7 +45,7 @@ $(LIB_TARGET): $(LIB_OBJ)
 
 $(EXAMPLES_BIN_DIR)/%: $(EXAMPLES_OBJ_DIR)/%.yu.o $(LIB_TARGET)
 	$(info making example "$(notdir $@)"...)
-	$(LD) -L$(BUILD_DIR) -lyu -o $@ $<
+	$(LD) $< -L$(BUILD_DIR) -lyu -o $@
 
 $(OBJ_DIR)/%.yu.ll: $(TOP_DIR)/%.yu $(YUC_BIN)
 	$(info YUC $@)
