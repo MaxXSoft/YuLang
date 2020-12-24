@@ -17,9 +17,7 @@ jobs:
     if: "!contains(github.event.head_commit.message, 'skip-ci')"
     strategy:
       matrix:
-        llvm:
-        - {id: llvm-9, version: '9.0'}
-        - {id: llvm-10, version: '10.0'}
+        llvm: ['9', '10']
         config:
         - {cc: gcc-8, cxx: g++-8}
         - {cc: gcc-9, cxx: g++-9}
@@ -27,21 +25,14 @@ jobs:
 
     steps:
     - name: Install Dependencies
+      if: matrix.llvm <= 9
       run: sudo apt-get install -y libedit-dev
 
-    - name: Cache LLVM and Clang
-      id: cache-llvm
-      uses: actions/cache@v2
-      with:
-        path: ${{runner.temp}}/llvm
-        key: ${{matrix.llvm.id}}
-
     - name: Install LLVM and Clang
-      uses: KyleMayes/install-llvm-action@v1
-      with:
-        version: ${{matrix.llvm.version}}
-        directory: ${{runner.temp}}/llvm
-        cached: ${{steps.cache-llvm.outputs.cache-hit}}
+      run: |
+        wget https://apt.llvm.org/llvm.sh
+        chmod +x llvm.sh
+        sudo ./llvm.sh ${{matrix.llvm}}
 
     - name: Checkout YuLang
       uses: actions/checkout@v2
@@ -62,7 +53,7 @@ jobs:
     - name: Build
       working-directory: ${{runner.workspace}}/build
       shell: bash
-      run: sudo make -j8 LLVM_HOME=${{runner.temp}}/llvm/bin LD=${{runner.temp}}/llvm/bin/clang AR="${{runner.temp}}/llvm/bin/llvm-ar ru" RANLIB=LD=${{runner.temp}}/llvm/bin/llvm-ranlib
+      run: sudo make -j8 LLC="llc -filetype=obj"
 
     - name: Test
       working-directory: ${{runner.workspace}}/build
