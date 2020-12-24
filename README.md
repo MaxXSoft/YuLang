@@ -2,6 +2,8 @@
 
 ![YuLang](YuLang.png)
 
+[![Build and Test](https://github.com/MaxXSoft/YuLang/workflows/Build%20and%20Test/badge.svg)](https://github.com/MaxXSoft/YuLang)
+
 Yu (羽) is a simple system programming language.
 
 ## Features
