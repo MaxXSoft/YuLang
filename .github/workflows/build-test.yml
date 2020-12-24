@@ -53,7 +53,7 @@ jobs:
     - name: Build
       working-directory: ${{runner.workspace}}/build
       shell: bash
-      run: sudo make -j8 LLC="llc -filetype=obj"
+      run: make -j8 LLVM_HOME=`llvm-config-${{matrix.llvm}} --bindir` LD="clang-${{matrix.llvm}} -v" AR="llvm-ar-${{matrix.llvm}} ru" RANLIB=llvm-ranlib-${{matrix.llvm}}
 
     - name: Test
       working-directory: ${{runner.workspace}}/build
