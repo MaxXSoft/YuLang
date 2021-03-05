@@ -4,6 +4,11 @@ All notable changes to the YuLang compiler will be documented in this file.
 
 ## Unreleased
 
+### Added
+
+* More declarations of C standard library functions.
+* Read operations of `IO` library.
+
 ## 0.0.4 - 2021-03-05
 
 ### Added
