@@ -1,14 +1,14 @@
-extern declare isalnum(i32): i32
-extern declare isalpha(i32): i32
-extern declare isblank(i32): i32
-extern declare iscntrl(i32): i32
-extern declare isdigit(i32): i32
-extern declare isgraph(i32): i32
-extern declare islower(i32): i32
-extern declare isprint(i32): i32
-extern declare ispunct(i32): i32
-extern declare isspace(i32): i32
-extern declare isupper(i32): i32
-extern declare isxdigit(i32): i32
-extern declare tolower(i32): i32
-extern declare toupper(i32): i32
+extern declare isalnum: (i32): i32
+extern declare isalpha: (i32): i32
+extern declare isblank: (i32): i32
+extern declare iscntrl: (i32): i32
+extern declare isdigit: (i32): i32
+extern declare isgraph: (i32): i32
+extern declare islower: (i32): i32
+extern declare isprint: (i32): i32
+extern declare ispunct: (i32): i32
+extern declare isspace: (i32): i32
+extern declare isupper: (i32): i32
+extern declare isxdigit: (i32): i32
+extern declare tolower: (i32): i32
+extern declare toupper: (i32): i32
