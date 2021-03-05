@@ -8,7 +8,13 @@ total=0
 
 for out in $base/output/*.out; do
   name=`basename $out`
-  $build_dir/examples/${name%.out} | diff - $out
+  input="$base/input/${name%.out}.in"
+  exe="$build_dir/examples/${name%.out}"
+  if [ -e $input ]; then
+    $build_dir/examples/${name%.out} < $input | diff - $out
+  else
+    $build_dir/examples/${name%.out} | diff - $out
+  fi
   if [ ${PIPESTATUS[1]} -eq 0 ]; then
     pass=$((pass+1))
   fi
