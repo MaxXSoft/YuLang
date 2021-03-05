@@ -1,4 +1,5 @@
 import sys.unistd
+import sys.ctype
 
 
 // definition of IO structure
@@ -10,11 +11,30 @@ public let out: IO = [IO] {FD_STDOUT}
 public let err: IO = [IO] {FD_STDERR}
 
 
+/*
+ * methods
+ */
+// put character to IO
+public def put(this: IO&, char: u8) {
+  write(this.__fd, &char, 1 as u32)
+}
+
+// get character from IO
+public def get(this: IO&): u8 {
+  var char: u8
+  read(this.__fd, &char, 1 as u32)
+  char
+}
+
+
+/*
+ * stream output operations
+ */
 // write string to IO
 public def <<<(this: IO&, str: u8*): IO& {
   var i = 0
   while str[i] != '\0' {
-    write(this.__fd, str + i, 1 as u32)
+    this.put(str[i])
     i += 1
   }
   this
@@ -22,7 +42,7 @@ public def <<<(this: IO&, str: u8*): IO& {
 
 // write character to IO
 public def <<<(this: IO&, char: u8): IO& {
-  write(this.__fd, &char, 1 as u32)
+  this.put(char)
   this
 }
 
@@ -48,8 +68,7 @@ public def <<<(this: IO&, uint: u32): IO& {
 public def <<<(this: IO&, int: i32): IO& {
   var n = int
   if n < 0 {
-    let minus = '-'
-    write(this.__fd, &minus, 1 as u32)
+    this.put('-')
     n = -n
   }
   this <<< n as u32
@@ -64,5 +83,43 @@ public def <<<(this: IO&, val: bool): IO& {
   else {
     this <<< "false"
   }
+  this
+}
+
+
+/*
+ * stream input operations
+ */
+// get an unsigned integer from IO, keeps the initial value of integer
+def getUInt(this: IO&, uint: u32 var&) {
+  var char = this.get()
+  while isdigit(char as i32) != 0 {
+    uint = uint * 10 as u32 + (char - '0') as u32
+    char = this.get()
+  }
+}
+
+// read character from IO
+public def >>>(this: IO&, char: u8 var&): IO& {
+  char = this.get()
+  this
+}
+
+// read 32-bit unsigned integer from IO
+public def >>>(this: IO&, uint: u32 var&): IO& {
+  let char = this.get()
+  if !isdigit(char as i32) { return this }
+  uint = (char - '0') as u32
+  this.getUInt(uint)
+  this
+}
+
+// read 32-bit signed integer from IO
+public def >>>(this: IO&, int: i32 var&): IO& {
+  let char = this.get(), neg = char == '-'
+  if !neg && !isdigit(char as i32) { return this }
+  var num = if !neg { (char - '0') as u32 } else { 0 as u32 }
+  this.getUInt(num)
+  int = if !neg { num as i32 } else { -(num as i32) }
   this
 }
