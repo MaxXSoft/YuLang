@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.13)
-project(YuLang VERSION "0.0.3")
+project(YuLang VERSION "0.0.4")
 
 # # set compiler path
 # set(CMAKE_C_COMPILER "/usr/local/opt/gcc/bin/gcc-9")
