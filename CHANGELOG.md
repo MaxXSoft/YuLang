@@ -4,6 +4,8 @@ All notable changes to the YuLang compiler will be documented in this file.
 
 ## Unreleased
 
+## 0.0.4 - 2021-03-05
+
 ### Added
 
 * Relational operations between pointers.
@@ -26,6 +28,7 @@ All notable changes to the YuLang compiler will be documented in this file.
 * Value evaluation process on `ImportAST`.
 * Bugs about file existence check.
 * Bugs about alignment of structures.
+* Compilation errors in some LLVM versions.
 
 ## 0.0.3 - 2020-04-03
 
