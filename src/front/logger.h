@@ -9,9 +9,9 @@ namespace yulang::front {
 
 class Logger {
  public:
-  Logger() : cur_file_(""), line_pos_(1), col_pos_(0) {}
+  Logger() : cur_file_(""), line_pos_(1), col_pos_(1) {}
   Logger(std::string_view cur_file)
-      : cur_file_(cur_file), line_pos_(1), col_pos_(0) {}
+      : cur_file_(cur_file), line_pos_(1), col_pos_(1) {}
 
   static void ResetErrorNum(bool warn_as_err) {
     error_num_ = 0;
@@ -32,12 +32,12 @@ class Logger {
   // reset line & column position
   void Reset() {
     line_pos_ = 1;
-    col_pos_ = 0;
+    col_pos_ = 1;
   }
   // increase line position
   void IncreaseLinePos() {
     ++line_pos_;
-    col_pos_ = 0;
+    col_pos_ = 1;
   }
   // increase column position
   void IncreaseColPos() { ++col_pos_; }
