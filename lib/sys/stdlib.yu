@@ -18,3 +18,11 @@ inline def seed(): u32 {
   srand(s)
   s
 }
+
+// numeric string conversion
+extern declare strtol: (u8*, u8* var*, i32): i32
+extern declare strtoll: (u8*, u8* var*, i32): i64
+extern declare strtoul: (u8*, u8* var*, i32): u32
+extern declare strtoull: (u8*, u8* var*, i32): u64
+extern declare strtof: (u8*, u8* var*): f32
+extern declare strtod: (u8*, u8* var*): f64
