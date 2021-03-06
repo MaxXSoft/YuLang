@@ -1,0 +1,67 @@
+// basic operations
+extern declare fabsf: (f32): f32
+extern declare fabs: (f64): f64
+extern declare fmaxf: (f32, f32): f32
+extern declare fmax: (f64, f64): f64
+extern declare fminf: (f32, f32): f32
+extern declare fmin: (f64, f64): f64
+
+// exponential functions
+extern declare expf: (f32): f32
+extern declare exp: (f64): f64
+extern declare exp2f: (f32): f32
+extern declare exp2: (f64): f64
+extern declare logf: (f32): f32
+extern declare log: (f64): f64
+extern declare log10f: (f32): f32
+extern declare log10: (f64): f64
+extern declare log2f: (f32): f32
+extern declare log2: (f64): f64
+
+// power functions
+extern declare powf: (f32, f32): f32
+extern declare pow: (f64, f64): f64
+extern declare sqrtf: (f32): f32
+extern declare sqrt: (f64): f64
+
+// trigonometric functions
+extern declare sinf: (f32): f32
+extern declare sin: (f64): f64
+extern declare cosf: (f32): f32
+extern declare cos: (f64): f64
+extern declare tanf: (f32): f32
+extern declare tan: (f64): f64
+extern declare asinf: (f32): f32
+extern declare asin: (f64): f64
+extern declare acosf: (f32): f32
+extern declare acos: (f64): f64
+extern declare atanf: (f32): f32
+extern declare atan: (f64): f64
+
+// hyperbolic functions
+extern declare sinhf: (f32): f32
+extern declare sinh: (f64): f64
+extern declare coshf: (f32): f32
+extern declare cosh: (f64): f64
+extern declare tanhf: (f32): f32
+extern declare tanh: (f64): f64
+extern declare asinhf: (f32): f32
+extern declare asinh: (f64): f64
+extern declare acoshf: (f32): f32
+extern declare acosh: (f64): f64
+extern declare atanhf: (f32): f32
+extern declare atanh: (f64): f64
+
+// nearest integer floating-point operations
+extern declare ceilf: (f32): f32
+extern declare ceil: (f64): f64
+extern declare floorf: (f32): f32
+extern declare floor: (f64): f64
+extern declare truncf: (f32): f32
+extern declare trunc: (f64): f64
+extern declare roundf: (f32): f32
+extern declare round: (f64): f64
+extern declare lroundf: (f32): i32
+extern declare lround: (f64): i32
+extern declare llroundf: (f32): i64
+extern declare llround: (f64): i64
