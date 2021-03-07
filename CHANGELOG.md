@@ -9,6 +9,10 @@ All notable changes to the YuLang compiler will be documented in this file.
 * More declarations of C standard library functions.
 * Read operations of `IO` library.
 
+### Changed
+
+* A warning will be given when encountering a combination of `extern`/`inline` and `import`.
+
 ## 0.0.4 - 2021-03-05
 
 ### Added
