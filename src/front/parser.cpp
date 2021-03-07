@@ -226,8 +226,13 @@ ASTPtr Parser::ParseEnum(Property prop) {
   return MakeAST<EnumAST>(log, prop, id, std::move(type), std::move(defs));
 }
 
-ASTPtr Parser::ParseImport() {
+ASTPtr Parser::ParseImport(Property prop) {
   auto log = logger();
+  // check property
+  if (prop == Property::Extern || prop == Property::Inline) {
+    log.LogWarning("importations cannot be 'extern' "
+                   "or 'inline', try using 'public'");
+  }
   NextToken();
   // get module name
   ModName mod_name;
@@ -986,7 +991,7 @@ ASTPtr Parser::GetStatement(Property prop) {
     case Keyword::Type: return ParseTypeAlias(prop);
     case Keyword::Struct: return ParseStruct(prop);
     case Keyword::Enum: return ParseEnum(prop);
-    case Keyword::Import: return ParseImport();
+    case Keyword::Import: return ParseImport(prop);
     default: return nullptr;
   }
 }

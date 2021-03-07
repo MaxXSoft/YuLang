@@ -103,7 +103,7 @@ class Parser {
   define::ASTPtr ParseTypeAlias(define::Property prop);
   define::ASTPtr ParseStruct(define::Property prop);
   define::ASTPtr ParseEnum(define::Property prop);
-  define::ASTPtr ParseImport();
+  define::ASTPtr ParseImport(define::Property prop);
 
   define::ASTPtr ParseVarLetElem(define::Property prop, bool is_var);
   define::ASTPtr ParseArgElem();
