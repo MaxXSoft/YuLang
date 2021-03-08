@@ -13,6 +13,10 @@ All notable changes to the YuLang compiler will be documented in this file.
 
 * A warning will be given when encountering a combination of `extern`/`inline` and `import`.
 
+### Fixed
+
+* Value evaluation process on `VarLetDefAST`.
+
 ## 0.0.4 - 2021-03-05
 
 ### Added
