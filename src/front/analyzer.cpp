@@ -151,6 +151,8 @@ TypePtr Analyzer::AnalyzeOn(VarLetDefAST &ast) {
   last_prop_ = ast.prop();
   for (const auto &i : ast.defs()) {
     if (!i->SemaAnalyze(*this)) return nullptr;
+    // run evaluation on var/let definitions for constant definitions
+    i->Eval(eval_);
   }
   return ast.set_ast_type(MakeVoid());
 }
