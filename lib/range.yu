@@ -3,6 +3,7 @@ public struct Range {
   __cur: i32,
   __end: i32,
   __step: i32,
+  __close: bool,
 }
 
 
@@ -15,20 +16,30 @@ public def next(this: Range var&): i32 {
 
 // iterator method for 'for-in' loop
 public def last(this: Range&): bool {
-  this.__cur >= this.__end
+  if this.__step > 0 {
+    this.__cur >= this.__end
+  }
+  else {
+    this.__cur <= this.__end
+  }
 }
 
 // generate range '[begin, end)'
 public def until(begin: i32, end: i32): Range {
-  [Range] {begin, end, 1}
+  [Range] {begin, end, 1, false}
 }
 
 // generate range '[begin, end]'
 public def to(begin: i32, end: i32): Range {
-  begin until end + 1
+  [Range] {begin, end + 1, 1, true}
 }
 
 // set the step of generated range
 public def step(this: Range, step: i32): Range {
-  [Range] {this.__cur, this.__end, step}
+  if step > 0 || !this.__close {
+    [Range] {this.__cur, this.__end, step, this.__close}
+  }
+  else {
+    [Range] {this.__cur, this.__end - 2, step, this.__close}
+  }
 }
