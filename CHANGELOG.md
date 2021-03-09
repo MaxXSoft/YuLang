@@ -12,6 +12,7 @@ All notable changes to the YuLang compiler will be documented in this file.
 ### Changed
 
 * A warning will be given when encountering a combination of `extern`/`inline` and `import`.
+* Some method name in standard library module `strview`.
 
 ### Fixed
 
