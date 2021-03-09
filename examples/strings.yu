@@ -3,7 +3,7 @@ import strview
 
 def <<<(this: IO&, sv: StrView&): IO& {
   var i = 0 as u32
-  while i < sv.getLen() {
+  while i < sv.len() {
     this <<< sv.at(i)
     i += 1 as u32
   }
