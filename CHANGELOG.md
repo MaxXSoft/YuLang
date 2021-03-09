@@ -16,6 +16,7 @@ All notable changes to the YuLang compiler will be documented in this file.
 ### Fixed
 
 * Value evaluation process on `VarLetDefAST`.
+* Bugs about counting down in standard library module `range`.
 
 ## 0.0.4 - 2021-03-05
 
