@@ -1,8 +1,8 @@
 public import sys.string
 
 public struct StrView {
-  str: u8*,
-  len: u32,
+  __str: u8*,
+  __len: u32,
 }
 
 // create a new string view by a null terminated string
@@ -16,43 +16,43 @@ inline def newStrView(buf: u8*, len: u32): StrView {
 }
 
 // get string data of string view (not guarantee to be null terminated)
-inline def getStr(this: StrView&): u8* {
-  this.str
+inline def str(this: StrView&): u8* {
+  this.__str
 }
 
 // get length of string view
-inline def getLen(this: StrView&): u32 {
-  this.len
+inline def len(this: StrView&): u32 {
+  this.__len
 }
 
 // check whether the view is empty
 inline def empty(this: StrView&): bool {
-  this.len == 0 as u32
+  this.__len == 0 as u32
 }
 
 // get the specified character
 inline def at(this: StrView&, i: i32): u8 {
-  this.str[i]
+  this.__str[i]
 }
 inline def at(this: StrView&, i: u32): u8 {
-  this.str[i]
+  this.__str[i]
 }
 
 // get the first character
 inline def front(this: StrView&): u8 {
-  this.str[0]
+  this.__str[0]
 }
 
 // get the last character
 inline def back(this: StrView&): u8 {
-  this.str[this.len - 1 as u32]
+  this.__str[this.__len - 1 as u32]
 }
 
 // check if equals to a null terminated string
 public def ==(this: StrView&, str: u8*): bool {
   var i = 0
-  while i as u32 < this.len {
-    if this.str[i] != str[i] || str[i] == '\0' {
+  while i as u32 < this.__len {
+    if this.__str[i] != str[i] || str[i] == '\0' {
       return false
     }
     i += 1
@@ -71,10 +71,10 @@ inline def !=(str: u8*, this: StrView&): bool {
 
 // check if equals to another string view
 public def ==(this: StrView&, that: StrView&): bool {
-  if this.len == that.len {
+  if this.__len == that.__len {
     var i = 0
-    while i as u32 < this.len {
-      if this.str[i] != that.str[i] {
+    while i as u32 < this.__len {
+      if this.__str[i] != that.__str[i] {
         return false
       }
       i += 1
@@ -91,29 +91,29 @@ inline def !=(this: StrView&, that: StrView&): bool {
 
 // shrinks the view by moving its start forward
 inline def removePrefix(this: StrView var&, n: i32) {
-  this.str += n
-  this.len -= n as u32
+  this.__str += n
+  this.__len -= n as u32
 }
 
 // shrinks the view by moving its end backward
 inline def removeSuffix(this: StrView var&, n: i32) {
-  this.len -= n as u32
+  this.__len -= n as u32
 }
 
 
-public struct StrViewSplitIter {
+public struct __StrViewSplitIter {
   cur: u8*,
   len: u32,
   delimiter: u8,
 }
 
 // get split iterator
-inline def split(this: StrView&, delimiter: u8): StrViewSplitIter {
-  [StrViewSplitIter] {this.str, this.len, delimiter}
+inline def split(this: StrView&, delimiter: u8): __StrViewSplitIter {
+  [__StrViewSplitIter] {this.__str, this.__len, delimiter}
 }
 
 // iterator method 'next'
-public def next(this: StrViewSplitIter var&): StrView {
+public def next(this: __StrViewSplitIter var&): StrView {
   // find next position of delimiter
   var len = 0 as u32
   while len < this.len {
@@ -134,6 +134,6 @@ public def next(this: StrViewSplitIter var&): StrView {
 }
 
 // iterator method 'last'
-inline def last(this: StrViewSplitIter&): bool {
+inline def last(this: __StrViewSplitIter&): bool {
   this.len == 0 as u32
 }
