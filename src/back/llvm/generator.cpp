@@ -359,8 +359,12 @@ void LLVMGen::GenerateOn(CallSSA &ssa) {
   for (std::size_t i = 1; i < ssa.size(); ++i) {
     args.push_back(GetVal(ssa[i].value()));
   }
+  // get function type
+  auto ptr_ty = callee->getType();
+  ptr_ty = llvm::dyn_cast<llvm::PointerType>(ptr_ty)->getElementType();
+  auto func_ty = llvm::dyn_cast<llvm::FunctionType>(ptr_ty);
   // create call
-  auto call = builder_.CreateCall(callee, args);
+  auto call = builder_.CreateCall(func_ty, callee, args);
   SetVal(ssa, call);
 }
 
