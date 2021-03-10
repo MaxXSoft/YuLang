@@ -8,6 +8,7 @@
 #include "llvm/Transforms/IPO.h"
 #include "llvm/Support/TargetSelect.h"
 #include "llvm/Support/TargetRegistry.h"
+#include "llvm/Support/Host.h"
 #include "llvm/Target/TargetOptions.h"
 #include "llvm/Support/FileSystem.h"
 #include "llvm/IR/Type.h"
