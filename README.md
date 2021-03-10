@@ -3,8 +3,15 @@
 ![YuLang](YuLang.png)
 
 [![Build and Test](https://github.com/MaxXSoft/YuLang/workflows/Build%20and%20Test/badge.svg)](https://github.com/MaxXSoft/YuLang)
+[![羽语言简明教程](https://img.shields.io/badge/tutorial-%E7%AE%80%E4%BD%93%E4%B8%AD%E6%96%87-blue)](https://maxxsoft.github.io/YuLang-doc/tutorial/zh-cn/)
 
 Yu (羽) is a simple system programming language.
+
+## Documentations
+
+* Tutorial: [中文版 (GitHub)](https://maxxsoft.github.io/YuLang-doc/tutorial/zh-cn/), [中文版 (Gitee)](https://maxxsoft.gitee.io/yulang-doc/tutorial/zh-cn/).
+
+Visit [YuLang-doc](https://github.com/MaxXSoft/YuLang-doc) for more details.
 
 ## Features
 
