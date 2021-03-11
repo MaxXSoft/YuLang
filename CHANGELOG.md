@@ -8,6 +8,7 @@ All notable changes to the YuLang compiler will be documented in this file.
 
 * More declarations of C standard library functions.
 * Read operations of `IO` library.
+* Pointer-sized type `isize` and `usize`.
 
 ### Changed
 
@@ -19,6 +20,7 @@ All notable changes to the YuLang compiler will be documented in this file.
 * Value evaluation process on `VarLetDefAST`.
 * Bugs about counting down in standard library module `range`.
 * The process of handling reference types on `VarLetElemAST`.
+* Value evaluation process on `IntAST`.
 
 ## 0.0.4 - 2021-03-05
 
