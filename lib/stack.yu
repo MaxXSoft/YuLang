@@ -1,7 +1,7 @@
 import sys.stdlib
 
 // length of stack frame
-inline let STACK_FRAME_LEN = 32
+inline let STACK_FRAME_LEN = 32 as usize
 
 public struct __StackFrame {
   data: u8 var*[STACK_FRAME_LEN],
@@ -10,7 +10,7 @@ public struct __StackFrame {
 
 public struct Stack {
   __frames: __StackFrame var*,
-  __sp: i32,
+  __sp: usize,
 }
 
 
@@ -39,7 +39,7 @@ def pop(this: __StackFrame var*): __StackFrame var* {
   frame
 }
 
-def at(this: __StackFrame var*, index: i32): u8 var* var& {
+def at(this: __StackFrame var*, index: usize): u8 var* var& {
   (*this).data[index]
 }
 
@@ -55,7 +55,7 @@ def del(this: __StackFrame var*) {
  * stack related stuffs
  */
 public def newStack(): Stack {
-  [Stack] {newStackFrame(null as __StackFrame var*), 0}
+  [Stack] {newStackFrame(null as __StackFrame var*), 0 as usize}
 }
 
 public def del(this: Stack var&) {
@@ -63,33 +63,33 @@ public def del(this: Stack var&) {
 }
 
 public def empty(this: Stack&): bool {
-  this.__sp == 0 && (*this.__frames).next.empty()
+  this.__sp == 0 as usize && (*this.__frames).next.empty()
 }
 
 public def top(this: Stack var&): u8 var* var& {
-  if this.__sp == 0 {
-    (*this.__frames).next.at(STACK_FRAME_LEN - 1)
+  if this.__sp == 0 as usize {
+    (*this.__frames).next.at(STACK_FRAME_LEN - 1 as usize)
   }
   else {
-    this.__frames.at(this.__sp - 1)
+    this.__frames.at(this.__sp - 1 as usize)
   }
 }
 
 public def push(this: Stack var&, data: u8 var*) {
   this.__frames.at(this.__sp) = data
-  this.__sp += 1
+  this.__sp += 1 as usize
   if this.__sp == STACK_FRAME_LEN {
     this.__frames = this.__frames.push()
-    this.__sp == 0
+    this.__sp == 0 as usize
   }
 }
 
 public def pop(this: Stack var&): u8 var* {
-  if this.__sp == 0 {
+  if this.__sp == 0 as usize {
     this.__frames = this.__frames.pop()
     this.__sp = STACK_FRAME_LEN
   }
-  this.__sp -= 1
+  this.__sp -= 1 as usize
   let top = this.__frames.at(this.__sp)
   top
 }
@@ -97,5 +97,5 @@ public def pop(this: Stack var&): u8 var* {
 public def clear(this: Stack var&) {
   (*this.__frames).next.del()
   (*this.__frames).next = null as __StackFrame var*
-  this.__sp = 0
+  this.__sp = 0 as usize
 }

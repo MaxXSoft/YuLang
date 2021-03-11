@@ -11,15 +11,15 @@ public struct __KeyValue {
 // table of pairs
 public struct __KvPairTable {
   table: __KeyValue var* var*,
-  size: u32,
+  size: usize,
   // number of non-null elements in table
-  occupied: u32,
+  occupied: usize,
 }
 
 // table iterator
 public struct __KvPairTableIter {
   table: __KvPairTable*,
-  cur_index: u32,
+  cur_index: usize,
   cur_pair: __KeyValue var*,
 }
 
@@ -27,13 +27,13 @@ public struct __KvPairTableIter {
 public struct HashMap {
   __table: __KvPairTable,
   // size of hash map
-  __size: u32,
+  __size: usize,
   // hash function
-  __hash_func: (HashMap var&, u32): u32,
+  __hash_func: (HashMap var&, u32): usize,
 }
 
 // hash function
-public type HashFunc = (HashMap var&, u32): u32
+public type HashFunc = (HashMap var&, u32): usize
 
 
 /*
@@ -59,7 +59,7 @@ def findNextIndex(this: __KvPairTableIter var&) {
       this.cur_pair = (*this.table).table[this.cur_index]
       break
     }
-    this.cur_index += 1 as u32
+    this.cur_index += 1 as usize
   }
 }
 
@@ -69,7 +69,7 @@ public def next(this: __KvPairTableIter var&): __KeyValue var* {
   // find next key-value pair
   this.cur_pair = (*this.cur_pair).next
   if this.cur_pair == null as __KeyValue var* {
-    this.cur_index += 1 as u32
+    this.cur_index += 1 as usize
     this.findNextIndex()
   }
   cur
@@ -85,17 +85,17 @@ inline def last(this: __KvPairTableIter&): bool {
  * table related implementations
  */
 // internal constructor
-def newTable(size: u32): __KvPairTable {
+def newTable(size: usize): __KvPairTable {
   let mem_size = size * sizeof __KeyValue var*
   let table = malloc(mem_size) as __KeyValue var* var*
   memset(table as u8 var*, 0, mem_size)
-  [__KvPairTable] {table, size, 0 as u32}
+  [__KvPairTable] {table, size, 0 as usize}
 }
 
 // internal destructor
 def del(this: __KvPairTable var&) {
   var i = 0
-  while i as u32 < this.size {
+  while i as usize < this.size {
     var cur = this.table[i]
     while cur != null as __KeyValue var* {
       let next = (*cur).next
@@ -108,16 +108,16 @@ def del(this: __KvPairTable var&) {
 }
 
 // insert existing pair to table
-def insert(this: __KvPairTable var&, index: u32, pair: __KeyValue var*) {
+def insert(this: __KvPairTable var&, index: usize, pair: __KeyValue var*) {
   if this.table[index] == null as __KeyValue var* {
-    this.occupied += 1 as u32
+    this.occupied += 1 as usize
   }
   (*pair).next = this.table[index]
   this.table[index] = pair
 }
 
 // insert key-value pair to table
-def insert(this: __KvPairTable var&, index: u32,
+def insert(this: __KvPairTable var&, index: usize,
            key: u32, value: u8 var*) {
   // allocate a new key-value pair
   let pair = malloc(sizeof __KeyValue) as __KeyValue var*
@@ -128,7 +128,7 @@ def insert(this: __KvPairTable var&, index: u32,
 }
 
 // get value by key
-def get(this: __KvPairTable&, index: u32, key: u32): u8 var* {
+def get(this: __KvPairTable&, index: usize, key: u32): u8 var* {
   var cur = this.table[index]
   while cur != null as __KeyValue var* {
     if (*cur).key == key {
@@ -140,14 +140,14 @@ def get(this: __KvPairTable&, index: u32, key: u32): u8 var* {
 }
 
 // remove value by key
-def remove(this: __KvPairTable var&, index: u32, key: u32): bool {
+def remove(this: __KvPairTable var&, index: usize, key: u32): bool {
   var cur = this.table[index], last = this.table + index
   while cur != null as __KeyValue var* {
     if (*cur).key == key {
       (*last) = (*cur).next
       free(cur as u8*)
       if this.table[index] == null as __KeyValue var* {
-        this.occupied -= 1 as u32
+        this.occupied -= 1 as usize
       }
       return true
     }
@@ -159,7 +159,8 @@ def remove(this: __KvPairTable var&, index: u32, key: u32): bool {
 
 // get iterator
 def iter(this: __KvPairTable&): __KvPairTableIter {
-  var iter = [__KvPairTableIter] {&this, 0 as u32, null as __KeyValue var*}
+  var iter = [__KvPairTableIter]
+             {&this, 0 as usize, null as __KeyValue var*}
   iter.findNextIndex()
   iter
 }
@@ -169,15 +170,15 @@ def iter(this: __KvPairTable&): __KvPairTableIter {
  * hash map related implementations
  */
 // default table size
-let TABLE_SIZE = 32 as u32
+let TABLE_SIZE = 32 as usize
 
 // default hash function
-def defaultHasher(this: HashMap var&, key: u32): u32 {
-  key * 0x9e3779b9 as u32
+def defaultHasher(this: HashMap var&, key: u32): usize {
+  (key as usize) * (0x9e3779b97f4a7c15 as usize)
 }
 
 // call hash function and returns table index
-def hash(this: HashMap var&, key: u32): u32 {
+def hash(this: HashMap var&, key: u32): usize {
   (this.__hash_func)(this, key) % this.__table.size
 }
 
@@ -186,7 +187,7 @@ def hash(this: HashMap var&, key: u32): u32 {
 def rehash(this: HashMap var&): bool {
   if this.__table.occupied == this.__table.size {
     // allocate new table
-    let size = this.__table.size * 2 as u32
+    let size = this.__table.size * 2 as usize
     var table = newTable(size)
     // move key-value pairs to new table
     for kv in this.__table.iter() {
@@ -207,7 +208,7 @@ def rehash(this: HashMap var&): bool {
 
 // constructor (with parameters)
 public def newHashMap(hash_func: HashFunc): HashMap {
-  [HashMap] {newTable(TABLE_SIZE), 0 as u32, hash_func}
+  [HashMap] {newTable(TABLE_SIZE), 0 as usize, hash_func}
 }
 
 // constructor
@@ -220,12 +221,12 @@ public def del(this: HashMap var&) {
   this.__table.del()
 }
 
-inline def size(this: HashMap&): u32 {
+inline def size(this: HashMap&): usize {
   this.__size
 }
 
 inline def empty(this: HashMap&): bool {
-  this.__size == 0 as u32
+  this.__size == 0 as usize
 }
 
 // insert key value pair to hash map
@@ -236,7 +237,7 @@ public def insert(this: HashMap var&, key: u32, value: u8 var*): bool {
       hash_val = this.hash(key)
     }
     this.__table.insert(hash_val, key, value)
-    this.__size += 1 as u32
+    this.__size += 1 as usize
     true
   }
   else {
@@ -255,7 +256,7 @@ public def remove(this: HashMap var&, key: u32): bool {
   let hash_val = this.hash(key)
   let ret = this.__table.remove(hash_val, key)
   if ret {
-    this.__size -= 1 as u32
+    this.__size -= 1 as usize
   }
   ret
 }
@@ -264,7 +265,7 @@ public def remove(this: HashMap var&, key: u32): bool {
 public def clear(this: HashMap var&) {
   this.__table.del()
   this.__table = newTable(TABLE_SIZE)
-  this.__size = 0 as u32
+  this.__size = 0 as usize
 }
 
 // get iterator

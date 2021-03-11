@@ -5,8 +5,8 @@ import sys.string
 // definition of dynamic array
 public struct DynArray {
   __arr: i32 var*,
-  __size: i32,
-  __capacity: i32,
+  __size: usize,
+  __capacity: usize,
 }
 
 // definition of dynamic array iterator
@@ -17,13 +17,13 @@ public struct __DynArrayIter {
 
 
 // initial capacity of dynamic array
-let INIT_CAPACITY = 32
+let INIT_CAPACITY = 32 as usize
 
 // perform array memory reallocation if is necessary
 def reallocArrayMem(this: DynArray var&) {
   if this.__size > this.__capacity {
-    this.__capacity *= 2
-    let new_cap = (this.__capacity as u32) * sizeof i32
+    this.__capacity *= 2 as usize
+    let new_cap = (this.__capacity as usize) * sizeof i32
     this.__arr = realloc(this.__arr as u8*, new_cap) as i32 var*
   }
 }
@@ -32,21 +32,21 @@ def reallocArrayMem(this: DynArray var&) {
 // make a new dynamic array
 public def newDynArray(): DynArray {
   var da: DynArray
-  da.__arr = malloc((INIT_CAPACITY as u32) * sizeof i32) as i32 var*
-  da.__size = 0
+  da.__arr = malloc((INIT_CAPACITY) * sizeof i32) as i32 var*
+  da.__size = 0 as usize
   da.__capacity = INIT_CAPACITY
   da
 }
 
 // make a new dynamic array with count copies of elements with data
-public def newDynArray(count: i32, data: i32): DynArray {
+public def newDynArray(count: usize, data: i32): DynArray {
   var da: DynArray
-  da.__arr = malloc((count as u32) * sizeof i32) as i32 var*
-  da.__size = 0
+  da.__arr = malloc(count * sizeof i32) as i32 var*
+  da.__size = 0 as usize
   da.__capacity = count
   while da.__size < count {
     da.__arr[da.__size] = data
-    da.__size += 1
+    da.__size += 1 as usize
   }
   da
 }
@@ -54,25 +54,25 @@ public def newDynArray(count: i32, data: i32): DynArray {
 // release current dynamic array
 public def del(this: DynArray var&) {
   free(this.__arr as u8*)
-  this.__size = 0
-  this.__capacity = 0
+  this.__size = 0 as usize
+  this.__capacity = 0 as usize
 }
 
 // make a copy of current dynamic array
 public def clone(this: DynArray&): DynArray {
   var da: DynArray
-  da.__arr = malloc((this.__capacity as u32) * sizeof i32) as i32 var*
+  da.__arr = malloc((this.__capacity as usize) * sizeof i32) as i32 var*
   da.__size = this.__size
   da.__capacity = this.__capacity
   memcpy(da.__arr as u8 var*, this.__arr as u8*,
-         (da.__size as u32) * sizeof i32)
+         (da.__size as usize) * sizeof i32)
   da
 }
 
 // copy operator
 public def =(this: DynArray var&, that: DynArray&) {
   free(this.__arr as u8*)
-  this.__arr = malloc((that.__capacity as u32) * sizeof i32) as i32 var*
+  this.__arr = malloc((that.__capacity as usize) * sizeof i32) as i32 var*
   this.__size = that.__size
   this.__capacity = that.__capacity
 }
@@ -95,7 +95,7 @@ public def front(this: DynArray&): i32 {
 
 // get the last element
 public def back(this: DynArray&): i32 {
-  this.__arr[this.__size - 1]
+  this.__arr[this.__size - 1 as usize]
 }
 
 // direct access to the underlying array
@@ -128,40 +128,40 @@ public def empty(this: DynArray&): bool {
 }
 
 // get the length of current dynamic array
-public def size(this: DynArray&): i32 {
+public def size(this: DynArray&): usize {
   this.__size
 }
 
 // get the capacity of current dynamic array
-public def capacity(this: DynArray&): i32 {
+public def capacity(this: DynArray&): usize {
   this.__capacity
 }
 
 
 // clear current dynamic array
 public def clear(this: DynArray var&) {
-  this.__size = 0
+  this.__size = 0 as usize
 }
 
 // push an element to the end of array
 public def push(this: DynArray var&, data: i32) {
   // increase length
-  this.__size += 1
+  this.__size += 1 as usize
   // check if need to reallocate
   this.reallocArrayMem()
   // update array
-  this.__arr[this.__size - 1] = data
+  this.__arr[this.__size - 1 as usize] = data
 }
 
 // pop the last element of array
 public def pop(this: DynArray var&): i32 {
-  let last = this.__arr[this.__size - 1]
-  this.__size -= 1
+  let last = this.__arr[this.__size - 1 as usize]
+  this.__size -= 1 as usize
   last
 }
 
 // change the number of elements stored, use 'data' as appended value
-public def resize(this: DynArray var&, size: i32, data: i32) {
+public def resize(this: DynArray var&, size: usize, data: i32) {
   // update length
   let old_len = this.__size
   this.__size = size
@@ -172,32 +172,32 @@ public def resize(this: DynArray var&, size: i32, data: i32) {
     var i = old_len
     while i < size {
       this.__arr[i] = data
-      i += 1
+      i += 1 as usize
     }
   }
 }
 
 // change the number of elements stored
-public def resize(this: DynArray var&, size: i32) {
+public def resize(this: DynArray var&, size: usize) {
   this.resize(size, 0)
 }
 
 
 // perform 'map' operation
 public def map(this: DynArray var&, op: (i32): i32) {
-  var i = 0
+  var i = 0 as usize
   while i < this.__size {
     this.__arr[i] = op(this.__arr[i])
-    i += 1
+    i += 1 as usize
   }
 }
 
 // perform 'reduce' operation
 public def reduce(this: DynArray var&, op: (i32, i32): i32): i32 {
-  var last = this.__arr[0], i = 1
+  var last = this.__arr[0], i = 1 as usize
   while i < this.__size {
     last = op(last, this.__arr[i])
-    i += 1
+    i += 1 as usize
   }
   last
 }
