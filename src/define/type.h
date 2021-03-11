@@ -115,8 +115,8 @@ class PrimType : public BaseType {
  public:
   enum class Type {
     Void, Null,
-    Int8, Int16, Int32, Int64,
-    UInt8, UInt16, UInt32, UInt64,
+    Int8, Int16, Int32, Int64, ISize,
+    UInt8, UInt16, UInt32, UInt64, USize,
     Bool, Float32, Float64,
   };
 
@@ -131,12 +131,12 @@ class PrimType : public BaseType {
   bool IsInteger() const override {
     auto t = static_cast<int>(type_);
     return t >= static_cast<int>(Type::Int8) &&
-           t <= static_cast<int>(Type::UInt64);
+           t <= static_cast<int>(Type::USize);
   }
   bool IsUnsigned() const override {
     auto t = static_cast<int>(type_);
     return t >= static_cast<int>(Type::UInt8) &&
-           t <= static_cast<int>(Type::UInt64);
+           t <= static_cast<int>(Type::USize);
   }
   bool IsFloat() const override {
     return type_ == Type::Float32 || type_ == Type::Float64;
@@ -670,10 +670,12 @@ inline TypePtr MakePrimType(Keyword key, bool is_right) {
     case Keyword::Int16: type = Type::Int16; break;
     case Keyword::Int32: type = Type::Int32; break;
     case Keyword::Int64: type = Type::Int64; break;
+    case Keyword::ISize: type = Type::ISize; break;
     case Keyword::UInt8: type = Type::UInt8; break;
     case Keyword::UInt16: type = Type::UInt16; break;
     case Keyword::UInt32: type = Type::UInt32; break;
     case Keyword::UInt64: type = Type::UInt64; break;
+    case Keyword::USize: type = Type::USize; break;
     case Keyword::Bool: type = Type::Bool; break;
     case Keyword::Float32: type = Type::Float32; break;
     case Keyword::Float64: type = Type::Float64; break;

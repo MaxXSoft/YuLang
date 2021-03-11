@@ -43,6 +43,7 @@ bool PrimType::IsIdentical(const TypePtr &type) const {
   if (IsVoid() && type->IsVoid()) return true;
   if (IsNull() && type->IsNull()) return true;
   if (IsInteger() && type->IsInteger()) {
+    // TODO: distinction between pointer-sized types and integer types?
     return IsUnsigned() == type->IsUnsigned() &&
            GetSize() == type->GetSize();
   }
@@ -58,7 +59,7 @@ std::size_t PrimType::GetSize() const {
     case Type::Int16: case Type::UInt16: return 2;
     case Type::Int32: case Type::UInt32: case Type::Float32: return 4;
     case Type::Int64: case Type::UInt64: case Type::Float64: return 8;
-    case Type::Null: return ptr_size();
+    case Type::Null: case Type::ISize: case Type::USize: return ptr_size();
     default: return 0;
   }
 }
@@ -69,10 +70,12 @@ std::string PrimType::GetTypeId() const {
     case Type::Int16: return "i16";
     case Type::Int32: return "i32";
     case Type::Int64: return "i64";
+    case Type::ISize: return "isize";
     case Type::UInt8: return "u8";
     case Type::UInt16: return "u16";
     case Type::UInt32: return "u32";
     case Type::UInt64: return "u64";
+    case Type::USize: return "usize";
     case Type::Bool: return "bool";
     case Type::Float32: return "f32";
     case Type::Float64: return "f64";
