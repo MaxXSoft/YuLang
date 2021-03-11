@@ -9,7 +9,7 @@ Yu (羽) is a simple system programming language.
 
 ## Documentations
 
-* Tutorial: [中文版 (GitHub)](https://maxxsoft.github.io/YuLang-doc/tutorial/zh-cn/), [中文版 (Gitee)](https://maxxsoft.gitee.io/yulang-doc/tutorial/zh-cn/).
+* Tutorial: [简体中文版 (GitHub)](https://maxxsoft.github.io/YuLang-doc/tutorial/zh-cn/), [简体中文版 (Gitee)](https://maxxsoft.gitee.io/yulang-doc/tutorial/zh-cn/).
 
 Visit [YuLang-doc](https://github.com/MaxXSoft/YuLang-doc) for more details.
 
@@ -164,8 +164,8 @@ null_ptr  ::= "null";
 val_init  ::= "[" type "]" "{" [expr {"," expr} [","]] "}";
 
 type      ::= (prim_type | id | pointer | array | ref | func) ["volatile"];
-prim_type ::= "i8"  | "i16" | "i32" | "i64" | "u8"  | "u16"
-            | "u32" | "u64" | "f32" | "f64" | "bool";
+prim_type ::= "i8"  | "i16" | "i32"   | "i64" | "isize" | "u8"  | "u16"
+            | "u32" | "u64" | "usize" | "f32" | "f64" | "bool";
 pointer   ::= type ["var"] "*";
 array     ::= type "[" expr "]";
 ref       ::= type ["var"] "&";
