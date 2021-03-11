@@ -798,7 +798,7 @@ TypePtr Analyzer::AnalyzeOn(UnaryAST &ast) {
       break;
     }
     case UnaryOp::SizeOf: {
-      ret = MakePrimType(Keyword::UInt32, true);
+      ret = MakePrimType(Keyword::USize, true);
       break;
     }
     default: assert(false); return nullptr;
