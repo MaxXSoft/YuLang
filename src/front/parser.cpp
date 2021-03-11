@@ -877,9 +877,10 @@ ASTPtr Parser::ParseValType() {
 ASTPtr Parser::ParsePrimType() {
   switch (lexer()->key_val()) {
     case Keyword::Int8: case Keyword::Int16: case Keyword::Int32:
-    case Keyword::Int64: case Keyword::UInt8: case Keyword::UInt16:
-    case Keyword::UInt32: case Keyword::UInt64: case Keyword::Float32:
-    case Keyword::Float64: case Keyword::Bool: break;
+    case Keyword::Int64: case Keyword::ISize: case Keyword::UInt8:
+    case Keyword::UInt16: case Keyword::UInt32: case Keyword::UInt64:
+    case Keyword::USize: case Keyword::Float32: case Keyword::Float64:
+    case Keyword::Bool: break;
     default: return LogError("expected primitive type keywords");
   }
   auto ast = MakeAST<PrimTypeAST>(lexer()->key_val());
