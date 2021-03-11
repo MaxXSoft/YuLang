@@ -10,6 +10,7 @@
   e(Struct, "struct") e(Enum, "enum") e(Asm, "asm") \
   e(Int8, "i8") e(Int16, "i16") e(Int32, "i32") e(Int64, "i64") \
   e(UInt8, "u8") e(UInt16, "u16") e(UInt32, "u32") e(UInt64, "u64") \
+  e(ISize, "isize") e(USize, "usize") \
   e(Bool, "bool") e(Float32, "f32") e(Float64, "f64") \
   e(True, "true") e(False, "false") e(Null, "null") \
   e(Import, "import") e(Public, "public") e(Extern, "extern") \
