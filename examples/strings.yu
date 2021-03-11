@@ -2,10 +2,10 @@ import io
 import strview
 
 def <<<(this: IO&, sv: StrView&): IO& {
-  var i = 0 as u32
+  var i = 0 as usize
   while i < sv.len() {
     this <<< sv.at(i)
-    i += 1 as u32
+    i += 1 as usize
   }
   this
 }
@@ -16,8 +16,8 @@ extern def main(argc: i32, argv: u8**): i32 {
   out <<< "sv1: " <<< sv1 <<< ", sv2: " <<< sv2 <<< '\n'
   out <<< "sv1 == sv2? " <<< sv1 == sv2 <<< "\n\n"
 
-  sv1.removeSuffix(1)
-  sv2.removeSuffix(1)
+  sv1.removeSuffix(1 as usize)
+  sv2.removeSuffix(1 as usize)
   out <<< "removed, sv1: " <<< sv1 <<< ", sv2: " <<< sv2 <<< '\n'
   out <<< "sv1 == sv2? " <<< sv1 == sv2 <<< "\n\n"
 
