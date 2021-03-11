@@ -1,7 +1,7 @@
 // dynamic memory management
-extern declare malloc: (u32): u8 var*
-extern declare calloc: (u32, u32): u8 var*
-extern declare realloc: (u8*, u32): u8 var*
+extern declare malloc: (usize): u8 var*
+extern declare calloc: (usize, usize): u8 var*
+extern declare realloc: (u8*, usize): u8 var*
 extern declare free: (u8*)
 
 // program support utilities
