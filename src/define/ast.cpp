@@ -441,10 +441,12 @@ void PrimTypeAST::Dump(std::ostream &os) const {
     case Keyword::Int16:    os << "int16_t";  break;
     case Keyword::Int32:    os << "int32_t";  break;
     case Keyword::Int64:    os << "int64_t";  break;
+    case Keyword::ISize:    os << "ssize_t";  break;
     case Keyword::UInt8:    os << "uint8_t";  break;
     case Keyword::UInt16:   os << "uint16_t"; break;
     case Keyword::UInt32:   os << "uint32_t"; break;
     case Keyword::UInt64:   os << "uint64_t"; break;
+    case Keyword::USize:    os << "size_t";   break;
     case Keyword::Float32:  os << "float";    break;
     case Keyword::Float64:  os << "double";   break;
     case Keyword::Bool:     os << "bool";     break;
