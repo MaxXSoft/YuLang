@@ -371,11 +371,13 @@ ASTPtr Parser::ParseBlockLine() {
 }
 
 ASTPtr Parser::ParseBlockStatement() {
-  // get normal statement
-  if (!IsTokenKeyword(Keyword::Def) && !IsTokenKeyword(Keyword::Import)) {
-    auto stmt = GetStatement(Property::None);
-    if (stmt) return stmt;
+  // check if is invalid statement
+  if (IsTokenKeyword(Keyword::Def) || IsTokenKeyword(Keyword::Import)) {
+    return LogError("invalid in-block statement");
   }
+  // get normal statement
+  auto stmt = GetStatement(Property::None);
+  if (stmt) return stmt;
   // parse other in-block statements
   if (cur_token_ == Token::Keyword) {
     switch (lexer()->key_val()) {
