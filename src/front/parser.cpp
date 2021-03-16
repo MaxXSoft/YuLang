@@ -372,7 +372,7 @@ ASTPtr Parser::ParseBlockLine() {
 
 ASTPtr Parser::ParseBlockStatement() {
   // get normal statement
-  if (!IsTokenKeyword(Keyword::Def)) {
+  if (!IsTokenKeyword(Keyword::Def) && !IsTokenKeyword(Keyword::Import)) {
     auto stmt = GetStatement(Property::None);
     if (stmt) return stmt;
   }
