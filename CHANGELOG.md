@@ -21,6 +21,7 @@ All notable changes to the YuLang compiler will be documented in this file.
 * Bugs about counting down in standard library module `range`.
 * The process of handling reference types on `VarLetElemAST`.
 * Value evaluation process on `IntAST`.
+* Bugs about generating code on global constructor and global constant string.
 
 ## 0.0.4 - 2021-03-05
 
