@@ -518,8 +518,12 @@ void LLVMGen::GenerateOn(ConstFloatSSA &ssa) {
 }
 
 void LLVMGen::GenerateOn(ConstStrSSA &ssa) {
+#if LLVM_VERSION_MAJOR >= 11
   auto val =
       builder_.CreateGlobalStringPtr(ssa.str(), "", 0, module_.get());
+#else
+  auto val = builder_.CreateGlobalStringPtr(ssa.str());
+#endif
   SetVal(ssa, val);
 }
 
