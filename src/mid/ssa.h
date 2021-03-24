@@ -269,6 +269,7 @@ class GlobalVarSSA : public User {
   void GenerateCode(back::CodeGen &gen) override;
 
   // setters
+  void set_is_var(bool is_var) { is_var_ = is_var; }
   void set_init(const SSAPtr &init) { (*this)[0].set_value(init); }
 
   // getters
