@@ -71,9 +71,8 @@ void LLVMGen::SetVal(mid::Value &ssa, llvm::Value *val) {
 void LLVMGen::CreateCtorArray(llvm::Function *ctor) {
   using namespace llvm;
   auto type = ctor->getType();
-  auto global_ty =
-      llvm::StructType::get(builder_.getInt32Ty(), type->getPointerTo(),
-                            builder_.getInt8PtrTy());
+  auto global_ty = llvm::StructType::get(builder_.getInt32Ty(), type,
+                                         builder_.getInt8PtrTy());
   auto global_arr_ty = llvm::ArrayType::get(global_ty, 1);
   auto global_init =
       ConstantStruct::get(global_ty, builder_.getInt32(65535), ctor,
@@ -519,7 +518,8 @@ void LLVMGen::GenerateOn(ConstFloatSSA &ssa) {
 }
 
 void LLVMGen::GenerateOn(ConstStrSSA &ssa) {
-  auto val = builder_.CreateGlobalStringPtr(ssa.str());
+  auto val =
+      builder_.CreateGlobalStringPtr(ssa.str(), "", 0, module_.get());
   SetVal(ssa, val);
 }
 
