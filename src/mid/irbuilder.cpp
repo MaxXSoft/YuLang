@@ -192,6 +192,10 @@ SSAPtr IRBuilder::GenerateOn(VarLetElemAST &ast) {
         var->set_init(var_init);
       }
       else {
+        // set as variable since constructor will initialize it
+        var->set_is_var(true);
+        // generate zero initializer
+        var->set_init(module_.GetZero(type));
         // generate initialization instructions
         auto ctor = module_.EnterGlobalCtor();
         module_.CreateInit(init->GenerateIR(*this), var,
