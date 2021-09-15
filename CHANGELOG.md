@@ -2,7 +2,7 @@
 
 All notable changes to the YuLang compiler will be documented in this file.
 
-## Unreleased
+## 0.0.5 - 2021-09-15
 
 ### Added
 
@@ -22,6 +22,7 @@ All notable changes to the YuLang compiler will be documented in this file.
 * The process of handling reference types on `VarLetElemAST`.
 * Value evaluation process on `IntAST`.
 * Bugs about generating code on global constructor and global constant string.
+* Bugs about casting integers to booleans.
 
 ## 0.0.4 - 2021-03-05
 
