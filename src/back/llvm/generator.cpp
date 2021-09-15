@@ -308,7 +308,14 @@ void LLVMGen::GenerateOn(CastSSA &ssa) {
                               : builder_.CreateSExt(val, type);
     }
     else if (src->GetSize() > dst->GetSize()) {
-      ret = builder_.CreateTrunc(val, type);
+      // the value should not be truncated if casted to a boolean
+      if (dst->IsBool()) {
+        auto zero = builder_.getIntN(src->GetSize() * 8, 0);
+        ret = builder_.CreateICmpNE(val, zero);
+      }
+      else {
+        ret = builder_.CreateTrunc(val, type);
+      }
     }
     else {
       // do nothing
