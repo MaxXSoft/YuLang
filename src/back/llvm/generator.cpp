@@ -184,7 +184,8 @@ llvm::Type *LLVMGen::GeneratePointerType(const TypePtr &type) {
 
 void LLVMGen::GenerateOn(LoadSSA &ssa) {
   auto ptr = GetVal(ssa[0].value());
-  auto load = builder_.CreateLoad(ptr, ssa.type()->IsVola());
+  auto load = builder_.CreateLoad(ptr->getType()->getPointerElementType(),
+                                  ptr, ssa.type()->IsVola());
 #if LLVM_VERSION_MAJOR >= 10
   load->setAlignment(llvm::Align(ssa.type()->GetAlignSize()));
 #else
@@ -209,13 +210,15 @@ void LLVMGen::GenerateOn(StoreSSA &ssa) {
 void LLVMGen::GenerateOn(AccessSSA &ssa) {
   auto ptr = GetVal(ssa[0].value());
   auto index = GetVal(ssa[1].value());
+  auto ty = ptr->getType()->getPointerElementType();
   llvm::Value *val = nullptr;
   if (ssa.acc_type() == AccessSSA::AccessType::Pointer) {
-    val = builder_.CreateInBoundsGEP(ptr, index);
+    val = builder_.CreateInBoundsGEP(ty, ptr, index);
   }
   else {
     assert(ssa.acc_type() == AccessSSA::AccessType::Element);
-    val = builder_.CreateInBoundsGEP(ptr, {builder_.getInt32(0), index});
+    val =
+        builder_.CreateInBoundsGEP(ty, ptr, {builder_.getInt32(0), index});
   }
   SetVal(ssa, val);
 }

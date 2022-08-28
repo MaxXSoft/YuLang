@@ -1,6 +1,7 @@
 #include "back/llvm/objgen.h"
 
 #include <system_error>
+#include <memory>
 #include <cassert>
 
 #include "llvm/Transforms/IPO/PassManagerBuilder.h"
@@ -11,6 +12,7 @@
 #include "llvm/Support/Host.h"
 #include "llvm/Target/TargetOptions.h"
 #include "llvm/Support/FileSystem.h"
+#include "llvm/Support/ToolOutputFile.h"
 #include "llvm/IR/Type.h"
 #include "llvm/Config/llvm-config.h"
 
@@ -32,7 +34,14 @@ bool ObjectGen::GenerateTargetCode(const std::string &file,
                                    CodeGenFileType type) {
   // open object file
   std::error_code ec;
-  llvm::raw_fd_ostream raw(file, ec, llvm::sys::fs::F_None);
+#if LLVM_VERSION_MAJOR >= 10
+  auto flags = llvm::sys::fs::OF_None;
+  if (type == CodeGenFileType::Asm) flags |= llvm::sys::fs::OF_Text;
+#else
+  auto flags = llvm::sys::fs::F_None;
+  if (type == CodeGenFileType::Asm) flags |= llvm::sys::fs::F_Text;
+#endif
+  auto out = std::make_unique<llvm::ToolOutputFile>(file, ec, flags);
   if (ec) {
     Logger::LogRawError("failed to open output file");
     Logger::LogRawError(ec.message());
@@ -51,12 +60,12 @@ bool ObjectGen::GenerateTargetCode(const std::string &file,
 #endif
   // compile to object file
   llvm::legacy::PassManager pass;
-  if (machine_->addPassesToEmitFile(pass, raw, nullptr, file_type)) {
+  if (machine_->addPassesToEmitFile(pass, out->os(), nullptr, file_type)) {
     Logger::LogRawError("target machine cannot emit file of this type");
     return false;
   }
   pass.run(*module_);
-  raw.flush();
+  out->keep();
   return true;
 }
 
