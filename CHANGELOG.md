@@ -2,6 +2,12 @@
 
 All notable changes to the YuLang compiler will be documented in this file.
 
+## 0.0.6 - 2022-08-28
+
+### Changed
+
+* Supported LLVM 12, 13, 14 and 15.
+
 ## 0.0.5 - 2021-09-15
 
 ### Added
