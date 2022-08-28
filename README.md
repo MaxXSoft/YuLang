@@ -86,7 +86,7 @@ extern def main(argc: i32, argv: u8**): i32 {
 Before building YuLang compiler, please make sure you have installed the following dependencies:
 
 * `cmake` 3.13 or later
-* `llvm` 8.0 or later
+* `llvm` 10.0 or later
 * C++ compiler supporting C++17
 
 You may want to check the toolchain configuration in `toolchain.mk`. Then you can build this repository by executing the following command lines:
