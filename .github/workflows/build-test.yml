@@ -18,7 +18,7 @@ jobs:
     timeout-minutes: 30
     strategy:
       matrix:
-        llvm: ['9', '10', '11', '12', '13']
+        llvm: ['10', '11', '12', '13', '14', '15']
         config:
         - {cc: gcc-9, cxx: g++-9}
         - {cc: gcc-10, cxx: g++-10}
