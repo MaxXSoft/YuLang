@@ -213,7 +213,7 @@ void LLVMGen::GenerateOn(StoreSSA &ssa) {
 void LLVMGen::GenerateOn(AccessSSA &ssa) {
   auto ptr = GetVal(ssa[0].value());
   auto index = GetVal(ssa[1].value());
-  auto ty = GenerateType(ssa.type()->GetDerefedType());
+  auto ty = GenerateType(ssa[0].value()->type()->GetDerefedType());
   llvm::Value *val = nullptr;
   if (ssa.acc_type() == AccessSSA::AccessType::Pointer) {
     val = builder_.CreateInBoundsGEP(ty, ptr, index);
@@ -371,7 +371,8 @@ void LLVMGen::GenerateOn(CallSSA &ssa) {
     args.push_back(GetVal(ssa[i].value()));
   }
   // get function type
-  auto func_ty = llvm::dyn_cast<llvm::Function>(callee)->getFunctionType();
+  auto func_ty = llvm::dyn_cast<llvm::FunctionType>(
+      GenerateFuncType(ssa[0].value()->type()));
   // create call
   auto call = builder_.CreateCall(func_ty, callee, args);
   SetVal(ssa, call);
