@@ -371,9 +371,7 @@ void LLVMGen::GenerateOn(CallSSA &ssa) {
     args.push_back(GetVal(ssa[i].value()));
   }
   // get function type
-  auto ptr_ty = callee->getType();
-  ptr_ty = llvm::dyn_cast<llvm::PointerType>(ptr_ty)->getElementType();
-  auto func_ty = llvm::dyn_cast<llvm::FunctionType>(ptr_ty);
+  auto func_ty = llvm::dyn_cast<llvm::Function>(callee)->getFunctionType();
   // create call
   auto call = builder_.CreateCall(func_ty, callee, args);
   SetVal(ssa, call);
@@ -406,9 +404,7 @@ void LLVMGen::GenerateOn(FunctionSSA &ssa) {
   // get linkage type
   auto link = GetLinkType(ssa.link());
   // get function type
-  auto func_ptr_ty = GenerateType(ssa.type());
-  func_ptr_ty = dyn_cast<llvm::PointerType>(func_ptr_ty)->getElementType();
-  auto type = dyn_cast<FunctionType>(func_ptr_ty);
+  auto type = dyn_cast<FunctionType>(GenerateFuncType(ssa.type()));
   // create function declaration
   auto func = Function::Create(type, link, ssa.name(), module_.get());
   SetVal(ssa, func);
@@ -417,7 +413,7 @@ void LLVMGen::GenerateOn(FunctionSSA &ssa) {
   unsigned int arg_index = AttributeList::AttrIndex::FirstArgIndex;
   for (const auto &i : args) {
     if (i->IsReference()) {
-      func->addDereferenceableAttr(arg_index, i->GetSize());
+      func->addDereferenceableParamAttr(arg_index, i->GetSize());
     }
     arg_index++;
   }
@@ -425,7 +421,7 @@ void LLVMGen::GenerateOn(FunctionSSA &ssa) {
   auto ret = ssa.org_type()->GetReturnType(args);
   if (ret->IsReference()) {
     auto index = AttributeList::AttrIndex::ReturnIndex;
-    func->addDereferenceableAttr(index, ret->GetSize());
+    func->addDereferenceableParamAttr(index, ret->GetSize());
   }
   // register global ctor
   if (ssa.link() == LinkageTypes::GlobalCtor) CreateCtorArray(func);
