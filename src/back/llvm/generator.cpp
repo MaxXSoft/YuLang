@@ -16,26 +16,26 @@ using namespace yulang::back::ll;
 
 namespace {
 
-enum class TypeCategory {
+enum class TypeKind {
   Int, Float, Ptr,
 };
 
-// get category of specific type
+// get kind of specific type
 // used when generating type casting
-inline TypeCategory GetTypeCategory(const TypePtr &type) {
+inline TypeKind GetTypeKind(const TypePtr &type) {
   if (type->IsInteger() || type->IsBool()) {
-    return TypeCategory::Int;
+    return TypeKind::Int;
   }
   else if (type->IsFloat()) {
-    return TypeCategory::Float;
+    return TypeKind::Float;
   }
   else if (type->IsNull() || type->IsFunction() || type->IsArray() ||
            type->IsPointer()) {
-    return TypeCategory::Ptr;
+    return TypeKind::Ptr;
   }
   else {
     assert(false);
-    return TypeCategory::Int;
+    return TypeKind::Int;
   }
 }
 
@@ -302,9 +302,9 @@ void LLVMGen::GenerateOn(CastSSA &ssa) {
   // generate type casting
   llvm::Value *ret = nullptr;
   auto type = GenerateType(dst);
-  auto src_ct = GetTypeCategory(src);
-  auto dst_ct = GetTypeCategory(dst);
-  if (src_ct == TypeCategory::Int && dst_ct == TypeCategory::Int) {
+  auto src_kind = GetTypeKind(src);
+  auto dst_kind = GetTypeKind(dst);
+  if (src_kind == TypeKind::Int && dst_kind == TypeKind::Int) {
     // int -> int
     if (src->GetSize() < dst->GetSize()) {
       ret = src->IsUnsigned() ? builder_.CreateZExt(val, type)
@@ -325,32 +325,31 @@ void LLVMGen::GenerateOn(CastSSA &ssa) {
       ret = val;
     }
   }
-  else if (src_ct == TypeCategory::Int && dst_ct == TypeCategory::Float) {
+  else if (src_kind == TypeKind::Int && dst_kind == TypeKind::Float) {
     // int -> float
     ret = src->IsUnsigned() ? builder_.CreateUIToFP(val, type)
                             : builder_.CreateSIToFP(val, type);
   }
-  else if (src_ct == TypeCategory::Float && dst_ct == TypeCategory::Int) {
+  else if (src_kind == TypeKind::Float && dst_kind == TypeKind::Int) {
     // float -> int
     ret = dst->IsUnsigned() ? builder_.CreateFPToUI(val, type)
                             : builder_.CreateFPToSI(val, type);
   }
-  else if (src_ct == TypeCategory::Float &&
-           dst_ct == TypeCategory::Float) {
+  else if (src_kind == TypeKind::Float && dst_kind == TypeKind::Float) {
     // float -> float
     ret = src->GetSize() < dst->GetSize()
               ? builder_.CreateFPExt(val, type)
               : builder_.CreateFPTrunc(val, type);
   }
-  else if (src_ct == TypeCategory::Ptr && dst_ct == TypeCategory::Ptr) {
+  else if (src_kind == TypeKind::Ptr && dst_kind == TypeKind::Ptr) {
     // ptr -> ptr
     ret = builder_.CreateBitCast(val, type);
   }
-  else if (src_ct == TypeCategory::Ptr && dst_ct == TypeCategory::Int) {
+  else if (src_kind == TypeKind::Ptr && dst_kind == TypeKind::Int) {
     // ptr -> int
     ret = builder_.CreatePtrToInt(val, type);
   }
-  else if (src_ct == TypeCategory::Int && dst_ct == TypeCategory::Ptr) {
+  else if (src_kind == TypeKind::Int && dst_kind == TypeKind::Ptr) {
     // int -> ptr
     ret = builder_.CreateIntToPtr(val, type);
   }
