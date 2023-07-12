@@ -93,7 +93,7 @@ llvm::Type *LLVMGen::GenerateType(const TypePtr &type) {
     return GenerateStructType(type);
   }
   else if (type->IsFunction()) {
-    return GenerateFuncType(type);
+    return GenerateFuncPtrType(type);
   }
   else if (type->IsArray()) {
     return GenerateArrayType(type);
@@ -167,9 +167,12 @@ llvm::Type *LLVMGen::GenerateFuncType(const TypePtr &type) {
   for (const auto &i : *args) {
     params.push_back(GenerateType(i));
   }
-  // create function pointer
-  auto func = llvm::FunctionType::get(ret, params, false);
-  return func->getPointerTo();
+  // create function type
+  return llvm::FunctionType::get(ret, params, false);
+}
+
+llvm::Type *LLVMGen::GenerateFuncPtrType(const TypePtr &type) {
+  return llvm::PointerType::get(GenerateFuncType(type), 0);
 }
 
 llvm::Type *LLVMGen::GenerateArrayType(const TypePtr &type) {
