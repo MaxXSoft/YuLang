@@ -24,7 +24,6 @@ jobs:
         - {cc: gcc-10, cxx: g++-10}
         - {cc: gcc-11, cxx: g++-11}
         - {cc: gcc-12, cxx: g++-12}
-        - {cc: gcc-13, cxx: g++-13}
 
     steps:
     - name: Install LLVM and Clang
