@@ -4,6 +4,7 @@
 #include <memory>
 #include <cassert>
 
+#include "llvm/ADT/Optional.h"
 #include "llvm/Transforms/IPO/PassManagerBuilder.h"
 #include "llvm/IR/LegacyPassManager.h"
 #include "llvm/Transforms/IPO.h"
