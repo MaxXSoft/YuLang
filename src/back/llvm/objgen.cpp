@@ -8,13 +8,18 @@
 #include "llvm/IR/LegacyPassManager.h"
 #include "llvm/Transforms/IPO.h"
 #include "llvm/Support/TargetSelect.h"
-#include "llvm/Support/TargetRegistry.h"
 #include "llvm/Support/Host.h"
 #include "llvm/Target/TargetOptions.h"
 #include "llvm/Support/FileSystem.h"
 #include "llvm/Support/ToolOutputFile.h"
 #include "llvm/IR/Type.h"
 #include "llvm/Config/llvm-config.h"
+
+#if LLVM_VERSION_MAJOR >= 14
+#include "llvm/MC/TargetRegistry.h"
+#else
+#include "llvm/Support/TargetRegistry.h"
+#endif
 
 #include "front/logger.h"
 
@@ -77,7 +82,6 @@ void ObjectGen::RunOptimization() {
   builder.SizeLevel = 0;
   builder.Inliner = llvm::createFunctionInliningPass();
   builder.DisableUnrollLoops = false;
-  builder.DisableTailCalls = false;
   builder.LoopVectorize = true;
   builder.SLPVectorize = true;
   builder.populateModulePassManager(pm);
