@@ -411,7 +411,7 @@ void LLVMGen::GenerateOn(FunctionSSA &ssa) {
   SetVal(ssa, func);
   // create argument attributes
   auto args = *ssa.org_type()->GetArgsType();
-  unsigned int arg_index = AttributeList::AttrIndex::FirstArgIndex;
+  unsigned int arg_index = 0;
   for (const auto &i : args) {
     if (i->IsReference()) {
       func->addDereferenceableParamAttr(arg_index, i->GetSize());
@@ -421,8 +421,8 @@ void LLVMGen::GenerateOn(FunctionSSA &ssa) {
   // create return value attributes
   auto ret = ssa.org_type()->GetReturnType(args);
   if (ret->IsReference()) {
-    auto index = AttributeList::AttrIndex::ReturnIndex;
-    func->addDereferenceableParamAttr(index, ret->GetSize());
+    func->addRetAttr(llvm::Attribute::getWithDereferenceableBytes(
+        context_, ret->GetSize()));
   }
   // register global ctor
   if (ssa.link() == LinkageTypes::GlobalCtor) CreateCtorArray(func);
