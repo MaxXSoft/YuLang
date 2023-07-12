@@ -2,8 +2,8 @@ cmake_minimum_required(VERSION 3.13)
 project(YuLang VERSION "0.0.6")
 
 # # set compiler path
-# set(CMAKE_C_COMPILER "/usr/local/opt/gcc/bin/gcc-9")
-# set(CMAKE_CXX_COMPILER "/usr/local/opt/gcc/bin/g++-9")
+# set(CMAKE_C_COMPILER "/usr/local/opt/gcc/bin/gcc-13")
+# set(CMAKE_CXX_COMPILER "/usr/local/opt/gcc/bin/g++-13")
 # set(CMAKE_CXX_COMPILER_ID "GNU")
 
 # C++17 standard support
