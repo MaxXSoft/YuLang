@@ -421,10 +421,14 @@ void LLVMGen::GenerateOn(FunctionSSA &ssa) {
   // create return value attributes
   auto ret = ssa.org_type()->GetReturnType(args);
   if (ret->IsReference()) {
+    auto attrs = func->getAttributes();
+#if LLVM_VERSION_MAJOR >= 15
+    attrs = attrs.addDereferenceableRetAttr(context_, ret->GetSize());
+#else
     auto index = AttributeList::AttrIndex::ReturnIndex;
-    func->addAttributeAtIndex(index,
-                              llvm::Attribute::getWithDereferenceableBytes(
-                                  context_, ret->GetSize()));
+    attrs = attrs.addDereferenceableAttr(context_, index, ret->GetSize());
+#endif
+    func->setAttributes(attrs);
   }
   // register global ctor
   if (ssa.link() == LinkageTypes::GlobalCtor) CreateCtorArray(func);
