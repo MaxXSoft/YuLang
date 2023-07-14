@@ -14,7 +14,7 @@ else
 endif
 
 # compile toolchain prefix
-LLVM_HOME := /usr/local/opt/llvm/bin
+#LLVM_HOME := /usr/local/opt/llvm/bin
 
 # Yu compiler
 YUFLAGS := -Werror $(YU_OPT_ARG)
@@ -23,11 +23,12 @@ export YUC := $(YUC_BIN) $(YUFLAGS)
 
 # LLVM compiler
 LLCFLAGS := $(C_OPT_ARG) -filetype=obj
-export LLC := $(LLVM_HOME)/llc $(LLCFLAGS)
+export LLC := llc $(LLCFLAGS)
 
 # linker
+# Ubuntu needs -no-pie option
 LDFLAGS :=
-export LD := clang $(LDFLAGS)
+export LD := clang -no-pie $(LDFLAGS)
 
 # archiver
 ARFLAGS := ru

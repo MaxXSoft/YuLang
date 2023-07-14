@@ -44,7 +44,8 @@ file(GLOB_RECURSE SOURCES "src/*.cpp")
 # executable
 add_executable(yuc ${SOURCES})
 link_directories(${LLVM_LIBRARY_DIRS})
-target_link_libraries(yuc LLVM)
+# CentOS 8 need stdc++fs option
+target_link_libraries(yuc LLVM stdc++fs)
 
 # build Yu standard library and examples after generation
 add_custom_command(

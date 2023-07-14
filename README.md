@@ -87,6 +87,7 @@ Before building YuLang compiler, please make sure you have installed the followi
 
 * `cmake` 3.13 or later
 * `llvm` 10.0 or later
+* `llvm-devel` for CentOS/RedHat 8, provides the `llvm-config`
 * C++ compiler supporting C++17
 
 You may want to check the toolchain configuration in `toolchain.mk`. Then you can build this repository by executing the following command lines:
