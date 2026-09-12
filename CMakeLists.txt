@@ -57,16 +57,16 @@ if(BUILD_TESTING)
   find_package(Python3 REQUIRED COMPONENTS Interpreter)
   foreach(level RANGE 0 3)
     add_test(NAME llvm_backend.O${level}
-      COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/utils/test_backend.py
+      COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/backend/test_backend.py
               --yuc $<TARGET_FILE:yuc> --llvm-bin ${LLVM_TOOLS_BINARY_DIR}
               --cc ${CMAKE_C_COMPILER} "--sdk=${CMAKE_OSX_SYSROOT}"
-              --opt-level ${level})
+              --opt-level ${level} --work-dir ${CMAKE_BINARY_DIR}/test)
     set_tests_properties(llvm_backend.O${level} PROPERTIES
       TIMEOUT 120 LABELS backend)
   endforeach()
 
   file(GLOB EXAMPLE_OUTPUTS CONFIGURE_DEPENDS
-    "utils/output/*.out" "utils/output/*.regex")
+    "tests/example/output/*.out" "tests/example/output/*.regex")
   foreach(expected IN LISTS EXAMPLE_OUTPUTS)
     get_filename_component(example "${expected}" NAME_WE)
     if(expected MATCHES "\\.regex$")
@@ -74,13 +74,13 @@ if(BUILD_TESTING)
     else()
       set(check --expected)
     endif()
-    set(input "${CMAKE_SOURCE_DIR}/utils/input/${example}.in")
+    set(input "${CMAKE_SOURCE_DIR}/tests/example/input/${example}.in")
     set(input_args)
     if(EXISTS "${input}")
       list(APPEND input_args --input "${input}")
     endif()
     add_test(NAME example.${example}
-      COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/utils/test_example.py
+      COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/example/test_example.py
               --executable "${CMAKE_BINARY_DIR}/examples/${example}"
               ${check} "${expected}" ${input_args})
     set_tests_properties(example.${example} PROPERTIES

@@ -2,7 +2,6 @@
 """Exercise in-process LLVM emission, linking and execution at every -O level."""
 
 import argparse
-import os
 from pathlib import Path
 import subprocess
 import sys
@@ -21,24 +20,26 @@ def main():
     parser.add_argument("--cc", required=True)
     parser.add_argument("--sdk", default="")
     parser.add_argument("--opt-level", type=int, choices=range(4))
+    parser.add_argument(
+        "--work-dir", type=Path,
+        help="temporary directory parent (default: test next to yuc)")
     args = parser.parse_args()
     # Match the existing Linux build: LLVM's default relocation model is static.
     link_flags = ["-no-pie"] if sys.platform.startswith("linux") else []
-    root = Path(__file__).resolve().parent.parent
-    fixture = root / "tests/backend/zeros.yu"
+    fixtures = Path(__file__).resolve().parent
+    fixture = fixtures / "zeros.yu"
 
-    scratch = root / "debug"
-    scratch.mkdir(exist_ok=True)
+    scratch = args.work_dir or args.yuc.resolve().parent / "test"
+    scratch = scratch.resolve()
+    scratch.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="backend-", dir=scratch) as temporary:
         work = Path(temporary)
-        # Keep the compiler driver's own temporary files in the repository too.
-        os.environ["TMPDIR"] = str(work)
         compiler_driver = [args.cc]
         if args.sdk:
             sdk = run("xcrun", "--sdk", args.sdk, "--show-sdk-path")
             compiler_driver += ["-isysroot", sdk.stdout.decode().strip()]
         helper = work / "check_zeros.o"
-        run(*compiler_driver, "-c", root / "tests/backend/check_zeros.c", "-o", helper)
+        run(*compiler_driver, "-c", fixtures / "check_zeros.c", "-o", helper)
         levels = range(4) if args.opt_level is None else (args.opt_level,)
         for level in levels:
             compiler = (args.yuc, "-O", level, fixture)

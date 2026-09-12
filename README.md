@@ -122,13 +122,14 @@ level.
 
 The backend tests compile and run zero-initialization cases through object,
 assembly and LLVM IR output at all four optimization levels, and compare
-directly emitted objects against `llc`. Temporary test files, including
-compiler-driver intermediates, stay under the ignored `debug/` directory in
-the repository.
+directly emitted objects against `llc`. Temporary test files stay under
+`test/` in the CMake build directory (normally `build/test/`) and are removed
+after each run. The C compiler driver uses its normal temporary directory.
 
 CTest lists each backend optimization level and each example separately.
-The eight fixed-output examples use the existing files in `utils/output` and
-optional standard input from `utils/input`; `rand` checks its output format.
+The eight fixed-output examples use the files in `tests/example/output` and
+optional standard input from `tests/example/input`; `rand` checks its output
+format.
 Every example must exit successfully. Use `ctest --test-dir build -L examples`
 to run only examples, `-L backend` for backend tests, or `-R example.io_test`
 to select one test. There is no separate shell test runner.
