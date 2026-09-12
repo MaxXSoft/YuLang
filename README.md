@@ -140,6 +140,16 @@ build/yuc -I lib -O 2 -ot obj examples/reduce.yu -o build/reduce.o
 clang build/reduce.o -Lbuild -lyu -o build/reduce
 ```
 
+Use clang-format 23 for C/C++ formatting. CI checks all tracked project source
+and header files against `.clang-format`; submodules and build artifacts are
+excluded. To run the same check locally (use `clang-format-23` if your system
+installs the tool under a versioned name):
+
+```sh
+git ls-files -z -- '*.c' '*.cc' '*.cpp' '*.cxx' '*.h' '*.hh' '*.hpp' '*.hxx' '*.inc' |
+  xargs -0 clang-format --style=file --dry-run --Werror --fail-on-incomplete-format
+```
+
 ## EBNF of Yu
 
 ```ebnf

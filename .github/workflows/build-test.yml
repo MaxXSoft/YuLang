@@ -32,6 +32,15 @@ jobs:
       with:
         submodules: recursive
 
+    - name: Check C/C++ Formatting
+      if: matrix.llvm == '23'
+      shell: bash
+      run: |
+        sudo apt-get install -y clang-format-23
+        clang-format-23 --version
+        git ls-files -z -- '*.c' '*.cc' '*.cpp' '*.cxx' '*.h' '*.hh' '*.hpp' '*.hxx' '*.inc' |
+          xargs -0 clang-format-23 --style=file --dry-run --Werror --fail-on-incomplete-format
+
     - name: Create Build Environment
       run: cmake -E make_directory ${{runner.workspace}}/build
 
