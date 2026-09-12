@@ -88,7 +88,7 @@ Before building YuLang compiler, please make sure you have installed the followi
 * `cmake` 3.28 or later
 * `llvm` 21 or later
 * C++ compiler supporting C++17
-* Python 3 for backend tests (or configure with `-DBUILD_TESTING=OFF`)
+* Python 3 for tests (or configure with `-DBUILD_TESTING=OFF`)
 
 You may want to check the toolchain configuration in `toolchain.mk`. Then you can build this repository by executing the following command lines:
 
@@ -106,7 +106,7 @@ With Homebrew LLVM (including LLVM 23), select its CMake package explicitly:
 cmake -S . -B build -DLLVM_DIR="$(brew --prefix llvm)/lib/cmake/llvm" \
   -DCMAKE_BUILD_TYPE=Debug
 cmake --build build -j8
-ctest --test-dir build --output-on-failure
+ctest --test-dir build --output-on-failure -j8
 ```
 
 The standard library and examples are compiled directly to object files by
@@ -119,11 +119,19 @@ at O1-O3); machine-code generation uses `TargetMachine::addPassesToEmitFile`,
 the same backend pipeline used by `llc`. Comparing against `llc` requires the
 same LLVM version, optimized input IR, target, CPU, features and optimization
 level.
+
 The backend tests compile and run zero-initialization cases through object,
 assembly and LLVM IR output at all four optimization levels, and compare
-directly emitted objects against `llc`. Temporary test
-files, including compiler-driver intermediates, stay under the ignored `debug/`
-directory in the repository.
+directly emitted objects against `llc`. Temporary test files, including
+compiler-driver intermediates, stay under the ignored `debug/` directory in
+the repository.
+
+CTest lists each backend optimization level and each example separately.
+The eight fixed-output examples use the existing files in `utils/output` and
+optional standard input from `utils/input`; `rand` checks its output format.
+Every example must exit successfully. Use `ctest --test-dir build -L examples`
+to run only examples, `-L backend` for backend tests, or `-R example.io_test`
+to select one test. There is no separate shell test runner.
 
 For example, to compile and link a Yu program:
 

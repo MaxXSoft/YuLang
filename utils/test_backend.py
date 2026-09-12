@@ -20,6 +20,7 @@ def main():
     parser.add_argument("--llvm-bin", type=Path, required=True)
     parser.add_argument("--cc", required=True)
     parser.add_argument("--sdk", default="")
+    parser.add_argument("--opt-level", type=int, choices=range(4))
     args = parser.parse_args()
     # Match the existing Linux build: LLVM's default relocation model is static.
     link_flags = ["-no-pie"] if sys.platform.startswith("linux") else []
@@ -38,7 +39,8 @@ def main():
             compiler_driver += ["-isysroot", sdk.stdout.decode().strip()]
         helper = work / "check_zeros.o"
         run(*compiler_driver, "-c", root / "tests/backend/check_zeros.c", "-o", helper)
-        for level in range(4):
+        levels = range(4) if args.opt_level is None else (args.opt_level,)
+        for level in levels:
             compiler = (args.yuc, "-O", level, fixture)
             obj = work / "zeros.o"
             # Default output is an object, with no external llc involved.
@@ -68,6 +70,8 @@ def main():
             run(exe)
             print(f"O{level}: object, assembly and IR round trip passed")
 
+        if args.opt_level not in (None, 0):
+            return
         # All text outputs must reach disk even when they fit in the C++
         # stream buffer. Also cover errors before entering the LLVM backend.
         for kind in ("ast", "yuir"):
