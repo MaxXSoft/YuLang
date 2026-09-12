@@ -2,6 +2,27 @@
 
 All notable changes to the YuLang compiler will be documented in this file.
 
+## 0.0.8 - 2026-09-12
+
+### Added
+
+* CTest coverage for all examples and LLVM backend regression tests at O0-O3, including object-file comparisons with `llc`.
+* CI builds for LLVM 21, 22 and 23, and C/C++ formatting checks with clang-format 23.
+
+### Changed
+
+* Raised the minimum required versions to LLVM 21 and CMake 3.28.
+* Migrated the LLVM backend to current APIs, opaque pointers and the new IR pass manager's default optimization pipelines.
+* Applied `-O 0` through `-O 3` to both IR optimization and machine-code generation, using the same backend pipeline as `llc`.
+* Unified compiler, standard library and example builds in CMake, replacing the handwritten Makefile and toolchain configuration. Standard library and example builds now emit object files directly with `yuc`.
+* Moved test runners and fixtures into `tests/backend` and `tests/example`, replacing the shell test runner. Backend test artifacts now use the CMake build directory.
+* Updated C/C++ formatting and preserved the readable layout of keyword and operator macros.
+
+### Fixed
+
+* Invalid scalar and null-pointer zero constants that caused assembly and object-file emission to fail.
+* Missing or truncated text output caused by exiting before output streams were flushed.
+
 ## 0.0.7 - 2023-07-12
 
 ### Changed
