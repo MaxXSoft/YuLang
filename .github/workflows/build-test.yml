@@ -18,15 +18,7 @@ jobs:
     timeout-minutes: 30
     strategy:
       matrix:
-        llvm: ['13', '14', '15', '16']
-        config:
-        - {cc: gcc-9, cxx: g++-9}
-        - {cc: gcc-10, cxx: g++-10}
-        - {cc: gcc-11, cxx: g++-11}
-        - {cc: gcc-12, cxx: g++-12}
-        include:
-        - llvm: '23'
-          config: {cc: clang-23, cxx: clang++-23}
+        llvm: ['21', '22', '23']
 
     steps:
     - name: Install LLVM and Clang
@@ -47,8 +39,8 @@ jobs:
       working-directory: ${{runner.workspace}}/build
       shell: bash
       env:
-        CC: ${{matrix.config.cc}}
-        CXX: ${{matrix.config.cxx}}
+        CC: clang-${{matrix.llvm}}
+        CXX: clang++-${{matrix.llvm}}
       run: >-
         cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE
         -DLLVM_DIR="$(llvm-config-${{matrix.llvm}} --cmakedir)"

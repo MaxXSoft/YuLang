@@ -19,6 +19,7 @@ def main():
     parser.add_argument("--yuc", type=Path, required=True)
     parser.add_argument("--llvm-bin", type=Path, required=True)
     parser.add_argument("--cc", required=True)
+    parser.add_argument("--sdk", default="")
     args = parser.parse_args()
     # Match the existing Linux build: LLVM's default relocation model is static.
     link_flags = ["-no-pie"] if sys.platform.startswith("linux") else []
@@ -31,20 +32,24 @@ def main():
         work = Path(temporary)
         # Keep the compiler driver's own temporary files in the repository too.
         os.environ["TMPDIR"] = str(work)
+        compiler_driver = [args.cc]
+        if args.sdk:
+            sdk = run("xcrun", "--sdk", args.sdk, "--show-sdk-path")
+            compiler_driver += ["-isysroot", sdk.stdout.decode().strip()]
         helper = work / "check_zeros.o"
-        run(args.cc, "-c", root / "tests/backend/check_zeros.c", "-o", helper)
+        run(*compiler_driver, "-c", root / "tests/backend/check_zeros.c", "-o", helper)
         for level in range(4):
             compiler = (args.yuc, "-O", level, fixture)
             obj = work / "zeros.o"
             # Default output is an object, with no external llc involved.
             run(*compiler, "-o", obj)
             exe = work / "zeros"
-            run(args.cc, *link_flags, obj, helper, "-o", exe)
+            run(*compiler_driver, *link_flags, obj, helper, "-o", exe)
             run(exe)
 
             assembly = work / "zeros.s"
             run(*compiler, "-ot", "asm", "-o", assembly)
-            run(args.cc, *link_flags, assembly, helper, "-o", exe)
+            run(*compiler_driver, *link_flags, assembly, helper, "-o", exe)
             run(exe)
 
             ir = work / "zeros.ll"
@@ -53,7 +58,7 @@ def main():
             assert ir.read_bytes() == stdout, "IR file differs from stdout"
             run(args.llvm_bin / "opt", "-passes=verify", "-disable-output", ir)
             run(args.llvm_bin / "llc", "-filetype=obj", ir, "-o", obj)
-            run(args.cc, *link_flags, obj, helper, "-o", exe)
+            run(*compiler_driver, *link_flags, obj, helper, "-o", exe)
             run(exe)
             print(f"O{level}: object, assembly and IR round trip passed")
 

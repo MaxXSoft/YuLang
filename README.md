@@ -85,8 +85,8 @@ extern def main(argc: i32, argv: u8**): i32 {
 
 Before building YuLang compiler, please make sure you have installed the following dependencies:
 
-* `cmake` 3.13 or later
-* `llvm` 10.0 or later
+* `cmake` 3.28 or later
+* `llvm` 21 or later
 * C++ compiler supporting C++17
 * Python 3 for backend tests (or configure with `-DBUILD_TESTING=OFF`)
 
@@ -111,8 +111,7 @@ ctest --test-dir build --output-on-failure
 
 The standard library and examples are compiled directly to object files by
 `yuc`; an external `llc` is only used as a reference in the backend tests.
-LLVM 17 and newer use opaque pointers and LLVM's new pass manager; the older
-LLVM compatibility paths are retained.
+The LLVM backend uses opaque pointers and LLVM's new IR pass manager.
 The backend tests compile and run zero-initialization cases through object,
 assembly and LLVM IR output at all four optimization levels. Temporary test
 files, including compiler-driver intermediates, stay under the ignored `debug/`

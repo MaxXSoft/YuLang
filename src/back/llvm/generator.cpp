@@ -8,7 +8,6 @@
 #include "llvm/IR/InlineAsm.h"
 #include "llvm/IR/Constant.h"
 #include "llvm/Support/raw_os_ostream.h"
-#include "llvm/Config/llvm-config.h"
 
 using namespace yulang::define;
 using namespace yulang::mid;
@@ -19,14 +18,6 @@ namespace {
 enum class TypeKind {
   Int, Float, Ptr,
 };
-
-llvm::PointerType *GetBytePointerType(llvm::LLVMContext &context) {
-#if LLVM_VERSION_MAJOR >= 17
-  return llvm::PointerType::get(context, 0);
-#else
-  return llvm::Type::getInt8PtrTy(context);
-#endif
-}
 
 // get kind of specific type
 // used when generating type casting
@@ -80,11 +71,11 @@ void LLVMGen::CreateCtorArray(llvm::Function *ctor) {
   using namespace llvm;
   auto type = ctor->getType();
   auto global_ty = llvm::StructType::get(builder_.getInt32Ty(), type,
-                                         GetBytePointerType(context_));
+                                         builder_.getPtrTy());
   auto global_arr_ty = llvm::ArrayType::get(global_ty, 1);
   auto global_init =
       ConstantStruct::get(global_ty, builder_.getInt32(65535), ctor,
-                          Constant::getNullValue(GetBytePointerType(context_)));
+                          Constant::getNullValue(builder_.getPtrTy()));
   auto global_arr_init = ConstantArray::get(global_arr_ty, global_init);
   auto global_link = GlobalValue::LinkageTypes::AppendingLinkage;
   new GlobalVariable(*module_, global_arr_ty, true, global_link,
@@ -93,21 +84,18 @@ void LLVMGen::CreateCtorArray(llvm::Function *ctor) {
 
 llvm::Type *LLVMGen::GenerateType(const TypePtr &type) {
   // dispatcher
-  if (type->IsInteger() || type->IsFloat() || type->IsBool() ||
-      type->IsVoid() || type->IsNull()) {
+  if (type->IsPointer() || type->IsFunction() || type->IsNull()) {
+    return builder_.getPtrTy();
+  }
+  else if (type->IsInteger() || type->IsFloat() || type->IsBool() ||
+           type->IsVoid()) {
     return GeneratePrimType(type);
   }
   else if (type->IsStruct()) {
     return GenerateStructType(type);
   }
-  else if (type->IsFunction()) {
-    return GenerateFuncPtrType(type);
-  }
   else if (type->IsArray()) {
     return GenerateArrayType(type);
-  }
-  else if (type->IsPointer()) {
-    return GeneratePointerType(type);
   }
   else {
     assert(false);
@@ -128,12 +116,9 @@ llvm::Type *LLVMGen::GeneratePrimType(const TypePtr &type) {
   else if (type->IsBool()) {
     return llvm::Type::getInt1Ty(context_);
   }
-  else if (type->IsVoid()) {
-    return llvm::Type::getVoidTy(context_);
-  }
   else {
-    assert(type->IsNull());
-    return GetBytePointerType(context_);
+    assert(type->IsVoid());
+    return llvm::Type::getVoidTy(context_);
   }
 }
 
@@ -179,37 +164,16 @@ llvm::Type *LLVMGen::GenerateFuncType(const TypePtr &type) {
   return llvm::FunctionType::get(ret, params, false);
 }
 
-llvm::Type *LLVMGen::GenerateFuncPtrType(const TypePtr &type) {
-#if LLVM_VERSION_MAJOR >= 17
-  return llvm::PointerType::get(context_, 0);
-#else
-  return llvm::PointerType::get(GenerateFuncType(type), 0);
-#endif
-}
-
 llvm::Type *LLVMGen::GenerateArrayType(const TypePtr &type) {
   auto base = type->GetDerefedType();
   return llvm::ArrayType::get(GenerateType(base), type->GetLength());
-}
-
-llvm::Type *LLVMGen::GeneratePointerType(const TypePtr &type) {
-#if LLVM_VERSION_MAJOR >= 17
-  return llvm::PointerType::get(context_, 0);
-#else
-  auto base = type->GetDerefedType();
-  return GenerateType(base)->getPointerTo();
-#endif
 }
 
 void LLVMGen::GenerateOn(LoadSSA &ssa) {
   auto ptr = GetVal(ssa[0].value());
   auto ty = GenerateType(ssa.type());
   auto load = builder_.CreateLoad(ty, ptr, ssa.type()->IsVola());
-#if LLVM_VERSION_MAJOR >= 10
   load->setAlignment(llvm::Align(ssa.type()->GetAlignSize()));
-#else
-  load->setAlignment(ssa.type()->GetAlignSize());
-#endif
   SetVal(ssa, load);
 }
 
@@ -218,11 +182,7 @@ void LLVMGen::GenerateOn(StoreSSA &ssa) {
   auto ptr = GetVal(ssa[1].value());
   auto type = ssa[1].value()->type()->GetDerefedType();
   auto store = builder_.CreateStore(val, ptr, type->IsVola());
-#if LLVM_VERSION_MAJOR >= 10
   store->setAlignment(llvm::Align(type->GetAlignSize()));
-#else
-  store->setAlignment(type->GetAlignSize());
-#endif
   SetVal(ssa, store);
 }
 
@@ -438,12 +398,7 @@ void LLVMGen::GenerateOn(FunctionSSA &ssa) {
   auto ret = ssa.org_type()->GetReturnType(args);
   if (ret->IsReference()) {
     auto attrs = func->getAttributes();
-#if LLVM_VERSION_MAJOR >= 15
     attrs = attrs.addDereferenceableRetAttr(context_, ret->GetSize());
-#else
-    auto index = AttributeList::AttrIndex::ReturnIndex;
-    attrs = attrs.addDereferenceableAttr(context_, index, ret->GetSize());
-#endif
     func->setAttributes(attrs);
   }
   // register global ctor
@@ -485,11 +440,7 @@ void LLVMGen::GenerateOn(AllocaSSA &ssa) {
   // create alloca
   auto type = ssa.type()->GetDerefedType();
   auto alloca = builder_.CreateAlloca(GenerateType(type));
-#if LLVM_VERSION_MAJOR >= 10
   alloca->setAlignment(llvm::Align(type->GetAlignSize()));
-#else
-  alloca->setAlignment(type->GetAlignSize());
-#endif
   SetVal(ssa, alloca);
   // restore insert point
   builder_.SetInsertPoint(last_block);
@@ -549,14 +500,7 @@ void LLVMGen::GenerateOn(ConstFloatSSA &ssa) {
 }
 
 void LLVMGen::GenerateOn(ConstStrSSA &ssa) {
-#if LLVM_VERSION_MAJOR >= 17
   auto val = builder_.CreateGlobalString(ssa.str(), "", 0, module_.get());
-#elif LLVM_VERSION_MAJOR >= 11
-  auto val =
-      builder_.CreateGlobalStringPtr(ssa.str(), "", 0, module_.get());
-#else
-  auto val = builder_.CreateGlobalStringPtr(ssa.str());
-#endif
   SetVal(ssa, val);
 }
 

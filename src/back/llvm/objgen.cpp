@@ -5,33 +5,15 @@
 #include <cassert>
 #include <optional>
 
-#include "llvm/Config/llvm-config.h"
 #include "llvm/IR/LegacyPassManager.h"
 #include "llvm/Support/TargetSelect.h"
 #include "llvm/Target/TargetOptions.h"
 #include "llvm/Support/FileSystem.h"
 #include "llvm/Support/ToolOutputFile.h"
-#include "llvm/IR/Type.h"
-
-#if LLVM_VERSION_MAJOR >= 17
 #include "llvm/Passes/PassBuilder.h"
-#else
-#include "llvm/Transforms/IPO/PassManagerBuilder.h"
-#include "llvm/Transforms/IPO.h"
-#endif
-
-#if LLVM_VERSION_MAJOR >= 16
 #include "llvm/TargetParser/Host.h"
-#else
-#include "llvm/Support/Host.h"
-#include "llvm/ADT/Optional.h"
-#endif
-
-#if LLVM_VERSION_MAJOR >= 14
+#include "llvm/TargetParser/Triple.h"
 #include "llvm/MC/TargetRegistry.h"
-#else
-#include "llvm/Support/TargetRegistry.h"
-#endif
 
 #include "front/logger.h"
 
@@ -51,13 +33,8 @@ bool ObjectGen::GenerateTargetCode(const std::string &file,
                                    CodeGenFileType type) {
   // open object file
   std::error_code ec;
-#if LLVM_VERSION_MAJOR >= 10
   auto flags = llvm::sys::fs::OF_None;
   if (type == CodeGenFileType::Asm) flags |= llvm::sys::fs::OF_Text;
-#else
-  auto flags = llvm::sys::fs::F_None;
-  if (type == CodeGenFileType::Asm) flags |= llvm::sys::fs::F_Text;
-#endif
   auto out = std::make_unique<llvm::ToolOutputFile>(file, ec, flags);
   if (ec) {
     Logger::LogRawError("failed to open output file");
@@ -65,20 +42,9 @@ bool ObjectGen::GenerateTargetCode(const std::string &file,
     return false;
   }
   // get file type
-#if LLVM_VERSION_MAJOR >= 18
   auto file_type = type == CodeGenFileType::Asm
                        ? llvm::CodeGenFileType::AssemblyFile
                        : llvm::CodeGenFileType::ObjectFile;
-#elif LLVM_VERSION_MAJOR >= 10
-  auto file_type = type == CodeGenFileType::Asm
-                       ? llvm::CodeGenFileType::CGFT_AssemblyFile
-                       : llvm::CodeGenFileType::CGFT_ObjectFile;
-#else
-  auto file_type =
-      type == CodeGenFileType::Asm
-          ? llvm::TargetMachine::CodeGenFileType::CGFT_AssemblyFile
-          : llvm::TargetMachine::CodeGenFileType::CGFT_ObjectFile;
-#endif
   // compile to object file
   llvm::legacy::PassManager pass;
   if (machine_->addPassesToEmitFile(pass, out->os(), nullptr, file_type)) {
@@ -91,7 +57,6 @@ bool ObjectGen::GenerateTargetCode(const std::string &file,
 }
 
 void ObjectGen::RunOptimization() {
-#if LLVM_VERSION_MAJOR >= 17
   llvm::LoopAnalysisManager lam;
   llvm::FunctionAnalysisManager fam;
   llvm::CGSCCAnalysisManager cgam;
@@ -111,20 +76,6 @@ void ObjectGen::RunOptimization() {
   auto pm = opt_level_ == 0 ? builder.buildO0DefaultPipeline(level)
                             : builder.buildPerModuleDefaultPipeline(level);
   pm.run(*module_, mam);
-#else
-  // initialize pass manager
-  llvm::legacy::PassManager pm;
-  llvm::PassManagerBuilder builder;
-  builder.OptLevel = opt_level_;
-  builder.SizeLevel = 0;
-  builder.Inliner = llvm::createFunctionInliningPass();
-  builder.DisableUnrollLoops = false;
-  builder.LoopVectorize = true;
-  builder.SLPVectorize = true;
-  builder.populateModulePassManager(pm);
-  // run pass on module
-  pm.run(*module_);
-#endif
 }
 
 bool ObjectGen::SetTargetTriple(const std::string &triple) {
@@ -133,11 +84,7 @@ bool ObjectGen::SetTargetTriple(const std::string &triple) {
   if (tt.empty()) {
     tt = llvm::sys::getDefaultTargetTriple();
   }
-#if LLVM_VERSION_MAJOR >= 21
   llvm::Triple target_triple(tt);
-#else
-  const auto &target_triple = tt;
-#endif
   // get target info
   std::string error_msg;
   auto target = llvm::TargetRegistry::lookupTarget(target_triple, error_msg);
@@ -148,12 +95,8 @@ bool ObjectGen::SetTargetTriple(const std::string &triple) {
   module_->setTargetTriple(target_triple);
   // initialize target machine
   llvm::TargetOptions opt;
-#if LLVM_VERSION_MAJOR >= 16
-  auto rm = std::optional<llvm::Reloc::Model>();
-#else
-  auto rm = llvm::Optional<llvm::Reloc::Model>();
-#endif
-  machine_ = target->createTargetMachine(target_triple, cpu_, features_, opt, rm);
+  machine_ = target->createTargetMachine(target_triple, cpu_, features_, opt,
+                                        std::nullopt);
   module_->setDataLayout(machine_->createDataLayout());
   return true;
 }
