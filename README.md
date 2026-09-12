@@ -87,10 +87,10 @@ Before building YuLang compiler, please make sure you have installed the followi
 
 * `cmake` 3.28 or later
 * `llvm` 21 or later
-* C++ compiler supporting C++17
+* C and C++ compilers, with C++17 support
 * Python 3 for tests (or configure with `-DBUILD_TESTING=OFF`)
 
-You may want to check the toolchain configuration in `toolchain.mk`. Then you can build this repository by executing the following command lines:
+CMake builds the compiler, standard library and examples together:
 
 ```sh
 git clone --recursive https://github.com/MaxXSoft/YuLang.git
@@ -99,6 +99,10 @@ cmake -S . -B build
 cmake --build build -j
 ctest --test-dir build --output-on-failure -j
 ```
+
+The standard library and examples use Yu optimization level O0 for Debug and O2 for other configurations. Select a configuration with `-DCMAKE_BUILD_TYPE=Debug` or `-DCMAKE_BUILD_TYPE=Release`.
+
+You can build just the standard library with `cmake --build build --target yu`, or all examples with `--target yu_examples`. Each example also has an `example_<name>` target. For multi-configuration generators, use `cmake --build build --config Debug` and `ctest --test-dir build -C Debug`; executables are placed in the corresponding configuration subdirectory.
 
 With Homebrew LLVM (including LLVM 23), select its CMake package explicitly:
 

@@ -57,7 +57,7 @@ jobs:
     - name: Build
       working-directory: ${{runner.workspace}}/build
       shell: bash
-      run: make LD="clang-${{matrix.llvm}} -no-pie"
+      run: cmake --build . --parallel 2
 
     - name: Test
       working-directory: ${{runner.workspace}}/build

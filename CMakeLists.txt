@@ -44,13 +44,48 @@ target_include_directories(yuc PRIVATE src 3rdparty/xstl)
 target_include_directories(yuc SYSTEM PRIVATE ${LLVM_INCLUDE_DIRS})
 target_link_libraries(yuc PRIVATE LLVM)
 
-# Build Yu sources on every build so edits to libraries/examples are noticed.
-add_custom_target(yu_examples ALL
-  COMMAND make -C ${CMAKE_SOURCE_DIR} BUILD_DIR=${CMAKE_BINARY_DIR}
-          DEBUG=$<IF:$<CONFIG:Debug>,1,0>
-  DEPENDS yuc
-  VERBATIM
-)
+# Compile Yu sources with the compiler built by this project.
+file(GLOB_RECURSE YU_LIBRARY_SOURCES CONFIGURE_DEPENDS "lib/*.yu")
+
+function(compile_yu source output)
+  file(RELATIVE_PATH relative "${CMAKE_CURRENT_SOURCE_DIR}" "${source}")
+  set(object "${CMAKE_CURRENT_BINARY_DIR}/obj/$<CONFIG>/${relative}.o")
+  get_filename_component(directory "${object}" DIRECTORY)
+  add_custom_command(OUTPUT "${object}"
+    COMMAND ${CMAKE_COMMAND} -E make_directory "${directory}"
+    COMMAND yuc -Werror -O $<IF:$<CONFIG:Debug>,0,2>
+            -I "${CMAKE_CURRENT_SOURCE_DIR}/lib" -ot obj "${source}" -o "${object}"
+    # Keep the Makefile's conservative dependency on every library source.
+    DEPENDS yuc "${source}" ${YU_LIBRARY_SOURCES} "${CMAKE_CURRENT_LIST_FILE}"
+    VERBATIM)
+  set_source_files_properties("${object}" PROPERTIES EXTERNAL_OBJECT TRUE)
+  set(${output} "${object}" PARENT_SCOPE)
+endfunction()
+
+foreach(source IN LISTS YU_LIBRARY_SOURCES)
+  compile_yu("${source}" object)
+  list(APPEND YU_LIBRARY_OBJECTS "${object}")
+endforeach()
+add_library(yu STATIC ${YU_LIBRARY_OBJECTS})
+set_target_properties(yu PROPERTIES LINKER_LANGUAGE C)
+
+file(GLOB EXAMPLE_SOURCES CONFIGURE_DEPENDS "examples/*.yu")
+add_custom_target(yu_examples)
+foreach(source IN LISTS EXAMPLE_SOURCES)
+  get_filename_component(example "${source}" NAME_WE)
+  compile_yu("${source}" object)
+  add_executable(example_${example} "${object}")
+  set_target_properties(example_${example} PROPERTIES
+    LINKER_LANGUAGE C
+    OUTPUT_NAME "${example}"
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/examples")
+  target_link_libraries(example_${example} PRIVATE yu)
+  # Match yuc's default static relocation model on Linux.
+  if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    target_link_options(example_${example} PRIVATE -no-pie)
+  endif()
+  add_dependencies(yu_examples example_${example})
+endforeach()
 
 include(CTest)
 if(BUILD_TESTING)
@@ -81,7 +116,7 @@ if(BUILD_TESTING)
     endif()
     add_test(NAME example.${example}
       COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/example/test_example.py
-              --executable "${CMAKE_BINARY_DIR}/examples/${example}"
+              --executable $<TARGET_FILE:example_${example}>
               ${check} "${expected}" ${input_args})
     set_tests_properties(example.${example} PROPERTIES
       TIMEOUT 120 LABELS examples)
