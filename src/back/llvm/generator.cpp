@@ -594,7 +594,9 @@ void LLVMGen::GenerateOn(ConstArraySSA &ssa) {
 
 void LLVMGen::GenerateOn(ConstZeroSSA &ssa) {
   auto type = GenerateType(ssa.type());
-  auto val = llvm::ConstantAggregateZero::get(type);
+  // Scalars and pointers require ConstantInt/ConstantFP/ConstantPointerNull;
+  // ConstantAggregateZero is only valid for aggregate types.
+  auto val = llvm::Constant::getNullValue(type);
   SetVal(ssa, val);
 }
 

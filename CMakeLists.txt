@@ -46,11 +46,22 @@ add_executable(yuc ${SOURCES})
 link_directories(${LLVM_LIBRARY_DIRS})
 target_link_libraries(yuc LLVM)
 
-# build Yu standard library and examples after generation
-add_custom_command(
-  TARGET yuc
-  POST_BUILD
+# Build Yu sources on every build so edits to libraries/examples are noticed.
+add_custom_target(yu_examples ALL
   COMMAND make -C ${CMAKE_SOURCE_DIR} BUILD_DIR=${CMAKE_BINARY_DIR}
-          LLVM_HOME=${LLVM_TOOLS_BINARY_DIR}
+          DEBUG=$<IF:$<CONFIG:Debug>,1,0>
+  DEPENDS yuc
   VERBATIM
 )
+
+include(CTest)
+if(BUILD_TESTING)
+  find_package(Python3 REQUIRED COMPONENTS Interpreter)
+  add_test(NAME llvm_backend
+    COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/utils/test_backend.py
+            --yuc $<TARGET_FILE:yuc> --llvm-bin ${LLVM_TOOLS_BINARY_DIR}
+            --cc ${CMAKE_C_COMPILER})
+  add_test(NAME examples
+    COMMAND bash ${CMAKE_SOURCE_DIR}/utils/run_test.sh ${CMAKE_BINARY_DIR})
+  set_tests_properties(llvm_backend examples PROPERTIES TIMEOUT 120)
+endif()

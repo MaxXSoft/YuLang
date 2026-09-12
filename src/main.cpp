@@ -139,11 +139,10 @@ bool CompileToIR(const xstl::ArgParser &argp, std::ostream &os,
   }
   // check if need to exit
   auto err_num = Logger::error_num();
-  if (err_num || dump_ast) std::exit(err_num);
-  return true;
+  return err_num == 0;
 }
 
-void RunPasses(const xstl::ArgParser &argp, std::ostream &os,
+bool RunPasses(const xstl::ArgParser &argp, std::ostream &os,
                IRBuilder &irb, OutputType type, int opt) {
   // set optimization level
   PassManager pass_man;
@@ -155,10 +154,10 @@ void RunPasses(const xstl::ArgParser &argp, std::ostream &os,
   auto dump_yuir = type == OutputType::YuIR;
   auto err_num = Logger::error_num();
   if (!err_num && dump_yuir) irb.module().Dump(os);
-  if (err_num || dump_yuir) std::exit(err_num);
+  return err_num == 0;
 }
 
-void GenerateCode(std::ostream &os, IRBuilder &irb, CodeGen &gen,
+bool GenerateCode(std::ostream &os, IRBuilder &irb, CodeGen &gen,
                   ObjectGen &obj_gen, OutputType type,
                   const std::string &file) {
   // generate code
@@ -167,27 +166,25 @@ void GenerateCode(std::ostream &os, IRBuilder &irb, CodeGen &gen,
   // check if need to dump code
   if (type != OutputType::LLVM && file.empty()) {
     Logger::LogRawError("output file required when generating asm/obj");
-    std::exit(1);
+    return false;
   }
   switch (type) {
     case OutputType::LLVM: {
       // dump LLVM IR
       gen.Dump(os);
-      std::exit(0);
       break;
     }
     case OutputType::Assembly: {
       // dump assembly
-      if (!obj_gen.GenerateAsm(file)) std::exit(1);
-      break;
+      return obj_gen.GenerateAsm(file);
     }
     case OutputType::Object: {
-      // dump assembly
-      if (!obj_gen.GenerateObject(file)) std::exit(1);
-      break;
+      // emit object code
+      return obj_gen.GenerateObject(file);
     }
     default:;
   }
+  return true;
 }
 
 }  // namespace
@@ -204,8 +201,17 @@ int main(int argc, const char *argv[]) {
   // initialize output stream
   auto out_file = argp.GetValue<string>("output");
   std::ofstream ofs;
-  if (!out_file.empty()) ofs.open(out_file);
-  auto &os = out_file.empty() ? cout : ofs;
+  auto text_output = out_type == OutputType::AST ||
+                     out_type == OutputType::YuIR ||
+                     out_type == OutputType::LLVM;
+  if (text_output && !out_file.empty()) {
+    ofs.open(out_file);
+    if (!ofs) {
+      Logger::LogRawError("failed to open output file");
+      return 1;
+    }
+  }
+  auto &os = ofs.is_open() ? ofs : cout;
 
   // initialize compilation system
   LexerManager lex_man;
@@ -219,9 +225,21 @@ int main(int argc, const char *argv[]) {
 
   // compile source to target code
   if (!CompileToIR(argp, os, lex_man, irb, out_type)) {
-    Logger::LogRawError("invalid input file or import path");
+    if (!Logger::error_num()) {
+      Logger::LogRawError("invalid input file or import path");
+    }
+    return 1;
   }
-  RunPasses(argp, os, irb, out_type, opt_level);
-  GenerateCode(os, irb, gen, obj_gen, out_type, out_file);
+  if (out_type != OutputType::AST) {
+    if (!RunPasses(argp, os, irb, out_type, opt_level)) return 1;
+    if (out_type != OutputType::YuIR &&
+        !GenerateCode(os, irb, gen, obj_gen, out_type, out_file)) return 1;
+  }
+  os.flush();
+  if (ofs.is_open()) ofs.close();
+  if (!os) {
+    Logger::LogRawError("failed to write output file");
+    return 1;
+  }
   return 0;
 }

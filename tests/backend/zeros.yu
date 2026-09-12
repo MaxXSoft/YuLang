@@ -1,0 +1,16 @@
+extern declare check_zeros: (u8*, i32, f32, f64, bool): i32
+
+var pointer: u8*
+var integer: i32
+var single: f32
+var double: f64
+var boolean: bool
+var array: i32[2]
+struct Pair { first: i32, second: i32 }
+var pair: Pair
+
+extern def main(): i32 {
+  let literal = check_zeros(null as u8*, 0, single, double, false)
+  literal + check_zeros(pointer, integer, single, double, boolean) +
+      array[0] + array[1] + pair.first + pair.second
+}

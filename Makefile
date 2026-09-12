@@ -36,22 +36,18 @@ libyu: $(LIB_TARGET)
 examples: $(EXAMPLES_BIN_DIR) $(EXAMPLES_TARGET)
 
 $(EXAMPLES_BIN_DIR):
-	mkdir $@
+	mkdir -p $@
 
 $(LIB_TARGET): $(LIB_OBJ)
 	$(info making Yu standard library)
 	$(AR) $@ $^
 	$(RANLIB) $@
 
-$(EXAMPLES_BIN_DIR)/%: $(EXAMPLES_OBJ_DIR)/%.yu.o $(LIB_TARGET)
+$(EXAMPLES_BIN_DIR)/%: $(EXAMPLES_OBJ_DIR)/%.yu.o $(LIB_TARGET) | $(EXAMPLES_BIN_DIR)
 	$(info making example "$(notdir $@)"...)
 	$(LD) $< -L$(BUILD_DIR) -lyu -o $@
 
-$(OBJ_DIR)/%.yu.ll: $(TOP_DIR)/%.yu $(YUC_BIN)
+$(OBJ_DIR)/%.yu.o: $(TOP_DIR)/%.yu $(YUC_BIN) $(LIB_SRC) $(TOP_DIR)/toolchain.mk $(TOP_DIR)/Makefile
 	$(info YUC $@)
-	-mkdir -p $(dir $@)
-	$(YUC) -I $(LIB_DIR) -ot llvm $< > $@
-
-$(OBJ_DIR)/%.o: $(OBJ_DIR)/%.ll
-	$(info LLC $@)
-	$(LLC) $^ -o $@
+	mkdir -p $(dir $@)
+	$(YUC) -I $(LIB_DIR) -ot obj $< -o $@

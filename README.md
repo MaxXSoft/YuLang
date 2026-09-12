@@ -88,6 +88,7 @@ Before building YuLang compiler, please make sure you have installed the followi
 * `cmake` 3.13 or later
 * `llvm` 10.0 or later
 * C++ compiler supporting C++17
+* Python 3 for backend tests (or configure with `-DBUILD_TESTING=OFF`)
 
 You may want to check the toolchain configuration in `toolchain.mk`. Then you can build this repository by executing the following command lines:
 
@@ -105,12 +106,24 @@ With Homebrew LLVM (including LLVM 23), select its CMake package explicitly:
 cmake -S . -B build -DLLVM_DIR="$(brew --prefix llvm)/lib/cmake/llvm" \
   -DCMAKE_BUILD_TYPE=Debug
 cmake --build build -j8
-utils/run_test.sh build
+ctest --test-dir build --output-on-failure
 ```
 
-The build uses the LLVM tools from the selected CMake package. LLVM 17 and
-newer use opaque pointers and LLVM's new pass manager; the older LLVM
-compatibility paths are retained.
+The standard library and examples are compiled directly to object files by
+`yuc`; an external `llc` is only used as a reference in the backend tests.
+LLVM 17 and newer use opaque pointers and LLVM's new pass manager; the older
+LLVM compatibility paths are retained.
+The backend tests compile and run zero-initialization cases through object,
+assembly and LLVM IR output at all four optimization levels. Temporary test
+files, including compiler-driver intermediates, stay under the ignored `debug/`
+directory in the repository.
+
+For example, to compile and link a Yu program:
+
+```sh
+build/yuc -I lib -O 2 -ot obj examples/reduce.yu -o build/reduce.o
+clang build/reduce.o -Lbuild -lyu -o build/reduce
+```
 
 ## EBNF of Yu
 

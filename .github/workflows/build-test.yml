@@ -24,6 +24,9 @@ jobs:
         - {cc: gcc-10, cxx: g++-10}
         - {cc: gcc-11, cxx: g++-11}
         - {cc: gcc-12, cxx: g++-12}
+        include:
+        - llvm: '23'
+          config: {cc: clang-23, cxx: clang++-23}
 
     steps:
     - name: Install LLVM and Clang
@@ -46,13 +49,15 @@ jobs:
       env:
         CC: ${{matrix.config.cc}}
         CXX: ${{matrix.config.cxx}}
-      run: cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE
+      run: >-
+        cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE
+        -DLLVM_DIR="$(llvm-config-${{matrix.llvm}} --cmakedir)"
 
     - name: Build
       working-directory: ${{runner.workspace}}/build
       shell: bash
-      run: make LLVM_HOME=`llvm-config-${{matrix.llvm}} --bindir` LD="clang-${{matrix.llvm}} -no-pie"
+      run: make LD="clang-${{matrix.llvm}} -no-pie"
 
     - name: Test
       working-directory: ${{runner.workspace}}/build
-      run: $GITHUB_WORKSPACE/utils/run_test.sh ${{runner.workspace}}/build
+      run: ctest --output-on-failure

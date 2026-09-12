@@ -13,17 +13,10 @@ else
 	YU_OPT_ARG = -O 0
 endif
 
-# compile toolchain prefix
-LLVM_HOME ?= $(shell llvm-config --bindir)
-
 # Yu compiler
 YUFLAGS := -Werror $(YU_OPT_ARG)
 export YUC_BIN := $(BUILD_DIR)/yuc
 export YUC := $(YUC_BIN) $(YUFLAGS)
-
-# LLVM compiler
-LLCFLAGS := $(C_OPT_ARG) -filetype=obj
-export LLC := $(LLVM_HOME)/llc $(LLCFLAGS)
 
 # linker
 LDFLAGS :=
