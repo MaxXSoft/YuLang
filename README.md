@@ -99,6 +99,19 @@ $ cd build
 $ cmake .. && make -j8
 ```
 
+With Homebrew LLVM (including LLVM 23), select its CMake package explicitly:
+
+```sh
+cmake -S . -B build -DLLVM_DIR="$(brew --prefix llvm)/lib/cmake/llvm" \
+  -DCMAKE_BUILD_TYPE=Debug
+cmake --build build -j8
+utils/run_test.sh build
+```
+
+The build uses the LLVM tools from the selected CMake package. LLVM 17 and
+newer use opaque pointers and LLVM's new pass manager; the older LLVM
+compatibility paths are retained.
+
 ## EBNF of Yu
 
 ```ebnf

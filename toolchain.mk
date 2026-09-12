@@ -14,7 +14,7 @@ else
 endif
 
 # compile toolchain prefix
-LLVM_HOME := /usr/local/opt/llvm/bin
+LLVM_HOME ?= $(shell llvm-config --bindir)
 
 # Yu compiler
 YUFLAGS := -Werror $(YU_OPT_ARG)

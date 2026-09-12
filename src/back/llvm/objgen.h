@@ -35,7 +35,7 @@ class ObjectGen {
 
   // getters
   const std::string &target_triple() const {
-    return module_->getTargetTriple();
+    return machine_->getTargetTriple().str();
   }
 
  private:

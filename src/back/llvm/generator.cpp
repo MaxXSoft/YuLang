@@ -20,6 +20,14 @@ enum class TypeKind {
   Int, Float, Ptr,
 };
 
+llvm::PointerType *GetBytePointerType(llvm::LLVMContext &context) {
+#if LLVM_VERSION_MAJOR >= 17
+  return llvm::PointerType::get(context, 0);
+#else
+  return llvm::Type::getInt8PtrTy(context);
+#endif
+}
+
 // get kind of specific type
 // used when generating type casting
 inline TypeKind GetTypeKind(const TypePtr &type) {
@@ -72,11 +80,11 @@ void LLVMGen::CreateCtorArray(llvm::Function *ctor) {
   using namespace llvm;
   auto type = ctor->getType();
   auto global_ty = llvm::StructType::get(builder_.getInt32Ty(), type,
-                                         builder_.getInt8PtrTy());
+                                         GetBytePointerType(context_));
   auto global_arr_ty = llvm::ArrayType::get(global_ty, 1);
   auto global_init =
       ConstantStruct::get(global_ty, builder_.getInt32(65535), ctor,
-                          Constant::getNullValue(builder_.getInt8PtrTy()));
+                          Constant::getNullValue(GetBytePointerType(context_)));
   auto global_arr_init = ConstantArray::get(global_arr_ty, global_init);
   auto global_link = GlobalValue::LinkageTypes::AppendingLinkage;
   new GlobalVariable(*module_, global_arr_ty, true, global_link,
@@ -125,7 +133,7 @@ llvm::Type *LLVMGen::GeneratePrimType(const TypePtr &type) {
   }
   else {
     assert(type->IsNull());
-    return llvm::Type::getInt8PtrTy(context_);
+    return GetBytePointerType(context_);
   }
 }
 
@@ -172,7 +180,11 @@ llvm::Type *LLVMGen::GenerateFuncType(const TypePtr &type) {
 }
 
 llvm::Type *LLVMGen::GenerateFuncPtrType(const TypePtr &type) {
+#if LLVM_VERSION_MAJOR >= 17
+  return llvm::PointerType::get(context_, 0);
+#else
   return llvm::PointerType::get(GenerateFuncType(type), 0);
+#endif
 }
 
 llvm::Type *LLVMGen::GenerateArrayType(const TypePtr &type) {
@@ -181,8 +193,12 @@ llvm::Type *LLVMGen::GenerateArrayType(const TypePtr &type) {
 }
 
 llvm::Type *LLVMGen::GeneratePointerType(const TypePtr &type) {
+#if LLVM_VERSION_MAJOR >= 17
+  return llvm::PointerType::get(context_, 0);
+#else
   auto base = type->GetDerefedType();
   return GenerateType(base)->getPointerTo();
+#endif
 }
 
 void LLVMGen::GenerateOn(LoadSSA &ssa) {
@@ -533,7 +549,9 @@ void LLVMGen::GenerateOn(ConstFloatSSA &ssa) {
 }
 
 void LLVMGen::GenerateOn(ConstStrSSA &ssa) {
-#if LLVM_VERSION_MAJOR >= 11
+#if LLVM_VERSION_MAJOR >= 17
+  auto val = builder_.CreateGlobalString(ssa.str(), "", 0, module_.get());
+#elif LLVM_VERSION_MAJOR >= 11
   auto val =
       builder_.CreateGlobalStringPtr(ssa.str(), "", 0, module_.get());
 #else
