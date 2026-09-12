@@ -9,7 +9,7 @@ Yu (羽) is a simple system programming language.
 
 ## Documentations
 
-* Tutorial: [简体中文版 (GitHub)](https://maxxsoft.github.io/YuLang-doc/tutorial/zh-cn/), [简体中文版 (Gitee)](https://maxxsoft.gitee.io/yulang-doc/tutorial/zh-cn/).
+Tutorial: [羽语言简明教程 (简体中文)](https://maxxsoft.github.io/YuLang-doc/tutorial/zh-cn/).
 
 Visit [YuLang-doc](https://github.com/MaxXSoft/YuLang-doc) for more details.
 
@@ -92,47 +92,23 @@ Before building YuLang compiler, please make sure you have installed the followi
 
 You may want to check the toolchain configuration in `toolchain.mk`. Then you can build this repository by executing the following command lines:
 
-```
-$ git clone --recursive https://github.com/MaxXSoft/YuLang.git
-$ cd YuLang
-$ mkdir build
-$ cd build
-$ cmake .. && make -j8
+```sh
+git clone --recursive https://github.com/MaxXSoft/YuLang.git
+cd YuLang
+cmake -S . -B build
+cmake --build build -j
+ctest --test-dir build --output-on-failure -j
 ```
 
 With Homebrew LLVM (including LLVM 23), select its CMake package explicitly:
 
 ```sh
-cmake -S . -B build -DLLVM_DIR="$(brew --prefix llvm)/lib/cmake/llvm" \
-  -DCMAKE_BUILD_TYPE=Debug
-cmake --build build -j8
-ctest --test-dir build --output-on-failure -j8
+cmake -S . -B build -DLLVM_DIR="$(brew --prefix llvm)/lib/cmake/llvm"
+cmake --build build -j
+ctest --test-dir build --output-on-failure -j
 ```
 
-The standard library and examples are compiled directly to object files by
-`yuc`; an external `llc` is only used as a reference in the backend tests.
-The LLVM backend uses opaque pointers and LLVM's new IR pass manager.
-`-O 0` through `-O 3` select both the LLVM default IR optimization pipeline
-and the corresponding machine-code optimization level. IR optimization uses
-`PassBuilder` (`buildO0DefaultPipeline` at O0, `buildPerModuleDefaultPipeline`
-at O1-O3); machine-code generation uses `TargetMachine::addPassesToEmitFile`,
-the same backend pipeline used by `llc`. Comparing against `llc` requires the
-same LLVM version, optimized input IR, target, CPU, features and optimization
-level.
-
-The backend tests compile and run zero-initialization cases through object,
-assembly and LLVM IR output at all four optimization levels, and compare
-directly emitted objects against `llc`. Temporary test files stay under
-`test/` in the CMake build directory (normally `build/test/`) and are removed
-after each run. The C compiler driver uses its normal temporary directory.
-
-CTest lists each backend optimization level and each example separately.
-The eight fixed-output examples use the files in `tests/example/output` and
-optional standard input from `tests/example/input`; `rand` checks its output
-format.
-Every example must exit successfully. Use `ctest --test-dir build -L examples`
-to run only examples, `-L backend` for backend tests, or `-R example.io_test`
-to select one test. There is no separate shell test runner.
+Use `ctest --test-dir build -L examples` to run only examples, `-L backend` for backend tests, or `-R example.io_test` to select one test.
 
 For example, to compile and link a Yu program:
 
@@ -141,10 +117,7 @@ build/yuc -I lib -O 2 -ot obj examples/reduce.yu -o build/reduce.o
 clang build/reduce.o -Lbuild -lyu -o build/reduce
 ```
 
-Use clang-format 23 for C/C++ formatting. CI checks all tracked project source
-and header files against `.clang-format`; submodules and build artifacts are
-excluded. To run the same check locally (use `clang-format-23` if your system
-installs the tool under a versioned name):
+Use clang-format for C/C++ formatting. CI checks all tracked project source and header files against `.clang-format`; submodules and build artifacts are excluded. To run the same check locally (use `clang-format-23` if your system installs the tool under a versioned name):
 
 ```sh
 git ls-files -z -- '*.c' '*.cc' '*.cpp' '*.cxx' '*.h' '*.hh' '*.hpp' '*.hxx' '*.inc' |
@@ -230,4 +203,4 @@ See [CHANGELOG.md](CHANGELOG.md)
 
 ## License
 
-Copyright (C) 2010-2020 MaxXing. License GPLv3.
+Copyright (C) 2020-2026 MaxXing. License GPLv3.
