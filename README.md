@@ -112,8 +112,16 @@ ctest --test-dir build --output-on-failure
 The standard library and examples are compiled directly to object files by
 `yuc`; an external `llc` is only used as a reference in the backend tests.
 The LLVM backend uses opaque pointers and LLVM's new IR pass manager.
+`-O 0` through `-O 3` select both the LLVM default IR optimization pipeline
+and the corresponding machine-code optimization level. IR optimization uses
+`PassBuilder` (`buildO0DefaultPipeline` at O0, `buildPerModuleDefaultPipeline`
+at O1-O3); machine-code generation uses `TargetMachine::addPassesToEmitFile`,
+the same backend pipeline used by `llc`. Comparing against `llc` requires the
+same LLVM version, optimized input IR, target, CPU, features and optimization
+level.
 The backend tests compile and run zero-initialization cases through object,
-assembly and LLVM IR output at all four optimization levels. Temporary test
+assembly and LLVM IR output at all four optimization levels, and compare
+directly emitted objects against `llc`. Temporary test
 files, including compiler-driver intermediates, stay under the ignored `debug/`
 directory in the repository.
 

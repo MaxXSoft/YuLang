@@ -43,6 +43,7 @@ def main():
             obj = work / "zeros.o"
             # Default output is an object, with no external llc involved.
             run(*compiler, "-o", obj)
+            direct_object = obj.read_bytes()
             exe = work / "zeros"
             run(*compiler_driver, *link_flags, obj, helper, "-o", exe)
             run(exe)
@@ -57,7 +58,12 @@ def main():
             stdout = run(*compiler, "-ot", "llvm").stdout
             assert ir.read_bytes() == stdout, "IR file differs from stdout"
             run(args.llvm_bin / "opt", "-passes=verify", "-disable-output", ir)
-            run(args.llvm_bin / "llc", "-filetype=obj", ir, "-o", obj)
+            # Feed the exact optimized IR to the same LLVM's llc, using yuc's
+            # default CPU and the requested backend optimization level.
+            run(args.llvm_bin / "llc", f"-O{level}", "-mcpu=generic",
+                "-filetype=obj", ir, "-o", obj)
+            assert direct_object == obj.read_bytes(), (
+                f"-O {level} object differs from llc -O{level}")
             run(*compiler_driver, *link_flags, obj, helper, "-o", exe)
             run(exe)
             print(f"O{level}: object, assembly and IR round trip passed")

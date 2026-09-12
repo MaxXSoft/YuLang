@@ -6,6 +6,7 @@
 #include <optional>
 
 #include "llvm/IR/LegacyPassManager.h"
+#include "llvm/Support/CodeGen.h"
 #include "llvm/Support/TargetSelect.h"
 #include "llvm/Target/TargetOptions.h"
 #include "llvm/Support/FileSystem.h"
@@ -45,9 +46,10 @@ bool ObjectGen::GenerateTargetCode(const std::string &file,
   auto file_type = type == CodeGenFileType::Asm
                        ? llvm::CodeGenFileType::AssemblyFile
                        : llvm::CodeGenFileType::ObjectFile;
-  // compile to object file
+  // Use LLVM's target-specific code generation pipeline, as llc does.
   llvm::legacy::PassManager pass;
-  if (machine_->addPassesToEmitFile(pass, out->os(), nullptr, file_type)) {
+  if (machine_->addPassesToEmitFile(pass, out->os(), nullptr, file_type,
+                                   /*DisableVerify=*/false)) {
     Logger::LogRawError("target machine cannot emit file of this type");
     return false;
   }
@@ -95,8 +97,11 @@ bool ObjectGen::SetTargetTriple(const std::string &triple) {
   module_->setTargetTriple(target_triple);
   // initialize target machine
   llvm::TargetOptions opt;
+  assert(opt_level_ < 4);
+  auto codegen_level = llvm::CodeGenOpt::getLevel(static_cast<int>(opt_level_));
   machine_ = target->createTargetMachine(target_triple, cpu_, features_, opt,
-                                        std::nullopt);
+                                        std::nullopt, std::nullopt,
+                                        *codegen_level);
   module_->setDataLayout(machine_->createDataLayout());
   return true;
 }

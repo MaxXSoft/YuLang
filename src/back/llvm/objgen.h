@@ -50,7 +50,7 @@ class ObjectGen {
   // LLVM module
   const ModulePtr &module_;
   // optimization level
-  std::size_t opt_level_;
+  std::size_t opt_level_ = 0;
   // target info
   llvm::TargetMachine *machine_;
   // CPU & features
