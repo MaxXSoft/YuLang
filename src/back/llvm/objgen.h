@@ -1,13 +1,12 @@
 #ifndef YULANG_BACK_LLVM_OBJGEN_H_
 #define YULANG_BACK_LLVM_OBJGEN_H_
 
+#include <cstddef>
 #include <ostream>
 #include <string>
-#include <cstddef>
-
-#include "llvm/Target/TargetMachine.h"
 
 #include "back/llvm/define.h"
+#include "llvm/Target/TargetMachine.h"
 
 namespace yulang::back::ll {
 
@@ -41,7 +40,8 @@ class ObjectGen {
  private:
   // file type of code generation
   enum class CodeGenFileType {
-    Asm, Object,
+    Asm,
+    Object,
   };
 
   void InitTarget();

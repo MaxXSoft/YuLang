@@ -1,9 +1,9 @@
 #include "mid/ssa.h"
 
+#include <cassert>
+#include <cctype>
 #include <iomanip>
 #include <streambuf>
-#include <cctype>
-#include <cassert>
 
 #include "xstl/guard.h"
 
@@ -17,21 +17,23 @@ const char *kIndent = "  ";
 
 // linkage types
 const char *kLinkTypes[] = {
-  "internal", "inline", "external", "global_ctor", "global_dtor",
+    "internal", "inline", "external", "global_ctor", "global_dtor",
 };
 
 // binary operators
 const char *kBinOps[] = {
-  "add", "sub", "mul", "udiv", "sdiv", "urem", "srem", "eq", "neq",
-  "ult", "slt", "ule", "sle", "ugt", "sgt", "uge", "sge",
-  "and", "or", "xor", "shl", "lshr", "ashr",
-  "fadd", "fsub", "fmul", "fdiv", "frem",
-  "feq", "fne", "flt", "fle", "fgt", "fge",
+    "add",  "sub", "mul", "udiv", "sdiv", "urem", "srem", "eq",   "neq",
+    "ult",  "slt", "ule", "sle",  "ugt",  "sgt",  "uge",  "sge",  "and",
+    "or",   "xor", "shl", "lshr", "ashr", "fadd", "fsub", "fmul", "fdiv",
+    "frem", "feq", "fne", "flt",  "fle",  "fgt",  "fge",
 };
 
 // unary operators
 const char *kUnaOps[] = {
-  "neg", "lnot", "not", "fneg",
+    "neg",
+    "lnot",
+    "not",
+    "fneg",
 };
 
 // null stream buffer
@@ -53,22 +55,43 @@ xstl::Guard InExpr() {
 
 void ConvertChar(std::ostream &os, char c) {
   switch (c) {
-    case '\a':  os << "\\a";  break;
-    case '\b':  os << "\\b";  break;
-    case '\f':  os << "\\f";  break;
-    case '\n':  os << "\\n";  break;
-    case '\r':  os << "\\r";  break;
-    case '\t':  os << "\\t";  break;
-    case '\v':  os << "\\v'"; break;
-    case '\\':  os << "\\\\"; break;
-    case '\'':  os << "'";    break;
-    case '"':   os << "\\\""; break;
-    case '\0':  os << "\\0";  break;
+    case '\a':
+      os << "\\a";
+      break;
+    case '\b':
+      os << "\\b";
+      break;
+    case '\f':
+      os << "\\f";
+      break;
+    case '\n':
+      os << "\\n";
+      break;
+    case '\r':
+      os << "\\r";
+      break;
+    case '\t':
+      os << "\\t";
+      break;
+    case '\v':
+      os << "\\v'";
+      break;
+    case '\\':
+      os << "\\\\";
+      break;
+    case '\'':
+      os << "'";
+      break;
+    case '"':
+      os << "\\\"";
+      break;
+    case '\0':
+      os << "\\0";
+      break;
     default: {
       if (std::isprint(c)) {
         os << c;
-      }
-      else {
+      } else {
         os << "\\x" << std::setw(2) << std::setfill('0') << std::hex
            << static_cast<int>(c) << std::dec;
       }
@@ -80,8 +103,7 @@ void ConvertChar(std::ostream &os, char c) {
 inline void PrintId(std::ostream &os, IdManager &idm, const Value *val) {
   if (auto name = idm.GetName(val)) {
     os << '@' << *name;
-  }
-  else {
+  } else {
     os << '%' << idm.GetId(val);
   }
 }
@@ -104,23 +126,20 @@ inline void DumpVal(std::ostream &os, IdManager &idm, It begin, It end) {
   for (auto it = begin; it != end; ++it) {
     if (need_sep) {
       os << ", ";
-    }
-    else {
+    } else {
       need_sep = true;
     }
     DumpVal(os, idm, *it);
   }
 }
 
-inline void DumpWithType(std::ostream &os, IdManager &idm,
-                         const SSAPtr &val) {
+inline void DumpWithType(std::ostream &os, IdManager &idm, const SSAPtr &val) {
   PrintType(os, val->type());
   os << ' ';
   DumpVal(os, idm, val);
 }
 
-inline void DumpWithType(std::ostream &os, IdManager &idm,
-                         const Use &use) {
+inline void DumpWithType(std::ostream &os, IdManager &idm, const Use &use) {
   PrintType(os, use.value()->type());
   os << ' ';
   DumpVal(os, idm, use);
@@ -128,8 +147,7 @@ inline void DumpWithType(std::ostream &os, IdManager &idm,
 
 // print indent, id and assign
 // return true if in expression
-inline bool PrintPrefix(std::ostream &os, IdManager &idm,
-                        const Value *val) {
+inline bool PrintPrefix(std::ostream &os, IdManager &idm, const Value *val) {
   if (!in_expr) os << kIndent;
   PrintId(os, idm, val);
   if (!in_expr) os << " = ";
@@ -163,8 +181,7 @@ void AccessSSA::Dump(std::ostream &os, IdManager &idm) const {
   os << "access ";
   if (acc_type_ == AccessType::Pointer) {
     os << "ptr ";
-  }
-  else {
+  } else {
     os << "elem ";
   }
   DumpWithType(os, idm, (*this)[0]);
@@ -240,8 +257,7 @@ void ReturnSSA::Dump(std::ostream &os, IdManager &idm) const {
   os << kIndent << "return ";
   if (!(*this)[0].value()) {
     os << "void";
-  }
-  else {
+  } else {
     DumpWithType(os, idm, (*this)[0]);
   }
   os << std::endl;
@@ -255,8 +271,7 @@ void FunctionSSA::Dump(std::ostream &os, IdManager &idm) const {
   }
   if (size()) {
     os << "define ";
-  }
-  else {
+  } else {
     os << "declare ";
   }
   os << kLinkTypes[static_cast<int>(link_)] << ' ';

@@ -1,13 +1,13 @@
 #ifndef YULANG_FRONT_LEXER_H_
 #define YULANG_FRONT_LEXER_H_
 
-#include <fstream>
-#include <utility>
-#include <string_view>
-#include <string>
-#include <memory>
-#include <cstdint>
 #include <cassert>
+#include <cstdint>
+#include <fstream>
+#include <memory>
+#include <string>
+#include <string_view>
+#include <utility>
 
 #include "define/token.h"
 #include "front/logger.h"
@@ -49,9 +49,7 @@ class Lexer {
     in_ >> last_char_;
     logger_.IncreaseColPos();
   }
-  bool IsEOL() {
-    return in_.eof() || last_char_ == '\n' || last_char_ == '\r';
-  }
+  bool IsEOL() { return in_.eof() || last_char_ == '\n' || last_char_ == '\r'; }
 
   // print error message and return Token::Error
   define::Token LogError(std::string_view message);

@@ -3,18 +3,18 @@
 
 // reference: LLVM version 1.3
 
-#include <memory>
-#include <vector>
-#include <ostream>
-#include <list>
 #include <any>
-#include <unordered_map>
-#include <string_view>
-#include <optional>
 #include <cstddef>
+#include <list>
+#include <memory>
+#include <optional>
+#include <ostream>
+#include <string_view>
+#include <unordered_map>
+#include <vector>
 
-#include "front/logger.h"
 #include "define/type.h"
+#include "front/logger.h"
 
 // forward declarations for visitor method
 namespace yulang {
@@ -103,9 +103,7 @@ class Value {
   // set 'type' only
   void set_type(const define::TypePtr &type) { type_ = type; }
   // set 'org_type' only
-  void set_org_type(const define::TypePtr &org_type) {
-    org_type_ = org_type;
-  }
+  void set_org_type(const define::TypePtr &org_type) { org_type_ = org_type; }
   // set both 'type' and 'org_type'
   void set_types(const define::TypePtr &type) {
     type_ = type ? type->GetTrivialType() : nullptr;
@@ -127,15 +125,13 @@ class Value {
 // bidirectional reference between SSA users and values
 class Use {
  public:
-  explicit Use(const SSAPtr &value, User *user)
-      : value_(value), user_(user) {}
+  explicit Use(const SSAPtr &value, User *user) : value_(value), user_(user) {}
   // copy constructor
   Use(const Use &use) : value_(use.value_), user_(use.user_) {
     if (value_) value_->AddUse(this);
   }
   // move constructor
-  Use(Use &&use) noexcept
-      : value_(std::move(use.value_)), user_(use.user_) {
+  Use(Use &&use) noexcept : value_(std::move(use.value_)), user_(use.user_) {
     if (value_) {
       value_->RemoveUse(&use);
       value_->AddUse(this);
@@ -197,9 +193,7 @@ class User : public Value {
   // clear all uses
   void Clear() { uses_.clear(); }
   // add new value to current user
-  void AddValue(const SSAPtr &value) {
-    uses_.push_back(Use(value, this));
-  }
+  void AddValue(const SSAPtr &value) { uses_.push_back(Use(value, this)); }
 
   // access value in current user
   Use &operator[](std::size_t pos) { return uses_[pos]; }

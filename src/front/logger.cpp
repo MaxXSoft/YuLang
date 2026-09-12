@@ -32,8 +32,7 @@ void Logger::LogError(std::string_view message) const {
   LogRawError(message);
 }
 
-void Logger::LogError(std::string_view message,
-                      std::string_view id) const {
+void Logger::LogError(std::string_view message, std::string_view id) const {
   using namespace xstl;
   LogFileInfo();
   // print error message

@@ -1,7 +1,7 @@
 #include "mid/passman.h"
 
-#include <iomanip>
 #include <cassert>
+#include <iomanip>
 
 using namespace yulang::mid;
 
@@ -10,9 +10,7 @@ std::list<PassInfo *> &PassManager::GetPasses() {
   return passes;
 }
 
-void PassManager::RegisterPass(PassInfo *info) {
-  GetPasses().push_back(info);
-}
+void PassManager::RegisterPass(PassInfo *info) { GetPasses().push_back(info); }
 
 void PassManager::RunPasses() const {
   bool changed = true;
@@ -28,14 +26,12 @@ void PassManager::RunPasses() const {
         // run on global values
         if (pass->RunOnModule(*vars_)) changed = true;
         if (pass->RunOnModule(*funcs_)) changed = true;
-      }
-      else if (pass->IsFunctionPass()) {
+      } else if (pass->IsFunctionPass()) {
         // traverse all functions
         for (const auto &func : *funcs_) {
           if (pass->RunOnFunction(func)) changed = true;
         }
-      }
-      else {
+      } else {
         assert(pass->IsBlockPass());
         // traverse all basic blocks
         for (const auto &func : *funcs_) {
@@ -80,8 +76,7 @@ void PassManager::ShowInfo(std::ostream &os) const {
   }
   if (!count) {
     os << "  <none>" << std::endl;
-  }
-  else if ((count - 1) % 5 != 4) {
+  } else if ((count - 1) % 5 != 4) {
     os << std::endl;
   }
 }

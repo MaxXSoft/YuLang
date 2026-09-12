@@ -43,8 +43,7 @@ Path LexerManager::GetModPath(const ModName &mod_name) {
   for (std::size_t i = 0; i < mod_name.size(); ++i) {
     if (i == mod_name.size() - 1) {
       mod_path /= mod_name[i] + ".yu";
-    }
-    else {
+    } else {
       mod_path /= mod_name[i];
     }
   }
@@ -72,8 +71,7 @@ std::optional<LexerPtr> LexerManager::SetLexer(const Path &file) {
     it->second = lexer_;
     // check if path is valid
     if (!std::filesystem::exists(file)) return {};
-  }
-  else {
+  } else {
     // just set
     lexer_ = it->second;
   }

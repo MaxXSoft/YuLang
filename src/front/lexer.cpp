@@ -1,10 +1,10 @@
 #include "front/lexer.h"
 
-#include <iostream>
-#include <cstddef>
-#include <cstring>
-#include <cstdlib>
 #include <cctype>
+#include <cstddef>
+#include <cstdlib>
+#include <cstring>
+#include <iostream>
 
 #include "define/token.h"
 
@@ -13,9 +13,7 @@ using namespace yulang::define;
 
 namespace {
 
-enum class NumberType {
-  Normal, Hex, Bin, Float
-};
+enum class NumberType { Normal, Hex, Bin, Float };
 
 const char *kKeywords[] = {YULANG_KEYWORDS(YULANG_EXPAND_SECOND)};
 const char *kOperators[] = {YULANG_OPERATORS(YULANG_EXPAND_SECOND)};
@@ -49,17 +47,28 @@ int Lexer::ReadEscape() {
   NextChar();
   if (IsEOL()) return -1;
   switch (last_char_) {
-    case 'a': return '\a';
-    case 'b': return '\b';
-    case 'f': return '\f';
-    case 'n': return '\n';
-    case 'r': return '\r';
-    case 't': return '\t';
-    case 'v': return '\v';
-    case '\\': return '\\';
-    case '\'': return '\'';
-    case '"': return '"';
-    case '0': return '\0';
+    case 'a':
+      return '\a';
+    case 'b':
+      return '\b';
+    case 'f':
+      return '\f';
+    case 'n':
+      return '\n';
+    case 'r':
+      return '\r';
+    case 't':
+      return '\t';
+    case 'v':
+      return '\v';
+    case '\\':
+      return '\\';
+    case '\'':
+      return '\'';
+    case '"':
+      return '"';
+    case '0':
+      return '\0';
     case 'x': {
       char hex[3] = {0};
       char *end_pos;
@@ -73,7 +82,8 @@ int Lexer::ReadEscape() {
       auto ret = std::strtol(hex, &end_pos, 16);
       return *end_pos ? -1 : ret;
     }
-    default: return -1;
+    default:
+      return -1;
   }
 }
 
@@ -93,8 +103,7 @@ Token Lexer::HandleId() {
   if (index < 0) {
     id_val_ = id;
     return Token::Id;
-  }
-  else {
+  } else {
     key_val_ = static_cast<Keyword>(index);
     return Token::Keyword;
   }
@@ -108,18 +117,26 @@ Token Lexer::HandleNum() {
     NextChar();
     switch (last_char_) {
       // hexadecimal
-      case 'x': case 'X': num_type = NumberType::Hex; break;
+      case 'x':
+      case 'X':
+        num_type = NumberType::Hex;
+        break;
       // binary
-      case 'b': case 'B': num_type = NumberType::Bin; break;
+      case 'b':
+      case 'B':
+        num_type = NumberType::Bin;
+        break;
       // floating point
-      case '.': num = "0."; num_type = NumberType::Float; break;
+      case '.':
+        num = "0.";
+        num_type = NumberType::Float;
+        break;
       default: {
         if (IsEOL() || !std::isdigit(last_char_)) {
           // just zero
           int_val_ = 0;
           return Token::Int;
-        }
-        else {
+        } else {
           return LogError("invalid number literal");
         }
         break;
@@ -176,8 +193,7 @@ Token Lexer::HandleString() {
       int ret = ReadEscape();
       if (ret < 0) return LogError("invalid escape character");
       str += ret;
-    }
-    else {
+    } else {
       str += last_char_;
     }
     NextChar();
@@ -197,8 +213,7 @@ Token Lexer::HandleChar() {
     int ret = ReadEscape();
     if (ret < 0) return LogError("invalid escape character");
     char_val_ = ret;
-  }
-  else {
+  } else {
     char_val_ = last_char_;
   }
   NextChar();
@@ -217,8 +232,10 @@ Token Lexer::HandleOperator() {
   if (op[0] == '/') {
     if (!IsEOL()) {
       switch (last_char_) {
-        case '/': return HandleComment();
-        case '*': return HandleBlockComment();
+        case '/':
+          return HandleComment();
+        case '*':
+          return HandleBlockComment();
       }
     }
   }
@@ -233,8 +250,7 @@ Token Lexer::HandleOperator() {
     // treat unknown operator as identifier
     id_val_ = op;
     return Token::Id;
-  }
-  else {
+  } else {
     op_val_ = static_cast<Operator>(index);
     return Token::Operator;
   }
@@ -278,8 +294,7 @@ void Lexer::Reset() {
   // check if file was opened
   if (!in_.is_open()) {
     LogError("failed to open file");
-  }
-  else {
+  } else {
     // reset status of file stream
     in_.clear();
     in_.seekg(0, std::ios::beg);

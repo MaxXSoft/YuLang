@@ -1,18 +1,18 @@
 #ifndef YULANG_MID_MODULE_H_
 #define YULANG_MID_MODULE_H_
 
-#include <string>
 #include <ostream>
-#include <utility>
 #include <stack>
+#include <string>
 #include <type_traits>
+#include <utility>
 
+#include "back/codegen.h"
 #include "define/type.h"
-#include "mid/ssa.h"
-#include "xstl/guard.h"
 #include "front/logger.h"
 #include "mid/passman.h"
-#include "back/codegen.h"
+#include "mid/ssa.h"
+#include "xstl/guard.h"
 
 namespace yulang::mid {
 
@@ -25,7 +25,7 @@ class Module {
 
   // create a function declaration
   UserPtr CreateFunction(LinkageTypes link, const std::string &name,
-                        const define::TypePtr &type);
+                         const define::TypePtr &type);
   // create a basic block
   BlockPtr CreateBlock(const UserPtr &parent);
   // create a basic block with name
@@ -35,8 +35,7 @@ class Module {
   // create a store instruction
   SSAPtr CreateStore(const SSAPtr &value, const SSAPtr &pointer);
   // create a initialization
-  SSAPtr CreateInit(const SSAPtr &value, const SSAPtr &pointer,
-                    bool is_ref);
+  SSAPtr CreateInit(const SSAPtr &value, const SSAPtr &pointer, bool is_ref);
   // create a allocation instruction
   SSAPtr CreateAlloca(const define::TypePtr &type);
   // create a jump instruction
@@ -46,8 +45,7 @@ class Module {
   // create a global variable definition
   GlobalVarPtr CreateGlobalVar(LinkageTypes link, bool is_var,
                                const std::string &name,
-                               const define::TypePtr &type,
-                               const SSAPtr &init);
+                               const define::TypePtr &type, const SSAPtr &init);
   // create a global variable declaration
   GlobalVarPtr CreateGlobalVar(LinkageTypes link, bool is_var,
                                const std::string &name,
@@ -159,7 +157,7 @@ class Module {
  private:
   // create a new SSA with current context (logger)
   template <typename T, typename... Args>
-  auto MakeSSA(Args &&... args) {
+  auto MakeSSA(Args &&...args) {
     static_assert(std::is_base_of_v<Value, T>);
     auto ssa = std::make_shared<T>(std::forward<Args>(args)...);
     ssa->set_logger(loggers_.top());
@@ -168,7 +166,7 @@ class Module {
 
   // create a new instruction SSA, and push into current block
   template <typename T, typename... Args>
-  SSAPtr AddInst(Args &&... args) {
+  SSAPtr AddInst(Args &&...args) {
     auto inst = MakeSSA<T>(std::forward<Args>(args)...);
     insert_pos_ = insert_block_->insts().insert(insert_pos_, inst);
     ++insert_pos_;

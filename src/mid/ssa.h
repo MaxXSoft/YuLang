@@ -1,9 +1,9 @@
 #ifndef YULANG_MID_SSA_H_
 #define YULANG_MID_SSA_H_
 
-#include <string>
 #include <cstddef>
 #include <cstdint>
+#include <string>
 
 #include "mid/usedef.h"
 
@@ -19,7 +19,11 @@ using GlobalVarPtr = std::shared_ptr<GlobalVarSSA>;
 
 // linkage types
 enum class LinkageTypes {
-  Internal, Inline, External, GlobalCtor, GlobalDtor,
+  Internal,
+  Inline,
+  External,
+  GlobalCtor,
+  GlobalDtor,
 };
 
 // load from allocation
@@ -91,12 +95,41 @@ class BinarySSA : public User {
  public:
   enum class Operator {
     // integer
-    Add, Sub, Mul, UDiv, SDiv, URem, SRem, Equal, NotEq,
-    ULess, SLess, ULessEq, SLessEq, UGreat, SGreat, UGreatEq, SGreatEq,
-    And, Or, Xor, Shl, LShr, AShr,
+    Add,
+    Sub,
+    Mul,
+    UDiv,
+    SDiv,
+    URem,
+    SRem,
+    Equal,
+    NotEq,
+    ULess,
+    SLess,
+    ULessEq,
+    SLessEq,
+    UGreat,
+    SGreat,
+    UGreatEq,
+    SGreatEq,
+    And,
+    Or,
+    Xor,
+    Shl,
+    LShr,
+    AShr,
     // float
-    FAdd, FSub, FMul, FDiv, FRem,
-    FEqual, FNotEq, FLess, FLessEq, FGreat, FGreatEq,
+    FAdd,
+    FSub,
+    FMul,
+    FDiv,
+    FRem,
+    FEqual,
+    FNotEq,
+    FLess,
+    FLessEq,
+    FGreat,
+    FGreatEq,
   };
 
   BinarySSA(Operator op, const SSAPtr &lhs, const SSAPtr &rhs) : op_(op) {
@@ -123,7 +156,10 @@ class BinarySSA : public User {
 class UnarySSA : public User {
  public:
   enum class Operator {
-    Neg, LogicNot, Not, FNeg,
+    Neg,
+    LogicNot,
+    Not,
+    FNeg,
   };
 
   UnarySSA(Operator op, const SSAPtr &opr) : op_(op) {

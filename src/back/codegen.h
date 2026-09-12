@@ -1,8 +1,8 @@
 #ifndef YULANG_BACK_CODEGEN_H_
 #define YULANG_BACK_CODEGEN_H_
 
-#include <ostream>
 #include <cstddef>
+#include <ostream>
 
 #include "mid/ssa.h"
 

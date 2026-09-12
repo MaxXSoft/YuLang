@@ -1,23 +1,21 @@
-#include <iostream>
+#include <cstdlib>
 #include <fstream>
+#include <iostream>
 #include <string>
 #include <vector>
-#include <cstdlib>
 
-#include "version.h"
-
-#include "define/type.h"
-#include "front/logger.h"
-#include "front/lexman.h"
-#include "front/parser.h"
-#include "front/analyzer.h"
-#include "front/eval.h"
-#include "mid/irbuilder.h"
-#include "mid/passman.h"
 #include "back/codegen.h"
 #include "back/llvm/generator.h"
 #include "back/llvm/objgen.h"
-
+#include "define/type.h"
+#include "front/analyzer.h"
+#include "front/eval.h"
+#include "front/lexman.h"
+#include "front/logger.h"
+#include "front/parser.h"
+#include "mid/irbuilder.h"
+#include "mid/passman.h"
+#include "version.h"
 #include "xstl/argparse.h"
 
 using namespace std;
@@ -30,7 +28,11 @@ using namespace yulang::back::ll;
 namespace {
 
 enum class OutputType {
-  AST, YuIR, LLVM, Assembly, Object,
+  AST,
+  YuIR,
+  LLVM,
+  Assembly,
+  Object,
 };
 
 xstl::ArgParser GetArgp() {
@@ -40,10 +42,11 @@ xstl::ArgParser GetArgp() {
   argp.AddOption<bool>("version", "v", "show version info", false);
   argp.AddOption<string>("outtype", "ot",
                          "type of output (ast/yuir/llvm/asm/obj)", "obj");
-  argp.AddOption<string>("output", "o", "output file, default to stdout",
-                         "");
-  argp.AddOption<vector<string>>("imppath", "I", "add directory to "
-                                 "import search path", {});
+  argp.AddOption<string>("output", "o", "output file, default to stdout", "");
+  argp.AddOption<vector<string>>("imppath", "I",
+                                 "add directory to "
+                                 "import search path",
+                                 {});
   argp.AddOption<int>("opt-level", "O", "set optimization level (0-3)", 0);
   argp.AddOption<bool>("verbose", "V", "use verbose output", false);
   argp.AddOption<bool>("warn-error", "Werror", "treat warnings as errors",
@@ -68,12 +71,10 @@ void ParseArgument(xstl::ArgParser &argp, int argc, const char *argv[]) {
   if (argp.GetValue<bool>("help")) {
     argp.PrintHelp();
     std::exit(0);
-  }
-  else if (argp.GetValue<bool>("version")) {
+  } else if (argp.GetValue<bool>("version")) {
     PrintVersion();
     std::exit(0);
-  }
-  else if (!ret) {
+  } else if (!ret) {
     cerr << "invalid input, run '";
     cerr << argp.program_name() << " -h' for help" << endl;
     std::exit(1);
@@ -142,8 +143,8 @@ bool CompileToIR(const xstl::ArgParser &argp, std::ostream &os,
   return err_num == 0;
 }
 
-bool RunPasses(const xstl::ArgParser &argp, std::ostream &os,
-               IRBuilder &irb, OutputType type, int opt) {
+bool RunPasses(const xstl::ArgParser &argp, std::ostream &os, IRBuilder &irb,
+               OutputType type, int opt) {
   // set optimization level
   PassManager pass_man;
   pass_man.set_opt_level(opt);
@@ -233,7 +234,8 @@ int main(int argc, const char *argv[]) {
   if (out_type != OutputType::AST) {
     if (!RunPasses(argp, os, irb, out_type, opt_level)) return 1;
     if (out_type != OutputType::YuIR &&
-        !GenerateCode(os, irb, gen, obj_gen, out_type, out_file)) return 1;
+        !GenerateCode(os, irb, gen, obj_gen, out_type, out_file))
+      return 1;
   }
   os.flush();
   if (ofs.is_open()) ofs.close();

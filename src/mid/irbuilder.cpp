@@ -13,11 +13,9 @@ namespace {
 inline LinkageTypes GetLinkageType(Property prop) {
   if (prop == Property::Public || prop == Property::Extern) {
     return LinkageTypes::External;
-  }
-  else if (prop == Property::Inline) {
+  } else if (prop == Property::Inline) {
     return LinkageTypes::Inline;
-  }
-  else {
+  } else {
     return LinkageTypes::Internal;
   }
 }
@@ -40,10 +38,10 @@ SSAPtr IRBuilder::CreateBinOp(Operator op, const SSAPtr &lhs,
     }
     module_.CreateStore(val, lhs);
     return nullptr;
-  }
-  else {
+  } else {
     switch (op) {
-      case Operator::Add: case Operator::Sub: {
+      case Operator::Add:
+      case Operator::Sub: {
         if (lhs->type()->IsPointer() || rhs->type()->IsPointer()) {
           // generate index
           auto index = lhs->type()->IsPointer() ? rhs : lhs;
@@ -51,27 +49,42 @@ SSAPtr IRBuilder::CreateBinOp(Operator op, const SSAPtr &lhs,
           // generate pointer operation
           const auto &ptr = lhs->type()->IsPointer() ? lhs : rhs;
           return module_.CreatePtrAccess(ptr, index);
-        }
-        else {
+        } else {
           return op == Operator::Add ? module_.CreateAdd(lhs, rhs)
                                      : module_.CreateSub(lhs, rhs);
         }
       }
-      case Operator::Mul: return module_.CreateMul(lhs, rhs);
-      case Operator::Div: return module_.CreateDiv(lhs, rhs);
-      case Operator::Mod: return module_.CreateRem(lhs, rhs);
-      case Operator::Equal: return module_.CreateEqual(lhs, rhs);
-      case Operator::NotEqual: return module_.CreateNotEq(lhs, rhs);
-      case Operator::Less: return module_.CreateLess(lhs, rhs);
-      case Operator::LessEqual: return module_.CreateLessEq(lhs, rhs);
-      case Operator::Great: return module_.CreateGreat(lhs, rhs);
-      case Operator::GreatEqual: return module_.CreateGreatEq(lhs, rhs);
-      case Operator::And: return module_.CreateAnd(lhs, rhs);
-      case Operator::Or: return module_.CreateOr(lhs, rhs);
-      case Operator::Xor: return module_.CreateXor(lhs, rhs);
-      case Operator::Shl: return module_.CreateShl(lhs, rhs);
-      case Operator::Shr: return module_.CreateShr(lhs, rhs);
-      default: assert(false); return nullptr;
+      case Operator::Mul:
+        return module_.CreateMul(lhs, rhs);
+      case Operator::Div:
+        return module_.CreateDiv(lhs, rhs);
+      case Operator::Mod:
+        return module_.CreateRem(lhs, rhs);
+      case Operator::Equal:
+        return module_.CreateEqual(lhs, rhs);
+      case Operator::NotEqual:
+        return module_.CreateNotEq(lhs, rhs);
+      case Operator::Less:
+        return module_.CreateLess(lhs, rhs);
+      case Operator::LessEqual:
+        return module_.CreateLessEq(lhs, rhs);
+      case Operator::Great:
+        return module_.CreateGreat(lhs, rhs);
+      case Operator::GreatEqual:
+        return module_.CreateGreatEq(lhs, rhs);
+      case Operator::And:
+        return module_.CreateAnd(lhs, rhs);
+      case Operator::Or:
+        return module_.CreateOr(lhs, rhs);
+      case Operator::Xor:
+        return module_.CreateXor(lhs, rhs);
+      case Operator::Shl:
+        return module_.CreateShl(lhs, rhs);
+      case Operator::Shr:
+        return module_.CreateShr(lhs, rhs);
+      default:
+        assert(false);
+        return nullptr;
     }
   }
 }
@@ -125,8 +138,7 @@ SSAPtr IRBuilder::GenerateOn(FunDefAST &ast) {
   if (ast.type()) {
     auto ret = module_.CreateLoad(ret_val_, ret_is_ref_);
     module_.CreateReturn(ret);
-  }
-  else {
+  } else {
     module_.CreateReturn(nullptr);
   }
   return nullptr;
@@ -142,8 +154,7 @@ SSAPtr IRBuilder::GenerateOn(DeclareAST &ast) {
   if (type->IsFunction()) {
     // function declaration
     val = module_.CreateFunction(link, ast.id(), type);
-  }
-  else {
+  } else {
     assert(vals_->is_root());
     // external global variable
     val = module_.CreateGlobalVar(link, ast.is_var(), ast.id(), type);
@@ -190,30 +201,25 @@ SSAPtr IRBuilder::GenerateOn(VarLetElemAST &ast) {
         // generate initializer
         auto var_init = init->GenerateIR(*this);
         var->set_init(var_init);
-      }
-      else {
+      } else {
         // set as variable since constructor will initialize it
         var->set_is_var(true);
         // generate zero initializer
         var->set_init(module_.GetZero(type));
         // generate initialization instructions
         auto ctor = module_.EnterGlobalCtor();
-        module_.CreateInit(init->GenerateIR(*this), var,
-                           type->IsReference());
+        module_.CreateInit(init->GenerateIR(*this), var, type->IsReference());
       }
-    }
-    else if (link != LinkageTypes::External) {
+    } else if (link != LinkageTypes::External) {
       // generate zero initializer
       var->set_init(module_.GetZero(type));
     }
     val = var;
-  }
-  else {
+  } else {
     // local variables/constants
     auto alloca = module_.CreateAlloca(type);
     if (init) {
-      module_.CreateInit(init->GenerateIR(*this), alloca,
-                         type->IsReference());
+      module_.CreateInit(init->GenerateIR(*this), alloca, type->IsReference());
     }
     val = alloca;
   }
@@ -408,7 +414,8 @@ SSAPtr IRBuilder::GenerateOn(ControlAST &ast) {
   const auto &func = module_.GetInsertPoint()->parent();
   auto block = module_.CreateBlock(func);
   switch (ast.type()) {
-    case Keyword::Break: case Keyword::Continue: {
+    case Keyword::Break:
+    case Keyword::Continue: {
       // generate target
       const auto &cur = break_cont_.top();
       auto target = ast.type() == Keyword::Break ? cur.first : cur.second;
@@ -426,7 +433,9 @@ SSAPtr IRBuilder::GenerateOn(ControlAST &ast) {
       module_.CreateJump(func_exit_);
       break;
     }
-    default: assert(false); break;
+    default:
+      assert(false);
+      break;
   }
   // emit new block
   module_.SetInsertPoint(block);
@@ -484,8 +493,7 @@ SSAPtr IRBuilder::GenerateOn(BinaryAST &ast) {
     if (ast.op() == Operator::LogicAnd) {
       module_.CreateStore(module_.GetBool(false), result);
       module_.CreateBranch(lhs, rhs_block, end_block);
-    }
-    else {  // LogicOr
+    } else {  // LogicOr
       module_.CreateStore(module_.GetBool(true), result);
       module_.CreateBranch(lhs, end_block, rhs_block);
     }
@@ -551,15 +559,23 @@ SSAPtr IRBuilder::GenerateOn(UnaryAST &ast) {
   }
   // normal unary operation
   switch (ast.op()) {
-    case UnaryOp::Pos: return opr;
-    case UnaryOp::Neg: return module_.CreateNeg(opr);
-    case UnaryOp::LogicNot: return module_.CreateLogicNot(opr);
-    case UnaryOp::Not: return module_.CreateNot(opr);
+    case UnaryOp::Pos:
+      return opr;
+    case UnaryOp::Neg:
+      return module_.CreateNeg(opr);
+    case UnaryOp::LogicNot:
+      return module_.CreateLogicNot(opr);
+    case UnaryOp::Not:
+      return module_.CreateNot(opr);
     // NOTE: do not create load with reference
     //       because 'opr' is already dereferenced
-    case UnaryOp::DeRef: return module_.CreateLoad(opr, false);
-    case UnaryOp::AddrOf: return opr->GetAddr();
-    default: assert(false); return nullptr;
+    case UnaryOp::DeRef:
+      return module_.CreateLoad(opr, false);
+    case UnaryOp::AddrOf:
+      return opr->GetAddr();
+    default:
+      assert(false);
+      return nullptr;
   }
 }
 
@@ -576,8 +592,7 @@ SSAPtr IRBuilder::GenerateOn(IndexAST &ast) {
   SSAPtr ptr;
   if (expr_ty->IsArray()) {
     ptr = module_.CreateElemAccess(expr, index, elem_ty);
-  }
-  else {
+  } else {
     ptr = module_.CreatePtrAccess(expr, index);
   }
   // generate load
@@ -651,14 +666,12 @@ SSAPtr IRBuilder::GenerateOn(ValInitAST &ast) {
     if (type->IsArray()) {
       // generate constant array
       return module_.GetArray(elems, type);
-    }
-    else {
+    } else {
       assert(type->IsStruct());
       // generate constant structure
       return module_.GetStruct(elems, type);
     }
-  }
-  else {
+  } else {
     // create a temporary alloca
     auto val = module_.CreateAlloca(type);
     assert(!type->IsReference());

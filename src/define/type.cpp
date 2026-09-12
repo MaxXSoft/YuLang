@@ -1,9 +1,9 @@
 #include "define/type.h"
 
-#include <sstream>
-#include <utility>
-#include <stack>
 #include <cassert>
+#include <sstream>
+#include <stack>
+#include <utility>
 
 #include "xstl/guard.h"
 
@@ -44,8 +44,7 @@ bool PrimType::IsIdentical(const TypePtr &type) const {
   if (IsNull() && type->IsNull()) return true;
   if (IsInteger() && type->IsInteger()) {
     // TODO: distinction between pointer-sized types and integer types?
-    return IsUnsigned() == type->IsUnsigned() &&
-           GetSize() == type->GetSize();
+    return IsUnsigned() == type->IsUnsigned() && GetSize() == type->GetSize();
   }
   if (IsFloat() && type->IsFloat()) return GetSize() == type->GetSize();
   if (IsBool() && type->IsBool()) return true;
@@ -54,33 +53,63 @@ bool PrimType::IsIdentical(const TypePtr &type) const {
 
 std::size_t PrimType::GetSize() const {
   switch (type_) {
-    case Type::Bool: return 1;
-    case Type::Int8: case Type::UInt8: return 1;
-    case Type::Int16: case Type::UInt16: return 2;
-    case Type::Int32: case Type::UInt32: case Type::Float32: return 4;
-    case Type::Int64: case Type::UInt64: case Type::Float64: return 8;
-    case Type::Null: case Type::ISize: case Type::USize: return ptr_size();
-    default: return 0;
+    case Type::Bool:
+      return 1;
+    case Type::Int8:
+    case Type::UInt8:
+      return 1;
+    case Type::Int16:
+    case Type::UInt16:
+      return 2;
+    case Type::Int32:
+    case Type::UInt32:
+    case Type::Float32:
+      return 4;
+    case Type::Int64:
+    case Type::UInt64:
+    case Type::Float64:
+      return 8;
+    case Type::Null:
+    case Type::ISize:
+    case Type::USize:
+      return ptr_size();
+    default:
+      return 0;
   }
 }
 
 std::string PrimType::GetTypeId() const {
   switch (type_) {
-    case Type::Int8: return "i8";
-    case Type::Int16: return "i16";
-    case Type::Int32: return "i32";
-    case Type::Int64: return "i64";
-    case Type::ISize: return "isize";
-    case Type::UInt8: return "u8";
-    case Type::UInt16: return "u16";
-    case Type::UInt32: return "u32";
-    case Type::UInt64: return "u64";
-    case Type::USize: return "usize";
-    case Type::Bool: return "bool";
-    case Type::Float32: return "f32";
-    case Type::Float64: return "f64";
-    case Type::Null: return "null";
-    default: return "";
+    case Type::Int8:
+      return "i8";
+    case Type::Int16:
+      return "i16";
+    case Type::Int32:
+      return "i32";
+    case Type::Int64:
+      return "i64";
+    case Type::ISize:
+      return "isize";
+    case Type::UInt8:
+      return "u8";
+    case Type::UInt16:
+      return "u16";
+    case Type::UInt32:
+      return "u32";
+    case Type::UInt64:
+      return "u64";
+    case Type::USize:
+      return "usize";
+    case Type::Bool:
+      return "bool";
+    case Type::Float32:
+      return "f32";
+    case Type::Float64:
+      return "f64";
+    case Type::Null:
+      return "null";
+    default:
+      return "";
   }
 }
 
@@ -108,8 +137,7 @@ bool StructType::IsIdentical(const TypePtr &type) const {
   // check if is in recursion
   if (!ident_types.empty()) {
     const auto &[t1, t2] = ident_types.top();
-    if ((t1 == this && t2 == type.get()) ||
-        (t2 == this && t1 == type.get())) {
+    if ((t1 == this && t2 == type.get()) || (t2 == this && t1 == type.get())) {
       return true;
     }
   }
@@ -126,7 +154,8 @@ bool StructType::IsIdentical(const TypePtr &type) const {
 }
 
 TypePtr StructType::GetElem(const std::string &name) const {
-  for (const auto &[n, t] : elems_) if (name == n) return t;
+  for (const auto &[n, t] : elems_)
+    if (name == n) return t;
   return nullptr;
 }
 
@@ -179,17 +208,15 @@ TypePtr EnumType::GetValueType(bool is_right) const {
 
 TypePtr ConstType::GetElem(std::size_t index) const {
   auto type = type_->GetElem(index);
-  return type_->IsReference()
-             ? std::move(type)
-             : std::make_shared<ConstType>(std::move(type));
+  return type_->IsReference() ? std::move(type)
+                              : std::make_shared<ConstType>(std::move(type));
 }
 
 TypePtr ConstType::GetElem(const std::string &name) const {
   auto type = type_->GetElem(name);
   if (!type) return nullptr;
-  return type_->IsReference()
-             ? std::move(type)
-             : std::make_shared<ConstType>(std::move(type));
+  return type_->IsReference() ? std::move(type)
+                              : std::make_shared<ConstType>(std::move(type));
 }
 
 TypePtr ConstType::GetValueType(bool is_right) const {
@@ -211,9 +238,7 @@ bool FuncType::IsIdentical(const TypePtr &type) const {
   return ret ? ret_->IsIdentical(ret) : false;
 }
 
-std::size_t FuncType::GetSize() const {
-  return ptr_size();
-}
+std::size_t FuncType::GetSize() const { return ptr_size(); }
 
 TypePtr FuncType::GetReturnType(const TypePtrList &args) const {
   if (args_.size() != args.size()) return nullptr;
@@ -228,8 +253,7 @@ TypePtr FuncType::GetReturnType(const TypePtrList &args) const {
       if (args[i]->IsConst() && !args_[i]->GetDerefedType()->IsConst()) {
         return nullptr;
       }
-    }
-    else if (args_[i]->IsPointer()) {
+    } else if (args_[i]->IsPointer()) {
       // check pointer's const cast
       if (args[i]->GetDerefedType()->IsConst() &&
           !args_[i]->GetDerefedType()->IsConst()) {
@@ -256,8 +280,8 @@ TypePtr FuncType::GetValueType(bool is_right) const {
 TypePtr FuncType::GetTrivialType() const {
   TypePtrList args;
   for (const auto &i : args_) args.push_back(i->GetTrivialType());
-  return std::make_shared<FuncType>(std::move(args),
-                                    ret_->GetTrivialType(), false);
+  return std::make_shared<FuncType>(std::move(args), ret_->GetTrivialType(),
+                                    false);
 }
 
 TypePtr VolaType::GetDeconstedType() const {
@@ -323,9 +347,7 @@ bool PointerType::IsIdentical(const TypePtr &type) const {
   return type->IsPointer() && base_->IsIdentical(type->GetDerefedType());
 }
 
-std::size_t PointerType::GetSize() const {
-  return ptr_size();
-}
+std::size_t PointerType::GetSize() const { return ptr_size(); }
 
 std::string PointerType::GetTypeId() const {
   std::ostringstream oss;
@@ -351,8 +373,7 @@ TypePtr RefType::GetValueType(bool is_right) const {
   if (is_right) {
     // return non-referenced right value type
     return base_->GetValueType(is_right);
-  }
-  else {
+  } else {
     // return self
     return std::make_shared<RefType>(base_);
   }

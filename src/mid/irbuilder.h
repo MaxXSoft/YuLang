@@ -5,8 +5,8 @@
 #include <utility>
 
 #include "define/ast.h"
-#include "mid/usedef.h"
 #include "mid/module.h"
+#include "mid/usedef.h"
 #include "xstl/guard.h"
 #include "xstl/nested.h"
 
@@ -74,8 +74,7 @@ class IRBuilder {
   // switch to a new environment
   xstl::Guard NewEnv();
   // create binary operation
-  SSAPtr CreateBinOp(define::Operator op, const SSAPtr &lhs,
-                     const SSAPtr &rhs);
+  SSAPtr CreateBinOp(define::Operator op, const SSAPtr &lhs, const SSAPtr &rhs);
 
   // module for storing IRs
   Module module_;

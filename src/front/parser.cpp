@@ -1,8 +1,8 @@
 #include "front/parser.h"
 
+#include <cassert>
 #include <sstream>
 #include <stack>
-#include <cassert>
 
 #include "define/token.h"
 
@@ -22,9 +22,7 @@ const int kOpPrecTable[] = {YULANG_OPERATORS(YULANG_EXPAND_THIRD)};
 const char *kOperators[] = {YULANG_OPERATORS(YULANG_EXPAND_SECOND)};
 
 // return precedence of specific operator
-inline int GetOpPrec(Operator op) {
-  return kOpPrecTable[static_cast<int>(op)];
-}
+inline int GetOpPrec(Operator op) { return kOpPrecTable[static_cast<int>(op)]; }
 
 }  // namespace
 
@@ -44,8 +42,9 @@ ASTPtr Parser::ParseVarLetDef(Property prop, bool is_var) {
   auto log = logger();
   // check property
   if (prop == Property::Extern) {
-    log.LogWarning("var/let definitions cannot be 'extern', "
-                   "try using 'public'");
+    log.LogWarning(
+        "var/let definitions cannot be 'extern', "
+        "try using 'public'");
     prop = Property::Public;
   }
   // go to next token
@@ -71,11 +70,9 @@ ASTPtr Parser::ParseFunDef(Property prop) {
   std::string name;
   if (cur_token_ == Token::Id) {
     name = lexer()->id_val();
-  }
-  else if (cur_token_ == Token::Operator) {
+  } else if (cur_token_ == Token::Operator) {
     name = kOperators[static_cast<int>(lexer()->op_val())];
-  }
-  else {
+  } else {
     return LogError("invalid function name");
   }
   NextToken();
@@ -109,8 +106,8 @@ ASTPtr Parser::ParseFunDef(Property prop) {
     body = ParseBlock();
     if (!body) return nullptr;
   }
-  return MakeAST<FunDefAST>(log, prop, name, std::move(args),
-                            std::move(type), std::move(body));
+  return MakeAST<FunDefAST>(log, prop, name, std::move(args), std::move(type),
+                            std::move(body));
 }
 
 ASTPtr Parser::ParseDeclare(Property prop) {
@@ -142,8 +139,9 @@ ASTPtr Parser::ParseTypeAlias(Property prop) {
   auto log = logger();
   // check property
   if (prop == Property::Extern || prop == Property::Inline) {
-    log.LogWarning("type aliases cannot be 'extern' or 'inline', "
-                   "try using 'public'");
+    log.LogWarning(
+        "type aliases cannot be 'extern' or 'inline', "
+        "try using 'public'");
     prop = Property::Public;
   }
   NextToken();
@@ -163,8 +161,9 @@ ASTPtr Parser::ParseStruct(Property prop) {
   auto log = logger();
   // check property
   if (prop == Property::Extern || prop == Property::Inline) {
-    log.LogWarning("structure definitions cannot be 'extern' "
-                   "or 'inline', try using 'public'");
+    log.LogWarning(
+        "structure definitions cannot be 'extern' "
+        "or 'inline', try using 'public'");
     prop = Property::Public;
   }
   NextToken();
@@ -193,8 +192,9 @@ ASTPtr Parser::ParseEnum(Property prop) {
   auto log = logger();
   // check property
   if (prop == Property::Extern || prop == Property::Inline) {
-    log.LogWarning("enumeration definitions cannot be 'extern' "
-                   "or 'inline', try using 'public'");
+    log.LogWarning(
+        "enumeration definitions cannot be 'extern' "
+        "or 'inline', try using 'public'");
     prop = Property::Public;
   }
   NextToken();
@@ -230,8 +230,9 @@ ASTPtr Parser::ParseImport(Property prop) {
   auto log = logger();
   // check property
   if (prop == Property::Extern || prop == Property::Inline) {
-    log.LogWarning("importations cannot be 'extern' "
-                   "or 'inline', try using 'public'");
+    log.LogWarning(
+        "importations cannot be 'extern' "
+        "or 'inline', try using 'public'");
   }
   NextToken();
   // get module name
@@ -266,8 +267,7 @@ ASTPtr Parser::ParseImport(Property prop) {
       auto def = GetStatement(prop);
       if (!def) return nullptr;
       defs.push_back(std::move(def));
-    }
-    else {
+    } else {
       NextToken();
     }
   }
@@ -294,8 +294,7 @@ ASTPtr Parser::ParseVarLetElem(Property prop, bool is_var) {
   }
   // get initialization expression
   ASTPtr init;
-  if ((!in_import_ || prop == Property::None ||
-       prop == Property::Inline) &&
+  if ((!in_import_ || prop == Property::None || prop == Property::Inline) &&
       IsTokenOperator(Operator::Assign)) {
     NextToken();
     init = ParseExpr();
@@ -381,11 +380,16 @@ ASTPtr Parser::ParseBlockStatement() {
   // parse other in-block statements
   if (cur_token_ == Token::Keyword) {
     switch (lexer()->key_val()) {
-      case Keyword::While: return ParseWhile();
-      case Keyword::For: return ParseForIn();
-      case Keyword::Asm: return ParseAsm();
-      case Keyword::Break: case Keyword::Continue:
-      case Keyword::Return: return ParseControl();
+      case Keyword::While:
+        return ParseWhile();
+      case Keyword::For:
+        return ParseForIn();
+      case Keyword::Asm:
+        return ParseAsm();
+      case Keyword::Break:
+      case Keyword::Continue:
+      case Keyword::Return:
+        return ParseControl();
       default:;
     }
   }
@@ -565,8 +569,8 @@ ASTPtr Parser::ParseBinary() {
       oprs.pop();
       auto lhs = std::move(oprs.top());
       oprs.pop();
-      oprs.push(MakeAST<BinaryAST>(log, cur_op, std::move(lhs),
-                                   std::move(rhs)));
+      oprs.push(
+          MakeAST<BinaryAST>(log, cur_op, std::move(lhs), std::move(rhs)));
     }
     ops.push(op);
     // get next expression
@@ -583,8 +587,7 @@ ASTPtr Parser::ParseBinary() {
     oprs.pop();
     auto lhs = std::move(oprs.top());
     oprs.pop();
-    oprs.push(MakeAST<BinaryAST>(log, cur_op, std::move(lhs),
-                                 std::move(rhs)));
+    oprs.push(MakeAST<BinaryAST>(log, cur_op, std::move(lhs), std::move(rhs)));
   }
   return std::move(oprs.top());
 }
@@ -613,23 +616,34 @@ ASTPtr Parser::ParseUnary() {
     // get & check unary operator
     auto op = lexer()->op_val();
     switch (op) {
-      case Operator::Add: una_op = UnaryOp::Pos; break;
-      case Operator::Sub: una_op = UnaryOp::Neg; break;
-      case Operator::LogicNot: una_op = UnaryOp::LogicNot; break;
-      case Operator::Not: una_op = UnaryOp::Not; break;
-      case Operator::Mul: una_op = UnaryOp::DeRef; break;
-      case Operator::And: una_op = UnaryOp::AddrOf; break;
-      default: return LogError("invalid unary operator");
+      case Operator::Add:
+        una_op = UnaryOp::Pos;
+        break;
+      case Operator::Sub:
+        una_op = UnaryOp::Neg;
+        break;
+      case Operator::LogicNot:
+        una_op = UnaryOp::LogicNot;
+        break;
+      case Operator::Not:
+        una_op = UnaryOp::Not;
+        break;
+      case Operator::Mul:
+        una_op = UnaryOp::DeRef;
+        break;
+      case Operator::And:
+        una_op = UnaryOp::AddrOf;
+        break;
+      default:
+        return LogError("invalid unary operator");
     }
-  }
-  else if (IsTokenKeyword(Keyword::SizeOf)) {
+  } else if (IsTokenKeyword(Keyword::SizeOf)) {
     NextToken();
     // get type
     auto type = ParseType();
     if (!type) return nullptr;
     return MakeAST<UnaryAST>(log, UnaryOp::SizeOf, std::move(type));
-  }
-  else {
+  } else {
     return ParseFactor();
   }
   NextToken();
@@ -644,22 +658,25 @@ ASTPtr Parser::ParseFactor() {
   if (cur_token_ == Token::Keyword) {
     // if/when expression
     switch (lexer()->key_val()) {
-      case Keyword::If: factor = ParseIfElse(); break;
-      case Keyword::When: factor = ParseWhen(); break;
-      default: factor = ParseValue(); break;
+      case Keyword::If:
+        factor = ParseIfElse();
+        break;
+      case Keyword::When:
+        factor = ParseWhen();
+        break;
+      default:
+        factor = ParseValue();
+        break;
     }
-  }
-  else if (IsTokenChar('{')) {
+  } else if (IsTokenChar('{')) {
     // block
     factor = ParseBlock();
-  }
-  else if (IsTokenChar('(')) {
+  } else if (IsTokenChar('(')) {
     // bracket expression
     NextToken();
     factor = ParseExpr();
     if (!ExpectChar(')')) return nullptr;
-  }
-  else {
+  } else {
     // other values
     factor = ParseValue();
   }
@@ -667,14 +684,11 @@ ASTPtr Parser::ParseFactor() {
   while (factor && last_token_ != Token::EOL) {
     if (IsTokenChar('[')) {
       factor = ParseIndex(std::move(factor));
-    }
-    else if (IsTokenChar('(')) {
+    } else if (IsTokenChar('(')) {
       factor = ParseFunCall(std::move(factor));
-    }
-    else if (IsTokenOperator(Operator::Access)) {
+    } else if (IsTokenOperator(Operator::Access)) {
       factor = ParseAccess(std::move(factor));
-    }
-    else {
+    } else {
       break;
     }
   }
@@ -726,23 +740,31 @@ ASTPtr Parser::ParseAccess(ASTPtr expr) {
 
 ASTPtr Parser::ParseValue() {
   switch (cur_token_) {
-    case Token::Int: return ParseInt();
-    case Token::Float: return ParseFloat();
-    case Token::Char: return ParseChar();
-    case Token::Id: return ParseId();
-    case Token::String: return ParseString();
+    case Token::Int:
+      return ParseInt();
+    case Token::Float:
+      return ParseFloat();
+    case Token::Char:
+      return ParseChar();
+    case Token::Id:
+      return ParseId();
+    case Token::String:
+      return ParseString();
     case Token::Keyword: {
       switch (lexer()->key_val()) {
-        case Keyword::True: case Keyword::False: return ParseBool();
-        case Keyword::Null: return ParseNull();
-        default: return ParseValInit();
+        case Keyword::True:
+        case Keyword::False:
+          return ParseBool();
+        case Keyword::Null:
+          return ParseNull();
+        default:
+          return ParseValInit();
       }
     }
     default: {
       if (IsTokenChar('[')) {
         return ParseValInit();
-      }
-      else {
+      } else {
         return LogError("invalid value");
       }
     }
@@ -828,8 +850,7 @@ ASTPtr Parser::ParseType() {
     if (IsTokenChar('[')) {
       // array type
       type = ParseArray(std::move(type));
-    }
-    else {
+    } else {
       // check if is a variable reference
       auto is_var = false;
       if (IsTokenKeyword(Keyword::Var)) {
@@ -840,12 +861,10 @@ ASTPtr Parser::ParseType() {
           (cur_token_ == Token::Id && lexer()->id_val()[0] == '*')) {
         // pointer type
         type = ParsePointer(is_var, std::move(type));
-      }
-      else if (IsTokenOperator(Operator::And)) {
+      } else if (IsTokenOperator(Operator::And)) {
         // reference type
         type = ParseRef(is_var, std::move(type));
-      }
-      else {
+      } else {
         break;
       }
     }
@@ -860,30 +879,37 @@ ASTPtr Parser::ParseValType() {
   if (IsTokenChar('(')) {
     // function type
     return ParseFunc();
-  }
-  else if (cur_token_ == Token::Keyword) {
+  } else if (cur_token_ == Token::Keyword) {
     // primitive type
     return ParsePrimType();
-  }
-  else if (cur_token_ == Token::Id) {
+  } else if (cur_token_ == Token::Id) {
     // user defined type
     auto type = MakeAST<UserTypeAST>(lexer()->id_val());
     NextToken();
     return type;
-  }
-  else {
+  } else {
     return LogError("invalid value type");
   }
 }
 
 ASTPtr Parser::ParsePrimType() {
   switch (lexer()->key_val()) {
-    case Keyword::Int8: case Keyword::Int16: case Keyword::Int32:
-    case Keyword::Int64: case Keyword::ISize: case Keyword::UInt8:
-    case Keyword::UInt16: case Keyword::UInt32: case Keyword::UInt64:
-    case Keyword::USize: case Keyword::Float32: case Keyword::Float64:
-    case Keyword::Bool: break;
-    default: return LogError("expected primitive type keywords");
+    case Keyword::Int8:
+    case Keyword::Int16:
+    case Keyword::Int32:
+    case Keyword::Int64:
+    case Keyword::ISize:
+    case Keyword::UInt8:
+    case Keyword::UInt16:
+    case Keyword::UInt32:
+    case Keyword::UInt64:
+    case Keyword::USize:
+    case Keyword::Float32:
+    case Keyword::Float64:
+    case Keyword::Bool:
+      break;
+    default:
+      return LogError("expected primitive type keywords");
   }
   auto ast = MakeAST<PrimTypeAST>(lexer()->key_val());
   NextToken();
@@ -942,14 +968,12 @@ ASTPtr Parser::ParsePointer(bool is_var, ASTPtr type) {
   ASTPtr ast;
   if (IsTokenOperator(Operator::Mul)) {
     ast = MakeAST<PointerTypeAST>(is_var, std::move(type));
-  }
-  else {  // Token::Id
+  } else {  // Token::Id
     for (const auto &c : lexer()->id_val()) {
       if (c != '*') LogError("expected '*'");
       if (!ast) {
         ast = MakeAST<PointerTypeAST>(is_var, std::move(type));
-      }
-      else {
+      } else {
         ast = MakeAST<PointerTypeAST>(false, std::move(ast));
       }
     }
@@ -969,13 +993,11 @@ Property Parser::GetProp() {
     // eat 'public'
     NextToken();
     return Property::Public;
-  }
-  else if (IsTokenKeyword(Keyword::Extern)) {
+  } else if (IsTokenKeyword(Keyword::Extern)) {
     // eat 'extern'
     NextToken();
     return Property::Extern;
-  }
-  else if (IsTokenKeyword(Keyword::Inline)) {
+  } else if (IsTokenKeyword(Keyword::Inline)) {
     // eat 'inline'
     NextToken();
     return Property::Inline;
@@ -987,15 +1009,24 @@ ASTPtr Parser::GetStatement(Property prop) {
   if (cur_token_ != Token::Keyword) return nullptr;
   // parse statements by keyword
   switch (lexer()->key_val()) {
-    case Keyword::Var: return ParseVarLetDef(prop, true);
-    case Keyword::Let: return ParseVarLetDef(prop, false);
-    case Keyword::Def: return ParseFunDef(prop);
-    case Keyword::Declare: return ParseDeclare(prop);
-    case Keyword::Type: return ParseTypeAlias(prop);
-    case Keyword::Struct: return ParseStruct(prop);
-    case Keyword::Enum: return ParseEnum(prop);
-    case Keyword::Import: return ParseImport(prop);
-    default: return nullptr;
+    case Keyword::Var:
+      return ParseVarLetDef(prop, true);
+    case Keyword::Let:
+      return ParseVarLetDef(prop, false);
+    case Keyword::Def:
+      return ParseFunDef(prop);
+    case Keyword::Declare:
+      return ParseDeclare(prop);
+    case Keyword::Type:
+      return ParseTypeAlias(prop);
+    case Keyword::Struct:
+      return ParseStruct(prop);
+    case Keyword::Enum:
+      return ParseEnum(prop);
+    case Keyword::Import:
+      return ParseImport(prop);
+    default:
+      return nullptr;
   }
 }
 

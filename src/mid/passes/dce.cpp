@@ -31,8 +31,7 @@ class DeadCodeEliminationPass : public FunctionPass {
       if (remove_flag_) {
         it = ssa.insts().erase(it);
         changed_ = true;
-      }
-      else {
+      } else {
         ++it;
       }
     }

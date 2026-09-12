@@ -1,11 +1,11 @@
 #ifndef YULANG_MID_PASSMAN_H_
 #define YULANG_MID_PASSMAN_H_
 
-#include <string_view>
-#include <ostream>
+#include <cstddef>
 #include <list>
 #include <memory>
-#include <cstddef>
+#include <ostream>
+#include <string_view>
 
 #include "mid/pass.h"
 #include "mid/usedef.h"
@@ -17,8 +17,10 @@ class PassInfo {
  public:
   PassInfo(std::string_view name, PassPtr pass, std::size_t min_opt_level,
            bool is_analysis)
-      : name_(name), pass_(std::move(pass)),
-        min_opt_level_(min_opt_level), is_analysis_(is_analysis) {}
+      : name_(name),
+        pass_(std::move(pass)),
+        min_opt_level_(min_opt_level),
+        is_analysis_(is_analysis) {}
   virtual ~PassInfo() = default;
 
   // getters

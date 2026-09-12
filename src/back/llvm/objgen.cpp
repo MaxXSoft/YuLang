@@ -1,22 +1,21 @@
 #include "back/llvm/objgen.h"
 
-#include <system_error>
-#include <memory>
 #include <cassert>
+#include <memory>
 #include <optional>
-
-#include "llvm/IR/LegacyPassManager.h"
-#include "llvm/Support/CodeGen.h"
-#include "llvm/Support/TargetSelect.h"
-#include "llvm/Target/TargetOptions.h"
-#include "llvm/Support/FileSystem.h"
-#include "llvm/Support/ToolOutputFile.h"
-#include "llvm/Passes/PassBuilder.h"
-#include "llvm/TargetParser/Host.h"
-#include "llvm/TargetParser/Triple.h"
-#include "llvm/MC/TargetRegistry.h"
+#include <system_error>
 
 #include "front/logger.h"
+#include "llvm/IR/LegacyPassManager.h"
+#include "llvm/MC/TargetRegistry.h"
+#include "llvm/Passes/PassBuilder.h"
+#include "llvm/Support/CodeGen.h"
+#include "llvm/Support/FileSystem.h"
+#include "llvm/Support/TargetSelect.h"
+#include "llvm/Support/ToolOutputFile.h"
+#include "llvm/Target/TargetOptions.h"
+#include "llvm/TargetParser/Host.h"
+#include "llvm/TargetParser/Triple.h"
 
 using namespace yulang::front;
 using namespace yulang::back::ll;
@@ -49,7 +48,7 @@ bool ObjectGen::GenerateTargetCode(const std::string &file,
   // Use LLVM's target-specific code generation pipeline, as llc does.
   llvm::legacy::PassManager pass;
   if (machine_->addPassesToEmitFile(pass, out->os(), nullptr, file_type,
-                                   /*DisableVerify=*/false)) {
+                                    /*DisableVerify=*/false)) {
     Logger::LogRawError("target machine cannot emit file of this type");
     return false;
   }
@@ -99,9 +98,9 @@ bool ObjectGen::SetTargetTriple(const std::string &triple) {
   llvm::TargetOptions opt;
   assert(opt_level_ < 4);
   auto codegen_level = llvm::CodeGenOpt::getLevel(static_cast<int>(opt_level_));
-  machine_ = target->createTargetMachine(target_triple, cpu_, features_, opt,
-                                        std::nullopt, std::nullopt,
-                                        *codegen_level);
+  machine_ =
+      target->createTargetMachine(target_triple, cpu_, features_, opt,
+                                  std::nullopt, std::nullopt, *codegen_level);
   module_->setDataLayout(machine_->createDataLayout());
   return true;
 }

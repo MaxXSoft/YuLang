@@ -1,12 +1,12 @@
 #include "back/llvm/generator.h"
 
-#include <vector>
 #include <cassert>
+#include <vector>
 
+#include "llvm/IR/Constant.h"
 #include "llvm/IR/DerivedTypes.h"
 #include "llvm/IR/GlobalValue.h"
 #include "llvm/IR/InlineAsm.h"
-#include "llvm/IR/Constant.h"
 #include "llvm/Support/raw_os_ostream.h"
 
 using namespace yulang::define;
@@ -16,7 +16,9 @@ using namespace yulang::back::ll;
 namespace {
 
 enum class TypeKind {
-  Int, Float, Ptr,
+  Int,
+  Float,
+  Ptr,
 };
 
 // get kind of specific type
@@ -24,15 +26,12 @@ enum class TypeKind {
 inline TypeKind GetTypeKind(const TypePtr &type) {
   if (type->IsInteger() || type->IsBool()) {
     return TypeKind::Int;
-  }
-  else if (type->IsFloat()) {
+  } else if (type->IsFloat()) {
     return TypeKind::Float;
-  }
-  else if (type->IsNull() || type->IsFunction() || type->IsArray() ||
-           type->IsPointer()) {
+  } else if (type->IsNull() || type->IsFunction() || type->IsArray() ||
+             type->IsPointer()) {
     return TypeKind::Ptr;
-  }
-  else {
+  } else {
     assert(false);
     return TypeKind::Int;
   }
@@ -42,12 +41,19 @@ inline TypeKind GetTypeKind(const TypePtr &type) {
 inline llvm::GlobalValue::LinkageTypes GetLinkType(LinkageTypes link) {
   using LinkTypes = llvm::GlobalValue::LinkageTypes;
   switch (link) {
-    case LinkageTypes::Internal: return LinkTypes::InternalLinkage;
-    case LinkageTypes::Inline: return LinkTypes::LinkOnceODRLinkage;
-    case LinkageTypes::External: return LinkTypes::ExternalLinkage;
-    case LinkageTypes::GlobalCtor: return LinkTypes::InternalLinkage;
-    case LinkageTypes::GlobalDtor: return LinkTypes::InternalLinkage;
-    default: assert(false); return LinkTypes::InternalLinkage;
+    case LinkageTypes::Internal:
+      return LinkTypes::InternalLinkage;
+    case LinkageTypes::Inline:
+      return LinkTypes::LinkOnceODRLinkage;
+    case LinkageTypes::External:
+      return LinkTypes::ExternalLinkage;
+    case LinkageTypes::GlobalCtor:
+      return LinkTypes::InternalLinkage;
+    case LinkageTypes::GlobalDtor:
+      return LinkTypes::InternalLinkage;
+    default:
+      assert(false);
+      return LinkTypes::InternalLinkage;
   }
 }
 
@@ -70,8 +76,8 @@ void LLVMGen::SetVal(mid::Value &ssa, llvm::Value *val) {
 void LLVMGen::CreateCtorArray(llvm::Function *ctor) {
   using namespace llvm;
   auto type = ctor->getType();
-  auto global_ty = llvm::StructType::get(builder_.getInt32Ty(), type,
-                                         builder_.getPtrTy());
+  auto global_ty =
+      llvm::StructType::get(builder_.getInt32Ty(), type, builder_.getPtrTy());
   auto global_arr_ty = llvm::ArrayType::get(global_ty, 1);
   auto global_init =
       ConstantStruct::get(global_ty, builder_.getInt32(65535), ctor,
@@ -86,18 +92,14 @@ llvm::Type *LLVMGen::GenerateType(const TypePtr &type) {
   // dispatcher
   if (type->IsPointer() || type->IsFunction() || type->IsNull()) {
     return builder_.getPtrTy();
-  }
-  else if (type->IsInteger() || type->IsFloat() || type->IsBool() ||
-           type->IsVoid()) {
+  } else if (type->IsInteger() || type->IsFloat() || type->IsBool() ||
+             type->IsVoid()) {
     return GeneratePrimType(type);
-  }
-  else if (type->IsStruct()) {
+  } else if (type->IsStruct()) {
     return GenerateStructType(type);
-  }
-  else if (type->IsArray()) {
+  } else if (type->IsArray()) {
     return GenerateArrayType(type);
-  }
-  else {
+  } else {
     assert(false);
     return nullptr;
   }
@@ -108,15 +110,12 @@ llvm::Type *LLVMGen::GeneratePrimType(const TypePtr &type) {
     // LLVM's integer types does not distinction
     // between signed and unsigned
     return llvm::Type::getIntNTy(context_, type->GetSize() * 8);
-  }
-  else if (type->IsFloat()) {
+  } else if (type->IsFloat()) {
     return type->GetSize() == 4 ? llvm::Type::getFloatTy(context_)
                                 : llvm::Type::getDoubleTy(context_);
-  }
-  else if (type->IsBool()) {
+  } else if (type->IsBool()) {
     return llvm::Type::getInt1Ty(context_);
-  }
-  else {
+  } else {
     assert(type->IsVoid());
     return llvm::Type::getVoidTy(context_);
   }
@@ -193,11 +192,9 @@ void LLVMGen::GenerateOn(AccessSSA &ssa) {
   llvm::Value *val = nullptr;
   if (ssa.acc_type() == AccessSSA::AccessType::Pointer) {
     val = builder_.CreateInBoundsGEP(ty, ptr, index);
-  }
-  else {
+  } else {
     assert(ssa.acc_type() == AccessSSA::AccessType::Element);
-    val =
-        builder_.CreateInBoundsGEP(ty, ptr, {builder_.getInt32(0), index});
+    val = builder_.CreateInBoundsGEP(ty, ptr, {builder_.getInt32(0), index});
   }
   SetVal(ssa, val);
 }
@@ -210,41 +207,111 @@ void LLVMGen::GenerateOn(BinarySSA &ssa) {
   // generate code
   llvm::Value *val = nullptr;
   switch (ssa.op()) {
-    case BinaryOp::Add: val = builder_.CreateAdd(lhs, rhs); break;
-    case BinaryOp::Sub: val = builder_.CreateSub(lhs, rhs); break;
-    case BinaryOp::Mul: val = builder_.CreateMul(lhs, rhs); break;
-    case BinaryOp::UDiv: val = builder_.CreateUDiv(lhs, rhs); break;
-    case BinaryOp::SDiv: val = builder_.CreateSDiv(lhs, rhs); break;
-    case BinaryOp::URem: val = builder_.CreateURem(lhs, rhs); break;
-    case BinaryOp::SRem: val = builder_.CreateSRem(lhs, rhs); break;
-    case BinaryOp::Equal: val = builder_.CreateICmpEQ(lhs, rhs); break;
-    case BinaryOp::NotEq: val = builder_.CreateICmpNE(lhs, rhs); break;
-    case BinaryOp::ULess: val = builder_.CreateICmpULT(lhs, rhs); break;
-    case BinaryOp::SLess: val = builder_.CreateICmpSLT(lhs, rhs); break;
-    case BinaryOp::ULessEq: val = builder_.CreateICmpULE(lhs, rhs); break;
-    case BinaryOp::SLessEq: val = builder_.CreateICmpSLE(lhs, rhs); break;
-    case BinaryOp::UGreat: val = builder_.CreateICmpUGT(lhs, rhs); break;
-    case BinaryOp::SGreat: val = builder_.CreateICmpSGT(lhs, rhs); break;
-    case BinaryOp::UGreatEq: val = builder_.CreateICmpUGE(lhs, rhs); break;
-    case BinaryOp::SGreatEq: val = builder_.CreateICmpSGE(lhs, rhs); break;
-    case BinaryOp::And: val = builder_.CreateAnd(lhs, rhs); break;
-    case BinaryOp::Or: val = builder_.CreateOr(lhs, rhs); break;
-    case BinaryOp::Xor: val = builder_.CreateXor(lhs, rhs); break;
-    case BinaryOp::Shl: val = builder_.CreateShl(lhs, rhs); break;
-    case BinaryOp::LShr: val = builder_.CreateLShr(lhs, rhs); break;
-    case BinaryOp::AShr: val = builder_.CreateAShr(lhs, rhs); break;
-    case BinaryOp::FAdd: val = builder_.CreateFAdd(lhs, rhs); break;
-    case BinaryOp::FSub: val = builder_.CreateFSub(lhs, rhs); break;
-    case BinaryOp::FMul: val = builder_.CreateFMul(lhs, rhs); break;
-    case BinaryOp::FDiv: val = builder_.CreateFDiv(lhs, rhs); break;
-    case BinaryOp::FRem: val = builder_.CreateFRem(lhs, rhs); break;
-    case BinaryOp::FEqual: val = builder_.CreateFCmpOEQ(lhs, rhs); break;
-    case BinaryOp::FNotEq: val = builder_.CreateFCmpUNE(lhs, rhs); break;
-    case BinaryOp::FLess: val = builder_.CreateFCmpOLT(lhs, rhs); break;
-    case BinaryOp::FLessEq: val = builder_.CreateFCmpOLE(lhs, rhs); break;
-    case BinaryOp::FGreat: val = builder_.CreateFCmpOGT(lhs, rhs); break;
-    case BinaryOp::FGreatEq: val = builder_.CreateFCmpOGE(lhs, rhs); break;
-    default: assert(false); break;
+    case BinaryOp::Add:
+      val = builder_.CreateAdd(lhs, rhs);
+      break;
+    case BinaryOp::Sub:
+      val = builder_.CreateSub(lhs, rhs);
+      break;
+    case BinaryOp::Mul:
+      val = builder_.CreateMul(lhs, rhs);
+      break;
+    case BinaryOp::UDiv:
+      val = builder_.CreateUDiv(lhs, rhs);
+      break;
+    case BinaryOp::SDiv:
+      val = builder_.CreateSDiv(lhs, rhs);
+      break;
+    case BinaryOp::URem:
+      val = builder_.CreateURem(lhs, rhs);
+      break;
+    case BinaryOp::SRem:
+      val = builder_.CreateSRem(lhs, rhs);
+      break;
+    case BinaryOp::Equal:
+      val = builder_.CreateICmpEQ(lhs, rhs);
+      break;
+    case BinaryOp::NotEq:
+      val = builder_.CreateICmpNE(lhs, rhs);
+      break;
+    case BinaryOp::ULess:
+      val = builder_.CreateICmpULT(lhs, rhs);
+      break;
+    case BinaryOp::SLess:
+      val = builder_.CreateICmpSLT(lhs, rhs);
+      break;
+    case BinaryOp::ULessEq:
+      val = builder_.CreateICmpULE(lhs, rhs);
+      break;
+    case BinaryOp::SLessEq:
+      val = builder_.CreateICmpSLE(lhs, rhs);
+      break;
+    case BinaryOp::UGreat:
+      val = builder_.CreateICmpUGT(lhs, rhs);
+      break;
+    case BinaryOp::SGreat:
+      val = builder_.CreateICmpSGT(lhs, rhs);
+      break;
+    case BinaryOp::UGreatEq:
+      val = builder_.CreateICmpUGE(lhs, rhs);
+      break;
+    case BinaryOp::SGreatEq:
+      val = builder_.CreateICmpSGE(lhs, rhs);
+      break;
+    case BinaryOp::And:
+      val = builder_.CreateAnd(lhs, rhs);
+      break;
+    case BinaryOp::Or:
+      val = builder_.CreateOr(lhs, rhs);
+      break;
+    case BinaryOp::Xor:
+      val = builder_.CreateXor(lhs, rhs);
+      break;
+    case BinaryOp::Shl:
+      val = builder_.CreateShl(lhs, rhs);
+      break;
+    case BinaryOp::LShr:
+      val = builder_.CreateLShr(lhs, rhs);
+      break;
+    case BinaryOp::AShr:
+      val = builder_.CreateAShr(lhs, rhs);
+      break;
+    case BinaryOp::FAdd:
+      val = builder_.CreateFAdd(lhs, rhs);
+      break;
+    case BinaryOp::FSub:
+      val = builder_.CreateFSub(lhs, rhs);
+      break;
+    case BinaryOp::FMul:
+      val = builder_.CreateFMul(lhs, rhs);
+      break;
+    case BinaryOp::FDiv:
+      val = builder_.CreateFDiv(lhs, rhs);
+      break;
+    case BinaryOp::FRem:
+      val = builder_.CreateFRem(lhs, rhs);
+      break;
+    case BinaryOp::FEqual:
+      val = builder_.CreateFCmpOEQ(lhs, rhs);
+      break;
+    case BinaryOp::FNotEq:
+      val = builder_.CreateFCmpUNE(lhs, rhs);
+      break;
+    case BinaryOp::FLess:
+      val = builder_.CreateFCmpOLT(lhs, rhs);
+      break;
+    case BinaryOp::FLessEq:
+      val = builder_.CreateFCmpOLE(lhs, rhs);
+      break;
+    case BinaryOp::FGreat:
+      val = builder_.CreateFCmpOGT(lhs, rhs);
+      break;
+    case BinaryOp::FGreatEq:
+      val = builder_.CreateFCmpOGE(lhs, rhs);
+      break;
+    default:
+      assert(false);
+      break;
   }
   SetVal(ssa, val);
 }
@@ -257,7 +324,9 @@ void LLVMGen::GenerateOn(UnarySSA &ssa) {
   // generate code
   llvm::Value *val = nullptr;
   switch (ssa.op()) {
-    case UnaryOp::Neg: val = builder_.CreateNeg(opr); break;
+    case UnaryOp::Neg:
+      val = builder_.CreateNeg(opr);
+      break;
     case UnaryOp::LogicNot: {
       llvm::Value *bool_val = opr;
       if (type->IsInteger()) {
@@ -267,9 +336,15 @@ void LLVMGen::GenerateOn(UnarySSA &ssa) {
       val = builder_.CreateXor(bool_val, builder_.getInt1(true));
       break;
     }
-    case UnaryOp::Not: val = builder_.CreateNot(opr); break;
-    case UnaryOp::FNeg: val = builder_.CreateFNeg(opr); break;
-    default: assert(false); break;
+    case UnaryOp::Not:
+      val = builder_.CreateNot(opr);
+      break;
+    case UnaryOp::FNeg:
+      val = builder_.CreateFNeg(opr);
+      break;
+    default:
+      assert(false);
+      break;
   }
   SetVal(ssa, val);
 }
@@ -288,51 +363,40 @@ void LLVMGen::GenerateOn(CastSSA &ssa) {
     if (src->GetSize() < dst->GetSize()) {
       ret = src->IsUnsigned() ? builder_.CreateZExt(val, type)
                               : builder_.CreateSExt(val, type);
-    }
-    else if (src->GetSize() > dst->GetSize()) {
+    } else if (src->GetSize() > dst->GetSize()) {
       // the value should not be truncated if casted to a boolean
       if (dst->IsBool()) {
         auto zero = builder_.getIntN(src->GetSize() * 8, 0);
         ret = builder_.CreateICmpNE(val, zero);
-      }
-      else {
+      } else {
         ret = builder_.CreateTrunc(val, type);
       }
-    }
-    else {
+    } else {
       // do nothing
       ret = val;
     }
-  }
-  else if (src_kind == TypeKind::Int && dst_kind == TypeKind::Float) {
+  } else if (src_kind == TypeKind::Int && dst_kind == TypeKind::Float) {
     // int -> float
     ret = src->IsUnsigned() ? builder_.CreateUIToFP(val, type)
                             : builder_.CreateSIToFP(val, type);
-  }
-  else if (src_kind == TypeKind::Float && dst_kind == TypeKind::Int) {
+  } else if (src_kind == TypeKind::Float && dst_kind == TypeKind::Int) {
     // float -> int
     ret = dst->IsUnsigned() ? builder_.CreateFPToUI(val, type)
                             : builder_.CreateFPToSI(val, type);
-  }
-  else if (src_kind == TypeKind::Float && dst_kind == TypeKind::Float) {
+  } else if (src_kind == TypeKind::Float && dst_kind == TypeKind::Float) {
     // float -> float
-    ret = src->GetSize() < dst->GetSize()
-              ? builder_.CreateFPExt(val, type)
-              : builder_.CreateFPTrunc(val, type);
-  }
-  else if (src_kind == TypeKind::Ptr && dst_kind == TypeKind::Ptr) {
+    ret = src->GetSize() < dst->GetSize() ? builder_.CreateFPExt(val, type)
+                                          : builder_.CreateFPTrunc(val, type);
+  } else if (src_kind == TypeKind::Ptr && dst_kind == TypeKind::Ptr) {
     // ptr -> ptr
     ret = builder_.CreateBitCast(val, type);
-  }
-  else if (src_kind == TypeKind::Ptr && dst_kind == TypeKind::Int) {
+  } else if (src_kind == TypeKind::Ptr && dst_kind == TypeKind::Int) {
     // ptr -> int
     ret = builder_.CreatePtrToInt(val, type);
-  }
-  else if (src_kind == TypeKind::Int && dst_kind == TypeKind::Ptr) {
+  } else if (src_kind == TypeKind::Int && dst_kind == TypeKind::Ptr) {
     // int -> ptr
     ret = builder_.CreateIntToPtr(val, type);
-  }
-  else {
+  } else {
     assert(false);
   }
   SetVal(ssa, ret);
@@ -426,8 +490,8 @@ void LLVMGen::GenerateOn(GlobalVarSSA &ssa) {
   if (ssa.init()) init = dyn_cast<Constant>(GetVal(ssa.init()));
   // create global variable
   auto type = GenerateType(ssa.type()->GetDerefedType());
-  auto global = new GlobalVariable(*module_, type, !ssa.is_var(), link,
-                                   nullptr, ssa.name());
+  auto global = new GlobalVariable(*module_, type, !ssa.is_var(), link, nullptr,
+                                   ssa.name());
   global->setInitializer(init);
   SetVal(ssa, global);
 }
@@ -477,8 +541,7 @@ void LLVMGen::GenerateOn(ConstIntSSA &ssa) {
   llvm::Value *val = nullptr;
   if (ssa.type()->IsBool()) {
     val = builder_.getInt1(!!ssa.value());
-  }
-  else {
+  } else {
     val = builder_.getIntN(ssa.type()->GetSize() * 8, ssa.value());
   }
   SetVal(ssa, val);
@@ -490,8 +553,7 @@ void LLVMGen::GenerateOn(ConstFloatSSA &ssa) {
     // float32
     llvm::APFloat af(static_cast<float>(ssa.value()));
     val = llvm::ConstantFP::get(context_, af);
-  }
-  else {
+  } else {
     // float64
     llvm::APFloat af(ssa.value());
     val = llvm::ConstantFP::get(context_, af);

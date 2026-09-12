@@ -1,5 +1,5 @@
-#include <unordered_set>
 #include <memory>
+#include <unordered_set>
 
 #include "mid/pass.h"
 #include "mid/passman.h"
@@ -100,7 +100,10 @@ class BlockMerge : public FunctionPass {
 
  private:
   enum class Op {
-    Nop, IsJump, ReplaceBlock, ReplaceWithJump,
+    Nop,
+    IsJump,
+    ReplaceBlock,
+    ReplaceWithJump,
   };
 
   bool changed_, is_entry_;

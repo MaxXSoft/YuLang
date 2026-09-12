@@ -1,16 +1,16 @@
 #ifndef YULANG_DEFINE_TYPE_H_
 #define YULANG_DEFINE_TYPE_H_
 
+#include <cassert>
+#include <cstddef>
+#include <cstdint>
 #include <memory>
-#include <vector>
+#include <optional>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
-#include <optional>
-#include <cstdint>
-#include <cstddef>
-#include <cassert>
+#include <vector>
 
 #include "define/token.h"
 
@@ -114,10 +114,21 @@ class BaseType {
 class PrimType : public BaseType {
  public:
   enum class Type {
-    Void, Null,
-    Int8, Int16, Int32, Int64, ISize,
-    UInt8, UInt16, UInt32, UInt64, USize,
-    Bool, Float32, Float64,
+    Void,
+    Null,
+    Int8,
+    Int16,
+    Int32,
+    Int64,
+    ISize,
+    UInt8,
+    UInt16,
+    UInt32,
+    UInt64,
+    USize,
+    Bool,
+    Float32,
+    Float64,
   };
 
   PrimType(Type type, bool is_right) : type_(type), is_right_(is_right) {}
@@ -157,9 +168,7 @@ class PrimType : public BaseType {
   }
   std::size_t GetLength() const override { return 0; }
   TypePtr GetElem(std::size_t index) const override { return nullptr; }
-  TypePtr GetElem(const std::string &name) const override {
-    return nullptr;
-  }
+  TypePtr GetElem(const std::string &name) const override { return nullptr; }
   std::optional<std::size_t> GetElemIndex(
       const std::string &name) const override {
     return {};
@@ -247,10 +256,11 @@ class EnumType : public BaseType {
  public:
   using ElemSet = std::unordered_set<std::string>;
 
-  EnumType(TypePtr type, ElemSet elems, const std::string &id,
-           bool is_right)
-      : type_(std::move(type)), elems_(std::move(elems)),
-        id_(id), is_right_(is_right) {}
+  EnumType(TypePtr type, ElemSet elems, const std::string &id, bool is_right)
+      : type_(std::move(type)),
+        elems_(std::move(elems)),
+        id_(id),
+        is_right_(is_right) {}
 
   bool IsRightValue() const override { return is_right_; }
   bool IsVoid() const override { return false; }
@@ -272,9 +282,7 @@ class EnumType : public BaseType {
     return type_->CanCastTo(type);
   }
   std::size_t GetSize() const override { return type_->GetSize(); }
-  std::size_t GetAlignSize() const override {
-    return type_->GetAlignSize();
-  }
+  std::size_t GetAlignSize() const override { return type_->GetAlignSize(); }
   std::optional<TypePtrList> GetArgsType() const override { return {}; }
   TypePtr GetReturnType(const TypePtrList &args) const override {
     return nullptr;
@@ -288,9 +296,7 @@ class EnumType : public BaseType {
   TypePtr GetDerefedType() const override { return nullptr; }
   TypePtr GetDeconstedType() const override { return nullptr; }
   std::string GetTypeId() const override { return id_; }
-  TypePtr GetTrivialType() const override {
-    return type_->GetTrivialType();
-  }
+  TypePtr GetTrivialType() const override { return type_->GetTrivialType(); }
 
   bool CanAccept(const TypePtr &type) const override;
   bool IsIdentical(const TypePtr &type) const override;
@@ -328,17 +334,14 @@ class ConstType : public BaseType {
     return type_->IsReference() ? type_->CanAccept(type) : false;
   }
   bool CanCastTo(const TypePtr &type) const override {
-    return type_->CanCastTo(type->IsConst() ? type->GetDeconstedType()
-                                            : type);
+    return type_->CanCastTo(type->IsConst() ? type->GetDeconstedType() : type);
   }
   bool IsIdentical(const TypePtr &type) const override {
     return type_->IsIdentical(type->IsConst() ? type->GetDeconstedType()
                                               : type);
   }
   std::size_t GetSize() const override { return type_->GetSize(); }
-  std::size_t GetAlignSize() const override {
-    return type_->GetAlignSize();
-  }
+  std::size_t GetAlignSize() const override { return type_->GetAlignSize(); }
   std::optional<TypePtrList> GetArgsType() const override {
     return type_->GetArgsType();
   }
@@ -350,16 +353,10 @@ class ConstType : public BaseType {
       const std::string &name) const override {
     return type_->GetElemIndex(name);
   }
-  TypePtr GetDerefedType() const override {
-    return type_->GetDerefedType();
-  }
+  TypePtr GetDerefedType() const override { return type_->GetDerefedType(); }
   TypePtr GetDeconstedType() const override { return type_; }
-  std::string GetTypeId() const override {
-    return type_->GetTypeId();
-  }
-  TypePtr GetTrivialType() const override {
-    return type_->GetTrivialType();
-  }
+  std::string GetTypeId() const override { return type_->GetTypeId(); }
+  TypePtr GetTrivialType() const override { return type_->GetTrivialType(); }
 
   TypePtr GetElem(std::size_t index) const override;
   TypePtr GetElem(const std::string &name) const override;
@@ -372,8 +369,7 @@ class ConstType : public BaseType {
 class FuncType : public BaseType {
  public:
   FuncType(TypePtrList args, TypePtr ret, bool is_right)
-      : args_(std::move(args)), ret_(std::move(ret)),
-        is_right_(is_right) {}
+      : args_(std::move(args)), ret_(std::move(ret)), is_right_(is_right) {}
 
   bool IsRightValue() const override { return is_right_; }
   bool IsVoid() const override { return false; }
@@ -395,9 +391,7 @@ class FuncType : public BaseType {
   std::optional<TypePtrList> GetArgsType() const override { return args_; }
   std::size_t GetLength() const override { return 0; }
   TypePtr GetElem(std::size_t index) const override { return nullptr; }
-  TypePtr GetElem(const std::string &name) const override {
-    return nullptr;
-  }
+  TypePtr GetElem(const std::string &name) const override { return nullptr; }
   std::optional<std::size_t> GetElemIndex(
       const std::string &name) const override {
     return {};
@@ -450,9 +444,7 @@ class VolaType : public BaseType {
     return type_->IsIdentical(type);
   }
   std::size_t GetSize() const override { return type_->GetSize(); }
-  std::size_t GetAlignSize() const override {
-    return type_->GetAlignSize();
-  }
+  std::size_t GetAlignSize() const override { return type_->GetAlignSize(); }
   std::optional<TypePtrList> GetArgsType() const override {
     return type_->GetArgsType();
   }
@@ -470,9 +462,7 @@ class VolaType : public BaseType {
       const std::string &name) const override {
     return type_->GetElemIndex(name);
   }
-  TypePtr GetDerefedType() const override {
-    return type_->GetDerefedType();
-  }
+  TypePtr GetDerefedType() const override { return type_->GetDerefedType(); }
   std::string GetTypeId() const override { return type_->GetTypeId(); }
 
   TypePtr GetDeconstedType() const override;
@@ -504,21 +494,15 @@ class ArrayType : public BaseType {
   bool IsArray() const override { return true; }
   bool IsPointer() const override { return false; }
   bool IsReference() const override { return false; }
-  std::size_t GetSize() const override {
-    return base_->GetSize() * len_;
-  }
-  std::size_t GetAlignSize() const override {
-    return base_->GetAlignSize();
-  }
+  std::size_t GetSize() const override { return base_->GetSize() * len_; }
+  std::size_t GetAlignSize() const override { return base_->GetAlignSize(); }
   std::optional<TypePtrList> GetArgsType() const override { return {}; }
   TypePtr GetReturnType(const TypePtrList &args) const override {
     return nullptr;
   }
   std::size_t GetLength() const override { return len_; }
   TypePtr GetElem(std::size_t index) const override { return base_; }
-  TypePtr GetElem(const std::string &name) const override {
-    return nullptr;
-  }
+  TypePtr GetElem(const std::string &name) const override { return nullptr; }
   std::optional<std::size_t> GetElemIndex(
       const std::string &name) const override {
     return {};
@@ -567,9 +551,7 @@ class PointerType : public BaseType {
   }
   std::size_t GetLength() const override { return 0; }
   TypePtr GetElem(std::size_t index) const override { return nullptr; }
-  TypePtr GetElem(const std::string &name) const override {
-    return nullptr;
-  }
+  TypePtr GetElem(const std::string &name) const override { return nullptr; }
   std::optional<std::size_t> GetElemIndex(
       const std::string &name) const override {
     return {};
@@ -622,12 +604,8 @@ class RefType : public BaseType {
     return base_->IsIdentical(type->IsReference() ? type->GetDerefedType()
                                                   : type);
   }
-  std::size_t GetSize() const override {
-    return base_->GetSize();
-  }
-  std::size_t GetAlignSize() const override {
-    return base_->GetAlignSize();
-  }
+  std::size_t GetSize() const override { return base_->GetSize(); }
+  std::size_t GetAlignSize() const override { return base_->GetAlignSize(); }
   std::optional<TypePtrList> GetArgsType() const override {
     return base_->GetArgsType();
   }
@@ -645,12 +623,8 @@ class RefType : public BaseType {
       const std::string &name) const override {
     return base_->GetElemIndex(name);
   }
-  TypePtr GetDerefedType() const override {
-    return base_;
-  }
-  std::string GetTypeId() const override {
-    return base_->GetTypeId();
-  }
+  TypePtr GetDerefedType() const override { return base_; }
+  std::string GetTypeId() const override { return base_->GetTypeId(); }
 
   TypePtr GetDeconstedType() const override;
   TypePtr GetValueType(bool is_right) const override;
@@ -665,21 +639,51 @@ inline TypePtr MakePrimType(Keyword key, bool is_right) {
   using Type = PrimType::Type;
   Type type;
   switch (key) {
-    case Keyword::Null: type = Type::Null; break;
-    case Keyword::Int8: type = Type::Int8; break;
-    case Keyword::Int16: type = Type::Int16; break;
-    case Keyword::Int32: type = Type::Int32; break;
-    case Keyword::Int64: type = Type::Int64; break;
-    case Keyword::ISize: type = Type::ISize; break;
-    case Keyword::UInt8: type = Type::UInt8; break;
-    case Keyword::UInt16: type = Type::UInt16; break;
-    case Keyword::UInt32: type = Type::UInt32; break;
-    case Keyword::UInt64: type = Type::UInt64; break;
-    case Keyword::USize: type = Type::USize; break;
-    case Keyword::Bool: type = Type::Bool; break;
-    case Keyword::Float32: type = Type::Float32; break;
-    case Keyword::Float64: type = Type::Float64; break;
-    default: assert(false); return nullptr;
+    case Keyword::Null:
+      type = Type::Null;
+      break;
+    case Keyword::Int8:
+      type = Type::Int8;
+      break;
+    case Keyword::Int16:
+      type = Type::Int16;
+      break;
+    case Keyword::Int32:
+      type = Type::Int32;
+      break;
+    case Keyword::Int64:
+      type = Type::Int64;
+      break;
+    case Keyword::ISize:
+      type = Type::ISize;
+      break;
+    case Keyword::UInt8:
+      type = Type::UInt8;
+      break;
+    case Keyword::UInt16:
+      type = Type::UInt16;
+      break;
+    case Keyword::UInt32:
+      type = Type::UInt32;
+      break;
+    case Keyword::UInt64:
+      type = Type::UInt64;
+      break;
+    case Keyword::USize:
+      type = Type::USize;
+      break;
+    case Keyword::Bool:
+      type = Type::Bool;
+      break;
+    case Keyword::Float32:
+      type = Type::Float32;
+      break;
+    case Keyword::Float64:
+      type = Type::Float64;
+      break;
+    default:
+      assert(false);
+      return nullptr;
   }
   return std::make_shared<PrimType>(type, is_right);
 }

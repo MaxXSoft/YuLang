@@ -1,18 +1,18 @@
 #ifndef YULANG_DEFINE_AST_H_
 #define YULANG_DEFINE_AST_H_
 
-#include <memory>
-#include <vector>
-#include <utility>
-#include <string>
-#include <optional>
-#include <cstdint>
 #include <cstddef>
+#include <cstdint>
+#include <memory>
+#include <optional>
+#include <string>
+#include <utility>
+#include <vector>
 
-#include "front/logger.h"
+#include "define/symbol.h"
 #include "define/token.h"
 #include "define/type.h"
-#include "define/symbol.h"
+#include "front/logger.h"
 #include "mid/usedef.h"
 
 // forward declarations for visitor pattern
@@ -95,10 +95,13 @@ class VarLetDefAST : public BaseAST {
 // function definition
 class FunDefAST : public BaseAST {
  public:
-  FunDefAST(Property prop, const std::string &id, ASTPtrList args,
-            ASTPtr type, ASTPtr body)
-      : prop_(prop), id_(id), type_(std::move(type)),
-        body_(std::move(body)), args_(std::move(args)) {}
+  FunDefAST(Property prop, const std::string &id, ASTPtrList args, ASTPtr type,
+            ASTPtr body)
+      : prop_(prop),
+        id_(id),
+        type_(std::move(type)),
+        body_(std::move(body)),
+        args_(std::move(args)) {}
 
   bool IsId() const override { return false; }
   bool IsLiteral() const override { return false; }
@@ -128,8 +131,7 @@ class FunDefAST : public BaseAST {
 // declaration
 class DeclareAST : public BaseAST {
  public:
-  DeclareAST(Property prop, bool is_var, const std::string &id,
-             ASTPtr type)
+  DeclareAST(Property prop, bool is_var, const std::string &id, ASTPtr type)
       : prop_(prop), is_var_(is_var), id_(id), type_(std::move(type)) {}
 
   bool IsId() const override { return false; }
@@ -209,10 +211,8 @@ class StructAST : public BaseAST {
 // enumeration definition
 class EnumAST : public BaseAST {
  public:
-  EnumAST(Property prop, const std::string &id, ASTPtr type,
-          ASTPtrList defs)
-      : prop_(prop), id_(id), type_(std::move(type)),
-        defs_(std::move(defs)) {}
+  EnumAST(Property prop, const std::string &id, ASTPtr type, ASTPtrList defs)
+      : prop_(prop), id_(id), type_(std::move(type)), defs_(std::move(defs)) {}
 
   bool IsId() const override { return false; }
   bool IsLiteral() const override { return false; }
@@ -258,9 +258,10 @@ class ImportAST : public BaseAST {
 // variable/constant definition element
 class VarLetElemAST : public BaseAST {
  public:
-  VarLetElemAST(const std::string &id, ASTPtr type, ASTPtr init,
-                bool is_var)
-      : id_(id), type_(std::move(type)), init_(std::move(init)),
+  VarLetElemAST(const std::string &id, ASTPtr type, ASTPtr init, bool is_var)
+      : id_(id),
+        type_(std::move(type)),
+        init_(std::move(init)),
         is_var_(is_var) {}
 
   bool IsId() const override { return false; }
@@ -388,7 +389,8 @@ class BlockAST : public BaseAST {
 class IfAST : public BaseAST {
  public:
   IfAST(ASTPtr cond, ASTPtr then, ASTPtr else_then)
-      : cond_(std::move(cond)), then_(std::move(then)),
+      : cond_(std::move(cond)),
+        then_(std::move(then)),
         else_then_(std::move(else_then)) {}
 
   bool IsId() const override { return false; }
@@ -407,9 +409,7 @@ class IfAST : public BaseAST {
   // setters
   void set_cond(ASTPtr cond) { cond_ = std::move(cond); }
   void set_then(ASTPtr then) { then_ = std::move(then); }
-  void set_else_then(ASTPtr else_then) {
-    else_then_ = std::move(else_then);
-  }
+  void set_else_then(ASTPtr else_then) { else_then_ = std::move(else_then); }
 
  private:
   ASTPtr cond_, then_, else_then_;
@@ -419,7 +419,8 @@ class IfAST : public BaseAST {
 class WhenAST : public BaseAST {
  public:
   WhenAST(ASTPtr expr, ASTPtrList elems, ASTPtr else_then)
-      : expr_(std::move(expr)), else_then_(std::move(else_then)),
+      : expr_(std::move(expr)),
+        else_then_(std::move(else_then)),
         elems_(std::move(elems)) {}
 
   bool IsId() const override { return false; }
@@ -437,9 +438,7 @@ class WhenAST : public BaseAST {
 
   // setters
   void set_expr(ASTPtr expr) { expr_ = std::move(expr); }
-  void set_else_then(ASTPtr else_then) {
-    else_then_ = std::move(else_then);
-  }
+  void set_else_then(ASTPtr else_then) { else_then_ = std::move(else_then); }
 
  private:
   ASTPtr expr_, else_then_;
@@ -530,8 +529,7 @@ class AsmAST : public BaseAST {
 // control statement
 class ControlAST : public BaseAST {
  public:
-  ControlAST(Keyword type, ASTPtr expr)
-      : type_(type), expr_(std::move(expr)) {}
+  ControlAST(Keyword type, ASTPtr expr) : type_(type), expr_(std::move(expr)) {}
 
   bool IsId() const override { return false; }
   bool IsLiteral() const override { return false; }
@@ -599,9 +597,7 @@ class BinaryAST : public BaseAST {
 
   // getters
   Operator op() const { return op_; }
-  const std::optional<std::string> &op_func_id() const {
-    return op_func_id_;
-  }
+  const std::optional<std::string> &op_func_id() const { return op_func_id_; }
   const ASTPtr &lhs() const { return lhs_; }
   const ASTPtr &rhs() const { return rhs_; }
 
@@ -668,8 +664,7 @@ class UnaryAST : public BaseAST {
  public:
   enum class UnaryOp { Pos, Neg, LogicNot, Not, DeRef, AddrOf, SizeOf };
 
-  UnaryAST(UnaryOp op, ASTPtr opr)
-      : op_(op), opr_(std::move(opr)) {}
+  UnaryAST(UnaryOp op, ASTPtr opr) : op_(op), opr_(std::move(opr)) {}
 
   bool IsId() const override { return false; }
   bool IsLiteral() const override { return false; }
@@ -681,9 +676,7 @@ class UnaryAST : public BaseAST {
 
   // getters
   UnaryOp op() const { return op_; }
-  const std::optional<std::string> &op_func_id() const {
-    return op_func_id_;
-  }
+  const std::optional<std::string> &op_func_id() const { return op_func_id_; }
   const ASTPtr &opr() const { return opr_; }
 
   // setters
@@ -741,9 +734,7 @@ class FunCallAST : public BaseAST {
 
   // setters
   void set_args(ASTPtrList args) { args_ = std::move(args); }
-  void set_arg(std::size_t index, ASTPtr arg) {
-    args_[index] = std::move(arg);
-  }
+  void set_arg(std::size_t index, ASTPtr arg) { args_[index] = std::move(arg); }
 
  private:
   ASTPtr expr_;

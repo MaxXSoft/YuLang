@@ -73,9 +73,7 @@ class FunctionPass : public PassBase {
   bool IsFunctionPass() const override final { return true; }
   bool IsBlockPass() const override final { return false; }
 
-  bool RunOnModule(UserPtrList &global_vals) override final {
-    return false;
-  }
+  bool RunOnModule(UserPtrList &global_vals) override final { return false; }
   bool RunOnBlock(const BlockPtr &block) override final { return false; }
 };
 
@@ -86,9 +84,7 @@ class BlockPass : public PassBase {
   bool IsFunctionPass() const override final { return false; }
   bool IsBlockPass() const override final { return true; }
 
-  bool RunOnModule(UserPtrList &global_vals) override final {
-    return false;
-  }
+  bool RunOnModule(UserPtrList &global_vals) override final { return false; }
   bool RunOnFunction(const UserPtr &func) override final { return false; }
 };
 

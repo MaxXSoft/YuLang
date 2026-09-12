@@ -10,8 +10,7 @@ using namespace yulang::back;
     const auto &type = lhs->type();                         \
     if (type->IsInteger()) {                                \
       return CreateBinary(BinaryOp::op, lhs, rhs, type);    \
-    }                                                       \
-    else {                                                  \
+    } else {                                                \
       assert(type->IsFloat());                              \
       return CreateBinary(BinaryOp::F##op, lhs, rhs, type); \
     }                                                       \
@@ -23,12 +22,10 @@ using namespace yulang::back;
     if (lhs->type()->IsInteger() || lhs->type()->IsPointer()) {    \
       if (lhs->type()->IsUnsigned() || lhs->type()->IsPointer()) { \
         return CreateBinary(BinaryOp::U##op, lhs, rhs, bool_ty);   \
-      }                                                            \
-      else {                                                       \
+      } else {                                                     \
         return CreateBinary(BinaryOp::S##op, lhs, rhs, bool_ty);   \
       }                                                            \
-    }                                                              \
-    else {                                                         \
+    } else {                                                       \
       assert(lhs->type()->IsFloat());                              \
       return CreateBinary(BinaryOp::F##op, lhs, rhs, bool_ty);     \
     }                                                              \
@@ -50,7 +47,7 @@ using UnaryOp = UnarySSA::Operator;
 }  // namespace
 
 void Module::SealGlobalCtor() {
-  if (global_ctor_ && !is_ctor_sealed_) {    
+  if (global_ctor_ && !is_ctor_sealed_) {
     SetInsertPoint(ctor_entry_);
     CreateJump(ctor_exit_);
     is_ctor_sealed_ = true;
@@ -74,7 +71,7 @@ void Module::Reset() {
 }
 
 UserPtr Module::CreateFunction(LinkageTypes link, const std::string &name,
-                              const TypePtr &type) {
+                               const TypePtr &type) {
   // assertion for type checking
   assert(type->IsFunction());
   // create function
@@ -89,8 +86,7 @@ BlockPtr Module::CreateBlock(const UserPtr &parent) {
   return CreateBlock(parent, "");
 }
 
-BlockPtr Module::CreateBlock(const UserPtr &parent,
-                             const std::string &name) {
+BlockPtr Module::CreateBlock(const UserPtr &parent, const std::string &name) {
   // assertion for type checking
   assert(parent && parent->type()->IsFunction());
   // create block
@@ -179,13 +175,11 @@ SSAPtr Module::CreateReturn(const SSAPtr &value) {
 
 GlobalVarPtr Module::CreateGlobalVar(LinkageTypes link, bool is_var,
                                      const std::string &name,
-                                     const TypePtr &type,
-                                     const SSAPtr &init) {
+                                     const TypePtr &type, const SSAPtr &init) {
   // assertions for type checking
   assert(!type->IsVoid());
   auto var_type = type->GetTrivialType();
-  assert(!init || !type->IsReference() ||
-         var_type->IsIdentical(init->type()));
+  assert(!init || !type->IsReference() || var_type->IsIdentical(init->type()));
   assert(!init || init->IsConst());
   // create global variable definition
   auto global = MakeSSA<GlobalVarSSA>(link, is_var, name, init);
@@ -288,8 +282,8 @@ SSAPtr Module::CreateElemAccess(const SSAPtr &ptr, const SSAPtr &index,
   return access;
 }
 
-SSAPtr Module::CreateBinary(BinaryOp op, const SSAPtr &lhs,
-                            const SSAPtr &rhs, const TypePtr &type) {
+SSAPtr Module::CreateBinary(BinaryOp op, const SSAPtr &lhs, const SSAPtr &rhs,
+                            const TypePtr &type) {
   // assertion for type checking
   assert(lhs->type()->IsIdentical(rhs->type()));
   // create binary
@@ -298,8 +292,7 @@ SSAPtr Module::CreateBinary(BinaryOp op, const SSAPtr &lhs,
   return binary;
 }
 
-SSAPtr Module::CreateUnary(UnaryOp op, const SSAPtr &opr,
-                           const TypePtr &type) {
+SSAPtr Module::CreateUnary(UnaryOp op, const SSAPtr &opr, const TypePtr &type) {
   auto unary = AddInst<UnarySSA>(op, opr);
   unary->set_types(type);
   return unary;
@@ -310,8 +303,7 @@ SSAPtr Module::CreateEqual(const SSAPtr &lhs, const SSAPtr &rhs) {
   if (lhs->type()->IsInteger() || lhs->type()->IsBool() ||
       lhs->type()->IsFunction() || lhs->type()->IsPointer()) {
     return CreateBinary(BinaryOp::Equal, lhs, rhs, bool_ty);
-  }
-  else {
+  } else {
     assert(lhs->type()->IsFloat());
     return CreateBinary(BinaryOp::FEqual, lhs, rhs, bool_ty);
   }
@@ -321,8 +313,7 @@ SSAPtr Module::CreateNeg(const SSAPtr &opr) {
   const auto &type = opr->type();
   if (type->IsInteger()) {
     return CreateUnary(UnaryOp::Neg, opr, type);
-  }
-  else {
+  } else {
     assert(type->IsFloat());
     return CreateUnary(UnaryOp::FNeg, opr, type);
   }
@@ -345,8 +336,7 @@ SSAPtr Module::CreateDiv(const SSAPtr &lhs, const SSAPtr &rhs) {
   if (type->IsInteger()) {
     auto op = type->IsUnsigned() ? BinaryOp::UDiv : BinaryOp::SDiv;
     return CreateBinary(op, lhs, rhs, type);
-  }
-  else {
+  } else {
     assert(type->IsFloat());
     return CreateBinary(BinaryOp::FDiv, lhs, rhs, type);
   }
@@ -357,8 +347,7 @@ SSAPtr Module::CreateRem(const SSAPtr &lhs, const SSAPtr &rhs) {
   if (type->IsInteger()) {
     auto op = type->IsUnsigned() ? BinaryOp::URem : BinaryOp::SRem;
     return CreateBinary(op, lhs, rhs, type);
-  }
-  else {
+  } else {
     assert(type->IsFloat());
     return CreateBinary(BinaryOp::FRem, lhs, rhs, type);
   }
@@ -369,8 +358,7 @@ SSAPtr Module::CreateNotEq(const SSAPtr &lhs, const SSAPtr &rhs) {
   if (lhs->type()->IsInteger() || lhs->type()->IsBool() ||
       lhs->type()->IsFunction() || lhs->type()->IsPointer()) {
     return CreateBinary(BinaryOp::NotEq, lhs, rhs, bool_ty);
-  }
-  else {
+  } else {
     assert(lhs->type()->IsFloat());
     return CreateBinary(BinaryOp::FNotEq, lhs, rhs, bool_ty);
   }
@@ -433,8 +421,7 @@ SSAPtr Module::CreateCast(const SSAPtr &opr, const TypePtr &type) {
   if (operand->IsConst()) {
     // create a constant type casting, do not insert as an instruction
     cast = MakeSSA<CastSSA>(operand);
-  }
-  else {
+  } else {
     // create a non-constant type casting
     cast = AddInst<CastSSA>(operand);
   }

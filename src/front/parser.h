@@ -3,8 +3,8 @@
 
 #include <string_view>
 
-#include "define/token.h"
 #include "define/ast.h"
+#include "define/token.h"
 #include "front/lexman.h"
 
 namespace yulang::front {
@@ -26,8 +26,7 @@ class Parser {
     if (cur_token_ == define::Token::End) {
       ended_ = true;
       return nullptr;
-    }
-    else {
+    } else {
       return ParseLine();
     }
   }
@@ -72,13 +71,12 @@ class Parser {
   // check if current token is an assignment operator
   bool IsAssign() const {
     using namespace define;
-    return cur_token_ == Token::Operator &&
-           IsOperatorAssign(lexer()->op_val());
+    return cur_token_ == Token::Operator && IsOperatorAssign(lexer()->op_val());
   }
 
   // create a new AST
   template <typename T, typename... Args>
-  define::ASTPtr MakeAST(Args &&... args) {
+  define::ASTPtr MakeAST(Args &&...args) {
     auto ast = std::make_unique<T>(std::forward<Args>(args)...);
     ast->set_logger(logger());
     return ast;
@@ -86,7 +84,7 @@ class Parser {
 
   // create a new AST with specific logger
   template <typename T, typename... Args>
-  define::ASTPtr MakeAST(Logger &logger, Args &&... args) {
+  define::ASTPtr MakeAST(Logger &logger, Args &&...args) {
     auto ast = std::make_unique<T>(std::forward<Args>(args)...);
     ast->set_logger(logger);
     return ast;

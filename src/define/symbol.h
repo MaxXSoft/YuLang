@@ -1,11 +1,11 @@
 #ifndef YULANG_DEFINE_SYMBOL_H_
 #define YULANG_DEFINE_SYMBOL_H_
 
-#include <string>
-#include <variant>
-#include <optional>
-#include <unordered_map>
 #include <cstdint>
+#include <optional>
+#include <string>
+#include <unordered_map>
+#include <variant>
 
 #include "define/type.h"
 #include "xstl/nested.h"
@@ -16,8 +16,7 @@ namespace yulang::define {
 using EnvPtr = xstl::NestedMapPtr<std::string, TypePtr>;
 
 // function mapping table
-using FuncMapPtr = xstl::NestedMapPtr<std::string,
-                                   std::optional<std::string>>;
+using FuncMapPtr = xstl::NestedMapPtr<std::string, std::optional<std::string>>;
 
 // evaluated values
 using EvalNum = std::variant<std::uint64_t, float, double>;
@@ -26,9 +25,7 @@ using EvalEnvPtr = xstl::NestedMapPtr<std::string, std::optional<EvalNum>>;
 using EnumEnvPtr = xstl::NestedMapPtr<std::string, std::optional<EnumNum>>;
 
 // make a new environment
-inline EnvPtr MakeEnv() {
-  return xstl::MakeNestedMap<std::string, TypePtr>();
-}
+inline EnvPtr MakeEnv() { return xstl::MakeNestedMap<std::string, TypePtr>(); }
 
 // make a new environment (with outer environment)
 inline EnvPtr MakeEnv(const EnvPtr &outer) {
@@ -42,8 +39,7 @@ inline FuncMapPtr MakeFuncMap() {
 
 // make a new function mapping table (with outer table)
 inline FuncMapPtr MakeFuncMap(const FuncMapPtr &outer) {
-  return xstl::MakeNestedMap<std::string, std::optional<std::string>>(
-      outer);
+  return xstl::MakeNestedMap<std::string, std::optional<std::string>>(outer);
 }
 
 // make a new evaluation environment

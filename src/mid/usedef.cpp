@@ -13,8 +13,7 @@ std::size_t IdManager::GetId(const Value *val) {
     auto id = cur_id_++;
     ids_.insert({val, id});
     return id;
-  }
-  else {
+  } else {
     return it->second;
   }
 }
@@ -27,8 +26,7 @@ std::optional<std::string_view> IdManager::GetName(const Value *v) const {
   auto it = names_.find(v);
   if (it != names_.end()) {
     return it->second;
-  }
-  else {
+  } else {
     return {};
   }
 }

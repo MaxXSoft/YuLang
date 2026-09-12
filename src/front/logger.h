@@ -1,9 +1,9 @@
 #ifndef YULANG_FRONT_LOGGER_H_
 #define YULANG_FRONT_LOGGER_H_
 
-#include <string_view>
-#include <memory>
 #include <cstddef>
+#include <memory>
+#include <string_view>
 
 namespace yulang::front {
 

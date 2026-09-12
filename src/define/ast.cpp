@@ -1,8 +1,8 @@
 #include "define/ast.h"
 
-#include <iomanip>
-#include <cctype>
 #include <cassert>
+#include <cctype>
+#include <iomanip>
 
 #include "xstl/guard.h"
 
@@ -46,22 +46,43 @@ xstl::Guard InExpr(std::ostream &os) {
 
 void ConvertChar(std::ostream &os, char c, bool in_char) {
   switch (c) {
-    case '\a':  os << "\\a";                      break;
-    case '\b':  os << "\\b";                      break;
-    case '\f':  os << "\\f";                      break;
-    case '\n':  os << "\\n";                      break;
-    case '\r':  os << "\\r";                      break;
-    case '\t':  os << "\\t";                      break;
-    case '\v':  os << "\\v'";                     break;
-    case '\\':  os << "\\\\";                     break;
-    case '\'':  os << (in_char ? "\\'" : "'");    break;
-    case '"':   os << (in_char ? "\'" : "\\\"");  break;
-    case '\0':  os << "\\0";                      break;
+    case '\a':
+      os << "\\a";
+      break;
+    case '\b':
+      os << "\\b";
+      break;
+    case '\f':
+      os << "\\f";
+      break;
+    case '\n':
+      os << "\\n";
+      break;
+    case '\r':
+      os << "\\r";
+      break;
+    case '\t':
+      os << "\\t";
+      break;
+    case '\v':
+      os << "\\v'";
+      break;
+    case '\\':
+      os << "\\\\";
+      break;
+    case '\'':
+      os << (in_char ? "\\'" : "'");
+      break;
+    case '"':
+      os << (in_char ? "\'" : "\\\"");
+      break;
+    case '\0':
+      os << "\\0";
+      break;
     default: {
       if (std::isprint(c)) {
         os << c;
-      }
-      else {
+      } else {
         os << "\\x" << std::setw(2) << std::setfill('0') << std::hex
            << static_cast<int>(c);
       }
@@ -75,11 +96,9 @@ void DumpProperty(std::ostream &os, Property prop) {
     os << indent;
     if (prop == Property::None) {
       os << "static ";
-    }
-    else if (prop == Property::Extern) {
+    } else if (prop == Property::Extern) {
       os << "extern \"C\" ";
-    }
-    else if (prop == Property::Inline) {
+    } else if (prop == Property::Inline) {
       os << "inline ";
     }
   }
@@ -100,8 +119,7 @@ void FunDefAST::Dump(std::ostream &os) const {
   os << indent;
   if (type_) {
     type_->Dump(os);
-  }
-  else {
+  } else {
     os << "void";
   }
   os << ' ' << id_ << '(';
@@ -178,8 +196,7 @@ void VarLetElemAST::Dump(std::ostream &os) const {
   if (!is_var_) os << "const ";
   if (type_) {
     type_->Dump(os);
-  }
-  else {
+  } else {
     os << "auto";
   }
   os << ' ' << id_;
@@ -290,8 +307,12 @@ void AsmAST::Dump(std::ostream &os) const {
 void ControlAST::Dump(std::ostream &os) const {
   os << indent;
   switch (type_) {
-    case Keyword::Break: os << "break"; break;
-    case Keyword::Continue: os << "continue"; break;
+    case Keyword::Break:
+      os << "break";
+      break;
+    case Keyword::Continue:
+      os << "continue";
+      break;
     case Keyword::Return: {
       os << "return";
       if (expr_) {
@@ -301,7 +322,8 @@ void ControlAST::Dump(std::ostream &os) const {
       }
       break;
     }
-    default: assert(false);
+    default:
+      assert(false);
   }
   os << ';' << std::endl;
 }
@@ -331,8 +353,7 @@ void BinaryAST::Dump(std::ostream &os) const {
   }
   if (!in_expr) {
     os << ';' << std::endl;
-  }
-  else {
+  } else {
     os << ')';
   }
 }
@@ -354,14 +375,29 @@ void CastAST::Dump(std::ostream &os) const {
 void UnaryAST::Dump(std::ostream &os) const {
   auto inex = InExpr(os);
   switch (op_) {
-    case UnaryOp::Pos:      os << '+';        break;
-    case UnaryOp::Neg:      os << '-';        break;
-    case UnaryOp::LogicNot: os << '!';        break;
-    case UnaryOp::Not:      os << '~';        break;
-    case UnaryOp::DeRef:    os << '*';        break;
-    case UnaryOp::AddrOf:   os << '&';        break;
-    case UnaryOp::SizeOf:   os << "sizeof ";  break;
-    default: assert(false);
+    case UnaryOp::Pos:
+      os << '+';
+      break;
+    case UnaryOp::Neg:
+      os << '-';
+      break;
+    case UnaryOp::LogicNot:
+      os << '!';
+      break;
+    case UnaryOp::Not:
+      os << '~';
+      break;
+    case UnaryOp::DeRef:
+      os << '*';
+      break;
+    case UnaryOp::AddrOf:
+      os << '&';
+      break;
+    case UnaryOp::SizeOf:
+      os << "sizeof ";
+      break;
+    default:
+      assert(false);
   }
   opr_->Dump(os);
 }
@@ -437,32 +473,56 @@ void ValInitAST::Dump(std::ostream &os) const {
 
 void PrimTypeAST::Dump(std::ostream &os) const {
   switch (type_) {
-    case Keyword::Int8:     os << "int8_t";   break;
-    case Keyword::Int16:    os << "int16_t";  break;
-    case Keyword::Int32:    os << "int32_t";  break;
-    case Keyword::Int64:    os << "int64_t";  break;
-    case Keyword::ISize:    os << "ssize_t";  break;
-    case Keyword::UInt8:    os << "uint8_t";  break;
-    case Keyword::UInt16:   os << "uint16_t"; break;
-    case Keyword::UInt32:   os << "uint32_t"; break;
-    case Keyword::UInt64:   os << "uint64_t"; break;
-    case Keyword::USize:    os << "size_t";   break;
-    case Keyword::Float32:  os << "float";    break;
-    case Keyword::Float64:  os << "double";   break;
-    case Keyword::Bool:     os << "bool";     break;
-    default: assert(false);
+    case Keyword::Int8:
+      os << "int8_t";
+      break;
+    case Keyword::Int16:
+      os << "int16_t";
+      break;
+    case Keyword::Int32:
+      os << "int32_t";
+      break;
+    case Keyword::Int64:
+      os << "int64_t";
+      break;
+    case Keyword::ISize:
+      os << "ssize_t";
+      break;
+    case Keyword::UInt8:
+      os << "uint8_t";
+      break;
+    case Keyword::UInt16:
+      os << "uint16_t";
+      break;
+    case Keyword::UInt32:
+      os << "uint32_t";
+      break;
+    case Keyword::UInt64:
+      os << "uint64_t";
+      break;
+    case Keyword::USize:
+      os << "size_t";
+      break;
+    case Keyword::Float32:
+      os << "float";
+      break;
+    case Keyword::Float64:
+      os << "double";
+      break;
+    case Keyword::Bool:
+      os << "bool";
+      break;
+    default:
+      assert(false);
   }
 }
 
-void UserTypeAST::Dump(std::ostream &os) const {
-  os << id_;
-}
+void UserTypeAST::Dump(std::ostream &os) const { os << id_; }
 
 void FuncTypeAST::Dump(std::ostream &os) const {
   if (ret_) {
     ret_->Dump(os);
-  }
-  else {
+  } else {
     os << "void";
   }
   os << " (*)(";
