@@ -12,7 +12,8 @@ namespace yulang::back::ll {
 
 class ObjectGen {
  public:
-  ObjectGen(const ModulePtr &module) : module_(module), machine_(nullptr) {
+  ObjectGen(const ModulePtr &module)
+      : module_(module), opt_level_(0), machine_(nullptr) {
     InitTarget();
   }
 
@@ -32,11 +33,6 @@ class ObjectGen {
   void set_cpu(const std::string &cpu) { cpu_ = cpu; }
   void set_features(const std::string &features) { features_ = features; }
 
-  // getters
-  const std::string &target_triple() const {
-    return machine_->getTargetTriple().str();
-  }
-
  private:
   // file type of code generation
   enum class CodeGenFileType {
@@ -50,7 +46,7 @@ class ObjectGen {
   // LLVM module
   const ModulePtr &module_;
   // optimization level
-  std::size_t opt_level_ = 0;
+  std::size_t opt_level_;
   // target info
   llvm::TargetMachine *machine_;
   // CPU & features
