@@ -90,6 +90,14 @@ endforeach()
 include(CTest)
 if(BUILD_TESTING)
   find_package(Python3 REQUIRED COMPONENTS Interpreter)
+  add_executable(test_usedef tests/mid/test_usedef.cpp src/mid/usedef.cpp)
+  target_compile_features(test_usedef PRIVATE cxx_std_17)
+  target_include_directories(test_usedef PRIVATE src 3rdparty/xstl)
+  set_target_properties(test_usedef PROPERTIES CXX_EXTENSIONS OFF)
+  add_test(NAME mid.usedef COMMAND test_usedef)
+  add_test(NAME front.constants
+    COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/front/test_constants.py
+            --yuc $<TARGET_FILE:yuc> --work-dir ${CMAKE_BINARY_DIR}/test)
   foreach(level RANGE 0 3)
     add_test(NAME llvm_backend.O${level}
       COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/backend/test_backend.py
