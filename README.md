@@ -24,6 +24,81 @@ Visit [YuLang-doc](https://github.com/MaxXSoft/YuLang-doc) for more details.
 * Dot function and infix function
 * Iterator
 
+<details>
+  <summary>EBNF of Yu</summary>
+
+  ```ebnf
+  program   ::= {line};
+  line      ::= stmt {";" stmt} [";"];
+  stmt      ::= var_def   | let_def | fun_def | declare
+              | ty_alias  | struct  | enum    | import;
+
+  var_def   ::= property "var" var_elem {"," var_elem};
+  let_def   ::= property "let" let_elem {"," let_elem};
+  fun_def   ::= property "def" [id | bin_op | unary_op]
+                "(" [arg_list] ")" [":" type] block;
+  declare   ::= property "declare" ["var"] id ":" type;
+  ty_alias  ::= property "type" id "=" type;
+  struct    ::= property "struct" id "{" arg_list [","] "}";
+  enum      ::= property "enum" id [":" type] "{" enum_list "}";
+  import    ::= property "import" id {"." id};
+
+  property  ::= ["public" | "extern" | "inline"]
+  var_elem  ::= id [":" type] ["=" expr];
+  let_elem  ::= id [":" type] "=" expr;
+  arg_list  ::= id ":" type ["," arg_list];
+  enum_list ::= id ["=" expr] ["," enum_list] [","];
+
+  block     ::= "{" {blk_line} "}";
+  blk_line  ::= blk_stmt {";" blk_stmt} [";"];
+  blk_stmt  ::= var_def | let_def | declare | ty_alias  | struct
+              | enum    | if_else | when    | while     | for_in
+              | asm     | control | expr;
+
+  if_else   ::= "if" expr block ["else" (if_else | block)];
+  when      ::= "when" expr "{" when_elem {when_elem} ["else" block] "}";
+  while     ::= "while" expr block;
+  for_in    ::= "for" id "in" expr block;
+  asm       ::= "asm" "{" string {string} "}";
+  control   ::= "break" | "continue"  | ("return" [expr]);
+
+  when_elem ::= expr {"," expr} block;
+
+  expr      ::= binary {id binary};
+  binary    ::= cast {bin_op cast};
+  cast      ::= unary {"as" type};
+  unary     ::= [unary_op] factor | "sizeof" type;
+  factor    ::= value | block     | if_else   | when
+              | index | fun_call  | access    | "(" expr ")";
+
+  bin_op    ::= "+"   | "-"   | "*"   | "/"   | "%"   | "&"
+              | "|"   | "^"   | "&&"  | "||"  | "<<"  | ">>"
+              | "=="  | "!="  | "<"   | "<="  | ">"   | ">="
+              | "="   | "+="  | "-="  | "*="  | "/="  | "%="
+              | "&="  | "|="  | "^="  | "<<=" | ">>=" | ".";
+  unary_op  ::= "+"   | "-"   | "!"   | "~"   | "*"   | "&";
+  index     ::= factor "[" expr "]";
+  fun_call  ::= factor "(" [expr {"," expr}] ")";
+  access    ::= factor "." id ["(" [expr {"," expr}] ")"];
+
+  value     ::= INT_VAL | FLOAT_VAL | CHAR_VAL | id
+              | string  | bool      | null_ptr | val_init;
+  id        ::= ID_VAL;
+  string    ::= STR_VAL;
+  bool      ::= "true"  | "false";
+  null_ptr  ::= "null";
+  val_init  ::= "[" type "]" "{" [expr {"," expr} [","]] "}";
+
+  type      ::= (prim_type | id | pointer | array | ref | func) ["volatile"];
+  prim_type ::= "i8"  | "i16" | "i32"   | "i64" | "isize" | "u8"  | "u16"
+              | "u32" | "u64" | "usize" | "f32" | "f64" | "bool";
+  pointer   ::= type ["var"] "*";
+  array     ::= type "[" expr "]";
+  ref       ::= type ["var"] "&";
+  func      ::= "(" [type {"," type}] ")" [":" type];
+  ```
+</details>
+
 ## Examples: Hello World
 
 C style:
@@ -81,7 +156,7 @@ extern def main(argc: i32, argv: u8**): i32 {
 }
 ```
 
-## Building from Source
+## Build from Source
 
 Before building YuLang compiler, please make sure you have installed the following dependencies:
 
@@ -112,6 +187,8 @@ cmake --build build -j
 ctest --test-dir build --output-on-failure -j
 ```
 
+## Test and Check
+
 Use `ctest --test-dir build -L examples` to run only examples, `-L backend` for backend tests, or `-R example.io_test` to select one test.
 
 For example, to compile and link a Yu program:
@@ -128,78 +205,26 @@ git ls-files -z -- '*.c' '*.cc' '*.cpp' '*.cxx' '*.h' '*.hh' '*.hpp' '*.hxx' '*.
   xargs -0 clang-format --style=file --dry-run --Werror --fail-on-incomplete-format
 ```
 
-## EBNF of Yu
+For static analysis, use clang-tidy 23 and a CMake compilation database:
 
-```ebnf
-program   ::= {line};
-line      ::= stmt {";" stmt} [";"];
-stmt      ::= var_def   | let_def | fun_def | declare
-            | ty_alias  | struct  | enum    | import;
-
-var_def   ::= property "var" var_elem {"," var_elem};
-let_def   ::= property "let" let_elem {"," let_elem};
-fun_def   ::= property "def" [id | bin_op | unary_op]
-              "(" [arg_list] ")" [":" type] block;
-declare   ::= property "declare" ["var"] id ":" type;
-ty_alias  ::= property "type" id "=" type;
-struct    ::= property "struct" id "{" arg_list [","] "}";
-enum      ::= property "enum" id [":" type] "{" enum_list "}";
-import    ::= property "import" id {"." id};
-
-property  ::= ["public" | "extern" | "inline"]
-var_elem  ::= id [":" type] ["=" expr];
-let_elem  ::= id [":" type] "=" expr;
-arg_list  ::= id ":" type ["," arg_list];
-enum_list ::= id ["=" expr] ["," enum_list] [","];
-
-block     ::= "{" {blk_line} "}";
-blk_line  ::= blk_stmt {";" blk_stmt} [";"];
-blk_stmt  ::= var_def | let_def | declare | ty_alias  | struct
-            | enum    | if_else | when    | while     | for_in
-            | asm     | control | expr;
-
-if_else   ::= "if" expr block ["else" (if_else | block)];
-when      ::= "when" expr "{" when_elem {when_elem} ["else" block] "}";
-while     ::= "while" expr block;
-for_in    ::= "for" id "in" expr block;
-asm       ::= "asm" "{" string {string} "}";
-control   ::= "break" | "continue"  | ("return" [expr]);
-
-when_elem ::= expr {"," expr} block;
-
-expr      ::= binary {id binary};
-binary    ::= cast {bin_op cast};
-cast      ::= unary {"as" type};
-unary     ::= [unary_op] factor | "sizeof" type;
-factor    ::= value | block     | if_else   | when
-            | index | fun_call  | access    | "(" expr ")";
-
-bin_op    ::= "+"   | "-"   | "*"   | "/"   | "%"   | "&"
-            | "|"   | "^"   | "&&"  | "||"  | "<<"  | ">>"
-            | "=="  | "!="  | "<"   | "<="  | ">"   | ">="
-            | "="   | "+="  | "-="  | "*="  | "/="  | "%="
-            | "&="  | "|="  | "^="  | "<<=" | ">>=" | ".";
-unary_op  ::= "+"   | "-"   | "!"   | "~"   | "*"   | "&";
-index     ::= factor "[" expr "]";
-fun_call  ::= factor "(" [expr {"," expr}] ")";
-access    ::= factor "." id ["(" [expr {"," expr}] ")"];
-
-value     ::= INT_VAL | FLOAT_VAL | CHAR_VAL | id
-            | string  | bool      | null_ptr | val_init;
-id        ::= ID_VAL;
-string    ::= STR_VAL;
-bool      ::= "true"  | "false";
-null_ptr  ::= "null";
-val_init  ::= "[" type "]" "{" [expr {"," expr} [","]] "}";
-
-type      ::= (prim_type | id | pointer | array | ref | func) ["volatile"];
-prim_type ::= "i8"  | "i16" | "i32"   | "i64" | "isize" | "u8"  | "u16"
-            | "u32" | "u64" | "usize" | "f32" | "f64" | "bool";
-pointer   ::= type ["var"] "*";
-array     ::= type "[" expr "]";
-ref       ::= type ["var"] "&";
-func      ::= "(" [type {"," type}] ")" [":" type];
+```sh
+cmake -S . -B build -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+clang-tidy --verify-config
+run-clang-tidy -p build -j 4
+clang-tidy tests/backend/check_zeros.c -- -std=c11
 ```
+
+The last command checks the C helper that the backend tests compile separately. With Homebrew LLVM on macOS, put its `bin` directory on `PATH` and pass the SDK explicitly when the compilation database does not specify one:
+
+```sh
+export PATH="$(brew --prefix llvm)/bin:$PATH"
+run-clang-tidy -p build -j 4 \
+  -extra-arg=-isysroot -extra-arg="$(xcrun --show-sdk-path)"
+clang-tidy tests/backend/check_zeros.c -- -std=c11 \
+  -isysroot "$(xcrun --show-sdk-path)"
+```
+
+All enabled tidy warnings are errors. Keep suppressions local, name the exact check in `NOLINT`, and explain the invariant or ownership convention. CTest also covers use-def relocation/allocation failure (`mid.usedef`) and invalid constant expressions (`front.constants`).
 
 ## Changelog
 
