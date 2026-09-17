@@ -54,9 +54,9 @@ function(compile_yu source output)
   add_custom_command(OUTPUT "${object}"
     COMMAND ${CMAKE_COMMAND} -E make_directory "${directory}"
     COMMAND yuc -Werror -O $<IF:$<CONFIG:Debug>,0,2>
-            -I "${CMAKE_CURRENT_SOURCE_DIR}/lib" -ot obj "${source}" -o "${object}"
-    # Keep the Makefile's conservative dependency on every library source.
-    DEPENDS yuc "${source}" ${YU_LIBRARY_SOURCES} "${CMAKE_CURRENT_LIST_FILE}"
+            -I "${CMAKE_CURRENT_SOURCE_DIR}/lib" -ot obj "${source}" -o "${object}" -MD
+    DEPFILE "${object}.d"
+    DEPENDS yuc "${source}" "${CMAKE_CURRENT_LIST_FILE}"
     VERBATIM)
   set_source_files_properties("${object}" PROPERTIES EXTERNAL_OBJECT TRUE)
   set(${output} "${object}" PARENT_SCOPE)
@@ -97,6 +97,9 @@ if(BUILD_TESTING)
   add_test(NAME mid.usedef COMMAND test_usedef)
   add_test(NAME front.constants
     COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/front/test_constants.py
+            --yuc $<TARGET_FILE:yuc> --work-dir ${CMAKE_BINARY_DIR}/test)
+  add_test(NAME front.dependencies
+    COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/front/test_dependencies.py
             --yuc $<TARGET_FILE:yuc> --work-dir ${CMAKE_BINARY_DIR}/test)
   foreach(level RANGE 0 3)
     add_test(NAME llvm_backend.O${level}
