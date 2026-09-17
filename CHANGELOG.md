@@ -7,6 +7,7 @@ All notable changes to the YuLang compiler will be documented in this file.
 ### Added
 
 * C/C++ static analysis checks with clang-tidy 23.
+* Support `-MD` command line option for generating Makefile dependencies.
 
 ## 0.0.8 - 2026-09-12
 
