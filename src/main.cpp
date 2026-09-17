@@ -54,13 +54,11 @@ xstl::ArgParser GetArgp() {
   argp.AddArgument<string>("input", "input source file");
   argp.AddOption<bool>("help", "h", "show this message", false);
   argp.AddOption<bool>("version", "v", "show version info", false);
-  argp.AddOption<string>("outtype", "ot",
+  argp.AddOption<string>("out-type", "ot",
                          "type of output (ast/yuir/llvm/asm/obj)", "obj");
   argp.AddOption<string>("output", "o", "output file, default to stdout", "");
-  argp.AddOption<vector<string>>("imppath", "I",
-                                 "add directory to "
-                                 "import search path",
-                                 {});
+  argp.AddOption<vector<string>>("import-path", "I",
+                                 "add directory to import search path", {});
   argp.AddOption<int>("opt-level", "O", "set optimization level (0-3)", 0);
   argp.AddOption<bool>("verbose", "V", "use verbose output", false);
   argp.AddOption<bool>("warn-error", "Werror", "treat warnings as errors",
@@ -98,7 +96,7 @@ void ParseArgument(xstl::ArgParser &argp, int argc, const char **argv) {
 }
 
 OutputType GetOutputType(xstl::ArgParser const &argp) {
-  const auto out_type = argp.GetValue<string>("outtype");
+  const auto out_type = argp.GetValue<string>("out-type");
   int type_index = 0;
   for (const auto &i : {"ast", "yuir", "llvm", "asm", "obj"}) {
     if (out_type == i) return static_cast<OutputType>(type_index);
@@ -132,7 +130,7 @@ bool CompileToIR(const xstl::ArgParser &argp, std::ostream &os,
                  LexerManager &lex_man, IRBuilder &irb, OutputType type) {
   // initialize lexer manager & logger
   const auto file = argp.GetValue<string>("input");
-  const auto imp_path = argp.GetValue<vector<string>>("imppath");
+  const auto imp_path = argp.GetValue<vector<string>>("import-path");
   if (!lex_man.LoadSource(file)) return false;
   if (!imp_path.empty()) {
     for (const auto &i : imp_path) {
