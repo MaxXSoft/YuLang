@@ -52,7 +52,20 @@ jobs:
         CXX: clang++-${{matrix.llvm}}
       run: >-
         cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE
+        -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
         -DLLVM_DIR="$(llvm-config-${{matrix.llvm}} --cmakedir)"
+
+    - name: Check C/C++ Static Analysis
+      if: matrix.llvm == '23'
+      shell: bash
+      run: |
+        sudo apt-get install -y clang-tidy-23
+        clang-tidy-23 --version
+        clang-tidy-23 --verify-config
+        run-clang-tidy-23 -clang-tidy-binary clang-tidy-23 \
+          -p "${{runner.workspace}}/build" -j 2
+        # This helper is compiled by the Python backend test, outside CMake.
+        clang-tidy-23 tests/backend/check_zeros.c -- -std=c11
 
     - name: Build
       working-directory: ${{runner.workspace}}/build
