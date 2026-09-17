@@ -13,8 +13,12 @@ namespace yulang::define {
 namespace {
 
 // used in 'StructType::IsIdentical' to prevent infinite loop
+// Empty libstdc++ stacks may allocate; startup failure is fatal.
+// NOLINTNEXTLINE(bugprone-throwing-static-initialization)
 std::stack<std::pair<const void *, const void *>> ident_types;
 // used in 'StructType::GetTrivialType' to prevent infinite loop
+// Same startup allocation policy as ident_types and the static pass registry.
+// NOLINTNEXTLINE(bugprone-throwing-static-initialization)
 std::stack<std::pair<const void *, TypePtr>> trivial_types;
 
 }  // namespace
