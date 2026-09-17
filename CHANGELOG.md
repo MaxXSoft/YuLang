@@ -2,6 +2,12 @@
 
 All notable changes to the YuLang compiler will be documented in this file.
 
+## Unreleased
+
+### Added
+
+* C/C++ static analysis checks with clang-tidy 23.
+
 ## 0.0.8 - 2026-09-12
 
 ### Added
