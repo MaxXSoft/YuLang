@@ -12,6 +12,7 @@
 #include "define/panic.h"
 #include "define/type.h"
 #include "front/analyzer.h"
+#include "front/depfile.h"
 #include "front/eval.h"
 #include "front/lexman.h"
 #include "front/logger.h"
@@ -57,6 +58,8 @@ xstl::ArgParser GetArgp() {
   argp.AddOption<string>("out-type", "ot",
                          "type of output (ast/yuir/llvm/asm/obj)", "obj");
   argp.AddOption<string>("output", "o", "output file, default to stdout", "");
+  argp.AddOption<bool>("deps", "MD",
+                       "write dependencies to <output>.d (requires -o)", false);
   argp.AddOption<vector<string>>("import-path", "I",
                                  "add directory to import search path", {});
   argp.AddOption<int>("opt-level", "O", "set optimization level (0-3)", 0);
@@ -217,6 +220,11 @@ int main(int argc, const char *argv[]) try {
 
   // initialize output stream
   const auto out_file = argp.GetValue<string>("output");
+  const auto write_deps = argp.GetValue<bool>("deps");
+  if (write_deps && out_file.empty()) {
+    Logger::LogRawError("-MD requires an output file (-o)");
+    return 1;
+  }
   std::ofstream ofs;
   const auto text_output = out_type == OutputType::AST ||
                            out_type == OutputType::YuIR ||
@@ -257,6 +265,10 @@ int main(int argc, const char *argv[]) try {
   if (ofs.is_open()) ofs.close();
   if (!os) {
     Logger::LogRawError("failed to write output file");
+    return 1;
+  }
+  if (write_deps &&
+      !yulang::front::WriteDepfile(out_file, lex_man.dependencies())) {
     return 1;
   }
   return 0;

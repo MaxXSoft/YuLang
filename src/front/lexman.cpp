@@ -65,12 +65,12 @@ std::optional<LexerPtr> LexerManager::SetLexer(const Path &file) {
   const auto file_str = file.string();
   const auto it = lexers_.find(file_str);
   if (it == lexers_.end()) {
+    if (!std::filesystem::exists(file)) return {};
     // not found, create lexer
     auto [it, _] = lexers_.insert({file_str, nullptr});
     lexer_ = std::make_shared<Lexer>(it->first);
     it->second = lexer_;
-    // check if path is valid
-    if (!std::filesystem::exists(file)) return {};
+    dependencies_.push_back(std::filesystem::absolute(file).lexically_normal());
   } else {
     // just set
     lexer_ = it->second;

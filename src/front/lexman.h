@@ -41,12 +41,17 @@ class LexerManager {
   // getters
   // current lexer
   [[nodiscard]] const LexerPtr &lexer() const { return lexer_; }
+  // Source first, followed by imported files in load order.
+  [[nodiscard]] const std::vector<std::filesystem::path> &dependencies() const {
+    return dependencies_;
+  }
 
  private:
   // import path records
   std::multimap<int, std::filesystem::path, std::greater<>> imp_paths_;
   // all loaded lexers
   std::unordered_map<std::string, LexerPtr> lexers_;
+  std::vector<std::filesystem::path> dependencies_;
   // current lexer
   LexerPtr lexer_;
 };
