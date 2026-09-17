@@ -1,10 +1,11 @@
+#include <cstdint>
 #include <memory>
 #include <unordered_set>
 
 #include "mid/pass.h"
 #include "mid/passman.h"
 
-using namespace yulang::mid;
+namespace yulang::mid {
 
 namespace {
 
@@ -12,7 +13,7 @@ namespace {
   merge blocks with only one jump instruction,
   replace branch with two equal targets to jump
 
-  TODO: do not skip entry blocks
+  TODO(YuLang): do not skip entry blocks
 
   e.g.
     %0:
@@ -26,7 +27,7 @@ namespace {
 */
 class BlockMerge : public FunctionPass {
  public:
-  BlockMerge() {}
+  BlockMerge() = default;
 
   bool RunOnFunction(const UserPtr &func) override {
     changed_ = false;
@@ -55,7 +56,9 @@ class BlockMerge : public FunctionPass {
       case Op::IsJump: {
         if (!is_entry_ && ssa.insts().size() == 1) {
           op_ = Op::ReplaceBlock;
-          auto target_block = static_cast<BlockSSA *>(target_.get());
+          // JumpSSA operands are always BlockSSA targets.
+          // NOLINTNEXTLINE(cppcoreguidelines-pro-type-static-cast-downcast)
+          auto *target_block = static_cast<BlockSSA *>(target_.get());
           // get new predecessor set
           std::unordered_set<SSAPtr> preds;
           for (const auto &i : *target_block) {
@@ -75,7 +78,7 @@ class BlockMerge : public FunctionPass {
       }
       case Op::ReplaceWithJump: {
         // create jump instruction
-        auto jump = std::make_shared<JumpSSA>(target_);
+        const auto jump = std::make_shared<JumpSSA>(target_);
         jump->set_logger(ssa.insts().back()->logger());
         // replace last instruction with jump
         ssa.insts().back() = jump;
@@ -99,19 +102,23 @@ class BlockMerge : public FunctionPass {
   }
 
  private:
-  enum class Op {
+  enum class Op : std::uint8_t {
     Nop,
     IsJump,
     ReplaceBlock,
     ReplaceWithJump,
   };
 
-  bool changed_, is_entry_;
+  bool changed_{}, is_entry_{};
   SSAPtr target_;
-  Op op_;
+  Op op_{Op::Nop};
 };
+
+// register current passs
+// Startup registration is required; allocation failure is fatal before main.
+// NOLINTNEXTLINE(bugprone-throwing-static-initialization)
+REGISTER_PASS(BlockMerge, block_merge, 1, false);
 
 }  // namespace
 
-// register current passs
-REGISTER_PASS(BlockMerge, block_merge, 1, false);
+}  // namespace yulang::mid

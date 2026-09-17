@@ -19,14 +19,14 @@ class IRBuilder {
   SSAPtr GenerateOn(define::VarLetDefAST &ast);
   SSAPtr GenerateOn(define::FunDefAST &ast);
   SSAPtr GenerateOn(define::DeclareAST &ast);
-  SSAPtr GenerateOn(define::TypeAliasAST &ast);
-  SSAPtr GenerateOn(define::StructAST &ast);
-  SSAPtr GenerateOn(define::EnumAST &ast);
+  static SSAPtr GenerateOn(define::TypeAliasAST &ast);
+  static SSAPtr GenerateOn(define::StructAST &ast);
+  static SSAPtr GenerateOn(define::EnumAST &ast);
   SSAPtr GenerateOn(define::ImportAST &ast);
   SSAPtr GenerateOn(define::VarLetElemAST &ast);
   SSAPtr GenerateOn(define::ArgElemAST &ast);
-  SSAPtr GenerateOn(define::StructElemAST &ast);
-  SSAPtr GenerateOn(define::EnumElemAST &ast);
+  static SSAPtr GenerateOn(define::StructElemAST &ast);
+  static SSAPtr GenerateOn(define::EnumElemAST &ast);
   SSAPtr GenerateOn(define::BlockAST &ast);
   SSAPtr GenerateOn(define::IfAST &ast);
   SSAPtr GenerateOn(define::WhenAST &ast);
@@ -49,13 +49,13 @@ class IRBuilder {
   SSAPtr GenerateOn(define::BoolAST &ast);
   SSAPtr GenerateOn(define::NullAST &ast);
   SSAPtr GenerateOn(define::ValInitAST &ast);
-  SSAPtr GenerateOn(define::PrimTypeAST &ast);
-  SSAPtr GenerateOn(define::UserTypeAST &ast);
-  SSAPtr GenerateOn(define::FuncTypeAST &ast);
-  SSAPtr GenerateOn(define::VolaTypeAST &ast);
-  SSAPtr GenerateOn(define::ArrayTypeAST &ast);
-  SSAPtr GenerateOn(define::PointerTypeAST &ast);
-  SSAPtr GenerateOn(define::RefTypeAST &ast);
+  static SSAPtr GenerateOn(define::PrimTypeAST &ast);
+  static SSAPtr GenerateOn(define::UserTypeAST &ast);
+  static SSAPtr GenerateOn(define::FuncTypeAST &ast);
+  static SSAPtr GenerateOn(define::VolaTypeAST &ast);
+  static SSAPtr GenerateOn(define::ArrayTypeAST &ast);
+  static SSAPtr GenerateOn(define::PointerTypeAST &ast);
+  static SSAPtr GenerateOn(define::RefTypeAST &ast);
 
   // getters
   Module &module() { return module_; }
@@ -68,7 +68,7 @@ class IRBuilder {
   struct WhenInfo {
     BlockPtr end_block;
     SSAPtr expr, ret_val;
-    bool is_ret_val_ref;
+    bool is_ret_val_ref{};
   };
 
   // switch to a new environment
@@ -81,10 +81,10 @@ class IRBuilder {
   // table of values
   xstl::NestedMapPtr<std::string, SSAPtr> vals_;
   // used when generating var/let definitions
-  define::Property last_prop_;
+  define::Property last_prop_{define::Property::None};
   // used when generating function definitions
   SSAPtr ret_val_;
-  bool ret_is_ref_;
+  bool ret_is_ref_{};
   BlockPtr func_exit_;
   // used when generating when statement
   std::stack<WhenInfo> when_info_;

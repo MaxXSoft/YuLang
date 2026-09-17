@@ -1,14 +1,14 @@
 #include "mid/pass.h"
 #include "mid/passman.h"
 
-using namespace yulang::mid;
+namespace yulang::mid {
 
 namespace {
 
 // dead code elimination
 class DeadCodeEliminationPass : public FunctionPass {
  public:
-  DeadCodeEliminationPass() {}
+  DeadCodeEliminationPass() = default;
 
   bool RunOnFunction(const UserPtr &func) override {
     changed_ = false;
@@ -41,7 +41,7 @@ class DeadCodeEliminationPass : public FunctionPass {
         ssa.logger()->LogWarning("unreachable code");
       }
       // remove current block
-      auto uses = ssa.uses();
+      const auto uses = ssa.uses();
       ssa.ReplaceBy(nullptr);
       // remove from all successors
       for (const auto &i : uses) {
@@ -83,14 +83,18 @@ class DeadCodeEliminationPass : public FunctionPass {
 
  private:
   // set if IR changed
-  bool changed_;
+  bool changed_{};
   // current function
-  User *cur_func_;
+  User *cur_func_{};
   // set if need to be removed
-  bool remove_flag_;
+  bool remove_flag_{};
 };
+
+// register current pass
+// Startup registration is required; allocation failure is fatal before main.
+// NOLINTNEXTLINE(bugprone-throwing-static-initialization)
+REGISTER_PASS(DeadCodeEliminationPass, dead_code_elim, 0, false);
 
 }  // namespace
 
-// register current pass
-REGISTER_PASS(DeadCodeEliminationPass, dead_code_elim, 0, false);
+}  // namespace yulang::mid

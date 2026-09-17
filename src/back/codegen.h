@@ -11,6 +11,12 @@ namespace yulang::back {
 // interface of all code generators
 class CodeGenInterface {
  public:
+  CodeGenInterface() = default;
+  CodeGenInterface(const CodeGenInterface &) = default;
+  CodeGenInterface &operator=(const CodeGenInterface &) = default;
+  CodeGenInterface(CodeGenInterface &&) = default;
+  CodeGenInterface &operator=(CodeGenInterface &&) = default;
+
   virtual ~CodeGenInterface() = default;
 
   virtual void GenerateOn(mid::LoadSSA &ssa) = 0;

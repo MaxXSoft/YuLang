@@ -2,47 +2,89 @@
 
 #include <cassert>
 #include <cmath>
+#include <stdexcept>
 #include <type_traits>
 
-using namespace yulang::front;
-using namespace yulang::define;
+namespace yulang::front {
 
-// helper macros
-#define DO_CALC(op)                                                           \
-  do {                                                                        \
-    if constexpr (std::is_same_v<Lhs, std::uint64_t> &&                       \
-                  std::is_same_v<Rhs, std::uint64_t>) {                       \
-      if (ast.ast_type()->IsUnsigned()) {                                     \
-        auto ans = static_cast<std::uint64_t>(lhs)                            \
-            op static_cast<std::uint64_t>(rhs);                               \
-        return static_cast<std::uint64_t>(ans);                               \
-      } else {                                                                \
-        auto ans =                                                            \
-            static_cast<std::int64_t>(lhs) op static_cast<std::int64_t>(rhs); \
-        return static_cast<std::uint64_t>(ans);                               \
-      }                                                                       \
-    } else {                                                                  \
-      return lhs op rhs;                                                      \
-    }                                                                         \
+using yulang::define::AccessAST;
+using yulang::define::ArgElemAST;
+using yulang::define::ArrayTypeAST;
+using yulang::define::AsmAST;
+using yulang::define::ASTPtr;
+using yulang::define::BinaryAST;
+using yulang::define::BlockAST;
+using yulang::define::BoolAST;
+using yulang::define::CastAST;
+using yulang::define::CharAST;
+using yulang::define::ControlAST;
+using yulang::define::DeclareAST;
+using yulang::define::EnumAST;
+using yulang::define::EnumElemAST;
+using yulang::define::EvalNum;
+using yulang::define::FloatAST;
+using yulang::define::ForInAST;
+using yulang::define::FunCallAST;
+using yulang::define::FuncTypeAST;
+using yulang::define::FunDefAST;
+using yulang::define::IdAST;
+using yulang::define::IfAST;
+using yulang::define::ImportAST;
+using yulang::define::IndexAST;
+using yulang::define::IntAST;
+using yulang::define::IsOperatorAssign;
+using yulang::define::MakeEnumEnv;
+using yulang::define::MakeEvalEnv;
+using yulang::define::NullAST;
+using yulang::define::Operator;
+using yulang::define::PointerTypeAST;
+using yulang::define::PrimTypeAST;
+using yulang::define::RefTypeAST;
+using yulang::define::StringAST;
+using yulang::define::StructAST;
+using yulang::define::StructElemAST;
+using yulang::define::TypeAliasAST;
+using yulang::define::TypePtr;
+using yulang::define::UnaryAST;
+using yulang::define::UserTypeAST;
+using yulang::define::ValInitAST;
+using yulang::define::VarLetDefAST;
+using yulang::define::VarLetElemAST;
+using yulang::define::VolaTypeAST;
+using yulang::define::WhenAST;
+using yulang::define::WhenElemAST;
+using yulang::define::WhileAST;
+
+// Operator tokens deliberately appear between operands, not inside parentheses.
+// NOLINTBEGIN(bugprone-macro-parentheses)
+#define DO_CALC(op)                                                          \
+  do {                                                                       \
+    if constexpr (std::is_same_v<Lhs, std::uint64_t> &&                      \
+                  std::is_same_v<Rhs, std::uint64_t>) {                      \
+      if (ast.ast_type()->IsUnsigned()) {                                    \
+        return static_cast<std::uint64_t>(lhs)                               \
+            op static_cast<std::uint64_t>(rhs);                              \
+      }                                                                      \
+      return static_cast<std::uint64_t>(                                     \
+          static_cast<std::int64_t>(lhs) op static_cast<std::int64_t>(rhs)); \
+    }                                                                        \
+    return lhs op rhs;                                                       \
   } while (0)
-#define DO_INT_CALC(op)                                                       \
-  do {                                                                        \
-    if constexpr (std::is_same_v<Lhs, std::uint64_t> &&                       \
-                  std::is_same_v<Rhs, std::uint64_t>) {                       \
-      if (ast.ast_type()->IsUnsigned()) {                                     \
-        auto ans = static_cast<std::uint64_t>(lhs)                            \
-            op static_cast<std::uint64_t>(rhs);                               \
-        return static_cast<std::uint64_t>(ans);                               \
-      } else {                                                                \
-        auto ans =                                                            \
-            static_cast<std::int64_t>(lhs) op static_cast<std::int64_t>(rhs); \
-        return static_cast<std::uint64_t>(ans);                               \
-      }                                                                       \
-    } else {                                                                  \
-      assert(false);                                                          \
-      return {};                                                              \
-    }                                                                         \
+#define DO_INT_CALC(op)                                                      \
+  do {                                                                       \
+    if constexpr (std::is_same_v<Lhs, std::uint64_t> &&                      \
+                  std::is_same_v<Rhs, std::uint64_t>) {                      \
+      if (ast.ast_type()->IsUnsigned()) {                                    \
+        return static_cast<std::uint64_t>(lhs)                               \
+            op static_cast<std::uint64_t>(rhs);                              \
+      }                                                                      \
+      return static_cast<std::uint64_t>(                                     \
+          static_cast<std::int64_t>(lhs) op static_cast<std::int64_t>(rhs)); \
+    }                                                                        \
+    assert(false && "integer-only operator requires integer operands");      \
+    return {};                                                               \
   } while (0)
+// NOLINTEND(bugprone-macro-parentheses)
 
 namespace {
 
@@ -57,7 +99,7 @@ inline ASTPtr MakeAST(const EvalNum &num, const ASTPtr &ast) {
   // handle by type of 'ast'
   if (type->IsInteger() || type->IsEnum()) {
     // generate int AST
-    auto val = std::get_if<std::uint64_t>(&num);
+    const auto *val = std::get_if<std::uint64_t>(&num);
     assert(val);
     ret = std::make_unique<IntAST>(*val);
   } else if (type->IsFloat()) {
@@ -65,17 +107,17 @@ inline ASTPtr MakeAST(const EvalNum &num, const ASTPtr &ast) {
     // NOTE: there is no loss of precision due to floating point promotion
     //  ref: section 4.6 from n3337
     if (type->GetSize() == 4) {
-      auto val = std::get_if<float>(&num);
+      const auto *val = std::get_if<float>(&num);
       assert(val);
       ret = std::make_unique<FloatAST>(*val);
     } else {
-      auto val = std::get_if<double>(&num);
+      const auto *val = std::get_if<double>(&num);
       assert(val);
       ret = std::make_unique<FloatAST>(*val);
     }
   } else if (type->IsBool()) {
     // generate bool AST
-    auto val = std::get_if<std::uint64_t>(&num);
+    const auto *val = std::get_if<std::uint64_t>(&num);
     assert(val);
     ret = std::make_unique<BoolAST>(*val);
   } else if (type->IsNull()) {
@@ -100,40 +142,43 @@ inline bool CastToBool(const EvalNum &num) {
 }
 
 // cast 'EvalNum' to specific type
+// Keep the exhaustive type/operator dispatch together for semantic review.
+// NOLINTNEXTLINE(readability-function-cognitive-complexity)
 inline EvalNum CastToType(const EvalNum &num, const TypePtr &type) {
   assert(type->IsInteger() || type->IsBool() || type->IsFloat());
   return std::visit(
       [&type](auto &&arg) -> EvalNum {
         if (type->IsBool()) {
           return static_cast<std::uint64_t>(!!arg);
-        } else if (type->GetSize() == 1) {
+        }
+        if (type->GetSize() == 1) {
           auto ans = type->IsUnsigned() ? static_cast<std::uint8_t>(arg)
                                         : static_cast<std::int8_t>(arg);
           return static_cast<std::uint64_t>(ans);
-        } else if (type->GetSize() == 2) {
+        }
+        if (type->GetSize() == 2) {
           auto ans = type->IsUnsigned() ? static_cast<std::uint16_t>(arg)
                                         : static_cast<std::int16_t>(arg);
           return static_cast<std::uint64_t>(ans);
-        } else if (type->GetSize() == 4) {
+        }
+        if (type->GetSize() == 4) {
           if (type->IsInteger()) {
             auto ans = type->IsUnsigned() ? static_cast<std::uint32_t>(arg)
                                           : static_cast<std::int32_t>(arg);
             return static_cast<std::uint64_t>(ans);
-          } else {
-            return static_cast<float>(arg);
           }
-        } else if (type->GetSize() == 8) {
+          return static_cast<float>(arg);
+        }
+        if (type->GetSize() == 8) {
           if (type->IsInteger()) {
             auto ans = type->IsUnsigned() ? static_cast<std::uint64_t>(arg)
                                           : static_cast<std::int64_t>(arg);
-            return static_cast<std::uint64_t>(ans);
-          } else {
-            return static_cast<double>(arg);
+            return ans;
           }
-        } else {
-          assert(false);
-          return static_cast<std::uint64_t>(0);
+          return static_cast<double>(arg);
         }
+        assert(false);
+        return static_cast<std::uint64_t>(0);
       },
       num);
 }
@@ -144,19 +189,20 @@ inline std::uint64_t CastToType(std::uint64_t num, const TypePtr &type) {
   if (type->GetSize() == 1) {
     return type->IsUnsigned() ? static_cast<std::uint8_t>(num)
                               : static_cast<std::int8_t>(num);
-  } else if (type->GetSize() == 2) {
+  }
+  if (type->GetSize() == 2) {
     return type->IsUnsigned() ? static_cast<std::uint16_t>(num)
                               : static_cast<std::int16_t>(num);
-  } else if (type->GetSize() == 4) {
+  }
+  if (type->GetSize() == 4) {
     return type->IsUnsigned() ? static_cast<std::uint32_t>(num)
                               : static_cast<std::int32_t>(num);
-  } else if (type->GetSize() == 8) {
-    return type->IsUnsigned() ? static_cast<std::uint64_t>(num)
-                              : static_cast<std::int64_t>(num);
-  } else {
-    assert(false);
-    return 0;
   }
+  if (type->GetSize() == 8) {
+    return type->IsUnsigned() ? num : static_cast<std::int64_t>(num);
+  }
+  assert(false);
+  return 0;
 }
 
 // check if two 'EvalNum' are equal
@@ -185,11 +231,11 @@ std::optional<EvalNum> Evaluator::EvalOn(FunDefAST &ast) {
   return {};
 }
 
-std::optional<EvalNum> Evaluator::EvalOn(DeclareAST &ast) { return {}; }
+std::optional<EvalNum> Evaluator::EvalOn(DeclareAST & /*ast*/) { return {}; }
 
-std::optional<EvalNum> Evaluator::EvalOn(TypeAliasAST &ast) { return {}; }
+std::optional<EvalNum> Evaluator::EvalOn(TypeAliasAST & /*ast*/) { return {}; }
 
-std::optional<EvalNum> Evaluator::EvalOn(StructAST &ast) { return {}; }
+std::optional<EvalNum> Evaluator::EvalOn(StructAST & /*ast*/) { return {}; }
 
 std::optional<EvalNum> Evaluator::EvalOn(EnumAST &ast) {
   last_enum_name_ = ast.id();
@@ -200,7 +246,7 @@ std::optional<EvalNum> Evaluator::EvalOn(EnumAST &ast) {
   return {};
 }
 
-std::optional<EvalNum> Evaluator::EvalOn(ImportAST &ast) {
+std::optional<EvalNum> Evaluator::EvalOn(ImportAST & /*ast*/) {
   // do nothing, since imported ASTs are evaluated
   // in Analyzer::AnalyzeOn(ImportAST &)
   return {};
@@ -220,16 +266,23 @@ std::optional<EvalNum> Evaluator::EvalOn(VarLetElemAST &ast) {
   return {};
 }
 
-std::optional<EvalNum> Evaluator::EvalOn(ArgElemAST &ast) { return {}; }
+std::optional<EvalNum> Evaluator::EvalOn(ArgElemAST & /*ast*/) { return {}; }
 
-std::optional<EvalNum> Evaluator::EvalOn(StructElemAST &ast) { return {}; }
+std::optional<EvalNum> Evaluator::EvalOn(StructElemAST & /*ast*/) { return {}; }
 
 std::optional<EvalNum> Evaluator::EvalOn(EnumElemAST &ast) {
   // check if has initial expression
   if (ast.expr()) {
     auto val = ast.expr()->Eval(*this);
-    auto num = std::get_if<std::uint64_t>(&*val);
-    assert(num);
+    if (!val) {
+      ast.logger().LogError("enumeration value must be a constant integer");
+      return {};
+    }
+    const auto *num = std::get_if<std::uint64_t>(&*val);
+    if (!num) {
+      ast.logger().LogError("enumeration value must be a constant integer");
+      return {};
+    }
     last_enum_val_ = *num;
     // update AST
     ast.set_expr(MakeAST(*num, ast.expr()));
@@ -238,6 +291,7 @@ std::optional<EvalNum> Evaluator::EvalOn(EnumElemAST &ast) {
   // add to environment
   if (enum_values_->GetItem(last_enum_name_, false)) {
     auto &val = enum_values_->AccessItem(last_enum_name_);
+    if (!val) throw std::logic_error("missing enumeration environment");
     val->insert({ast.id(), last_enum_val_++});
   } else {
     enum_values_->AddItem(last_enum_name_, {{{ast.id(), last_enum_val_++}}});
@@ -246,7 +300,7 @@ std::optional<EvalNum> Evaluator::EvalOn(EnumElemAST &ast) {
 }
 
 std::optional<EvalNum> Evaluator::EvalOn(BlockAST &ast) {
-  auto env = NewEnv();
+  const auto env = NewEnv();
   bool valid = true;
   for (std::size_t i = 0; i < ast.stmts().size(); ++i) {
     // evaluate current statement
@@ -289,7 +343,7 @@ std::optional<EvalNum> Evaluator::EvalOn(IfAST &ast) {
 
 std::optional<EvalNum> Evaluator::EvalOn(WhenAST &ast) {
   auto last = last_when_expr_;
-  auto guard = xstl::Guard([this, &last] { last_when_expr_ = last; });
+  const auto guard = xstl::Guard([this, &last] { last_when_expr_ = last; });
   // evaluate expression
   last_when_expr_ = ast.expr()->Eval(*this);
   if (last_when_expr_) {
@@ -298,7 +352,7 @@ std::optional<EvalNum> Evaluator::EvalOn(WhenAST &ast) {
   // evaluate elements
   std::optional<EvalNum> ret;
   for (const auto &i : ast.elems()) {
-    auto val = i->Eval(*this);
+    const auto val = i->Eval(*this);
     if (val) ret = val;
   }
   // evaluate 'else' block
@@ -331,7 +385,7 @@ std::optional<EvalNum> Evaluator::EvalOn(ForInAST &ast) {
   return {};
 }
 
-std::optional<EvalNum> Evaluator::EvalOn(AsmAST &ast) { return {}; }
+std::optional<EvalNum> Evaluator::EvalOn(AsmAST & /*ast*/) { return {}; }
 
 std::optional<EvalNum> Evaluator::EvalOn(ControlAST &ast) {
   // evaluate expression
@@ -362,6 +416,11 @@ std::optional<EvalNum> Evaluator::EvalOn(WhenElemAST &ast) {
   return valid ? body : std::nullopt;
 }
 
+// Keep the exhaustive type/operator dispatch together for semantic review.
+// std::visit instantiates floating alternatives too; the operator is selected
+// at runtime, so its integer-only assertion cannot become a static_assert.
+// NOLINTBEGIN(misc-static-assert)
+// NOLINTNEXTLINE(readability-function-cognitive-complexity)
 std::optional<EvalNum> Evaluator::EvalOn(BinaryAST &ast) {
   // evaluate rhs
   auto rhs = ast.rhs()->Eval(*this);
@@ -370,97 +429,102 @@ std::optional<EvalNum> Evaluator::EvalOn(BinaryAST &ast) {
   if (IsOperatorAssign(ast.op())) {
     // do not evaluate rhs, just return null
     return {};
-  } else {
-    // evaluate & update lhs
-    auto lhs = ast.lhs()->Eval(*this);
-    if (lhs) ast.set_lhs(MakeAST(*lhs, ast.lhs()));
-    // calculate result
-    if (lhs && rhs) {
-      return std::visit(
-          [&ast](auto &&lhs, auto &&rhs) -> EvalNum {
-            using Lhs = std::decay_t<decltype(lhs)>;
-            using Rhs = std::decay_t<decltype(rhs)>;
-            switch (ast.op()) {
-              case Operator::Add:
-                return lhs + rhs;
-              case Operator::Sub:
-                return lhs - rhs;
-              case Operator::Mul:
-                DO_CALC(*);
-              case Operator::Div:
-                DO_CALC(/);
-              case Operator::Mod: {
-                if constexpr (std::is_same_v<Lhs, std::uint64_t> &&
-                              std::is_same_v<Rhs, std::uint64_t>) {
-                  if (ast.ast_type()->IsUnsigned()) {
-                    auto ans = static_cast<std::uint64_t>(lhs) %
-                               static_cast<std::uint64_t>(rhs);
-                    return static_cast<std::uint64_t>(ans);
-                  } else {
-                    auto ans = static_cast<std::int64_t>(lhs) %
-                               static_cast<std::int64_t>(rhs);
-                    return static_cast<std::uint64_t>(ans);
-                  }
-                } else {
-                  return std::fmod(lhs, rhs);
-                }
-              }
-              case Operator::Equal: {
-                return static_cast<std::uint64_t>(lhs == rhs);
-              }
-              case Operator::NotEqual: {
-                return static_cast<std::uint64_t>(lhs != rhs);
-              }
-              case Operator::Less:
-                DO_INT_CALC(<);
-              case Operator::LessEqual:
-                DO_INT_CALC(<=);
-              case Operator::Great:
-                DO_INT_CALC(>);
-              case Operator::GreatEqual:
-                DO_INT_CALC(>=);
-              case Operator::LogicAnd: {
-                return static_cast<std::uint64_t>(lhs && rhs);
-              }
-              case Operator::LogicOr: {
-                return static_cast<std::uint64_t>(lhs || rhs);
-              }
-              case Operator::And: {
-                return static_cast<std::uint64_t>(lhs) &
-                       static_cast<std::uint64_t>(rhs);
-              }
-              case Operator::Or: {
-                return static_cast<std::uint64_t>(lhs) |
-                       static_cast<std::uint64_t>(rhs);
-              }
-              case Operator::Xor: {
-                return static_cast<std::uint64_t>(lhs) ^
-                       static_cast<std::uint64_t>(rhs);
-              }
-              case Operator::Shl: {
-                return static_cast<std::uint64_t>(lhs)
-                       << static_cast<std::uint64_t>(rhs);
-              }
-              case Operator::Shr:
-                DO_INT_CALC(>>);
-              default:
-                assert(false);
-                return {};
-            }
-          },
-          *lhs, *rhs);
-    }
-    return {};
   }
+  // evaluate & update lhs
+  auto lhs = ast.lhs()->Eval(*this);
+  if (lhs) ast.set_lhs(MakeAST(*lhs, ast.lhs()));
+  // calculate result
+  if (lhs && rhs) {
+    return std::visit(
+        // Keep the exhaustive type/operator dispatch together for semantic
+        // review. NOLINTNEXTLINE(readability-function-cognitive-complexity)
+        [&ast](auto &&lhs, auto &&rhs) -> EvalNum {
+          using Lhs = std::decay_t<decltype(lhs)>;
+          using Rhs = std::decay_t<decltype(rhs)>;
+          switch (ast.op()) {
+            case Operator::Add:
+              return lhs + rhs;
+            case Operator::Sub:
+              return lhs - rhs;
+            case Operator::Mul:
+              DO_CALC(*);
+            case Operator::Div:
+              DO_CALC(/);
+            case Operator::Mod: {
+              if constexpr (std::is_same_v<Lhs, std::uint64_t> &&
+                            std::is_same_v<Rhs, std::uint64_t>) {
+                if (ast.ast_type()->IsUnsigned()) {
+                  auto ans = static_cast<std::uint64_t>(lhs) %
+                             static_cast<std::uint64_t>(rhs);
+                  return ans;
+                }
+                auto ans = static_cast<std::int64_t>(lhs) %
+                           static_cast<std::int64_t>(rhs);
+                return static_cast<std::uint64_t>(ans);
+
+              } else {
+                return std::fmod(lhs, rhs);
+              }
+            }
+            case Operator::Equal: {
+              return static_cast<std::uint64_t>(lhs == rhs);
+            }
+            case Operator::NotEqual: {
+              return static_cast<std::uint64_t>(lhs != rhs);
+            }
+            case Operator::Less:
+              DO_INT_CALC(<);
+            case Operator::LessEqual:
+              DO_INT_CALC(<=);
+            case Operator::Great:
+              DO_INT_CALC(>);
+            case Operator::GreatEqual:
+              DO_INT_CALC(>=);
+            case Operator::LogicAnd: {
+              return static_cast<std::uint64_t>(lhs && rhs);
+            }
+            case Operator::LogicOr: {
+              return static_cast<std::uint64_t>(lhs || rhs);
+            }
+            case Operator::And: {
+              return static_cast<std::uint64_t>(lhs) &
+                     static_cast<std::uint64_t>(rhs);
+            }
+            case Operator::Or: {
+              return static_cast<std::uint64_t>(lhs) |
+                     static_cast<std::uint64_t>(rhs);
+            }
+            case Operator::Xor: {
+              return static_cast<std::uint64_t>(lhs) ^
+                     static_cast<std::uint64_t>(rhs);
+            }
+            case Operator::Shl: {
+              return static_cast<std::uint64_t>(lhs)
+                     << static_cast<std::uint64_t>(rhs);
+            }
+            case Operator::Shr:
+              // Signed YuLang right shift intentionally preserves the sign bit.
+              // NOLINTNEXTLINE(bugprone-signed-bitwise)
+              DO_INT_CALC(>>);
+            default:
+              assert(false);
+              return {};
+          }
+        },
+        *lhs, *rhs);
+  }
+  return {};
 }
+
+// NOLINTEND(misc-static-assert)
 
 std::optional<EvalNum> Evaluator::EvalOn(AccessAST &ast) {
   // check if is enumerate
-  auto type = ast.expr()->ast_type();
+  const auto type = ast.expr()->ast_type();
   if (type->IsEnum()) {
     auto ev = enum_values_->GetItem(type->GetTypeId());
     if (ev) {
-      auto it = ev->find(ast.id());
+      const auto it = ev->find(ast.id());
       if (it != ev->end()) return it->second;
     }
   }
@@ -490,7 +554,8 @@ std::optional<EvalNum> Evaluator::EvalOn(UnaryAST &ast) {
   // caluate the value of AST
   if (ast.op() == UnaryOp::SizeOf) {
     return static_cast<std::uint64_t>(ast.opr()->ast_type()->GetSize());
-  } else if (val && ast.op() != UnaryOp::DeRef && ast.op() != UnaryOp::AddrOf) {
+  }
+  if (val && ast.op() != UnaryOp::DeRef && ast.op() != UnaryOp::AddrOf) {
     return std::visit(
         [&ast](auto &&opr) -> EvalNum {
           using T = std::decay_t<decltype(opr)>;
@@ -554,13 +619,13 @@ std::optional<EvalNum> Evaluator::EvalOn(IdAST &ast) {
   return values_->GetItem(ast.id());
 }
 
-std::optional<EvalNum> Evaluator::EvalOn(StringAST &ast) { return {}; }
+std::optional<EvalNum> Evaluator::EvalOn(StringAST & /*ast*/) { return {}; }
 
 std::optional<EvalNum> Evaluator::EvalOn(BoolAST &ast) {
   return static_cast<std::uint64_t>(ast.value());
 }
 
-std::optional<EvalNum> Evaluator::EvalOn(NullAST &ast) {
+std::optional<EvalNum> Evaluator::EvalOn(NullAST & /*ast*/) {
   return static_cast<std::uint64_t>(0);
 }
 
@@ -575,13 +640,13 @@ std::optional<EvalNum> Evaluator::EvalOn(ValInitAST &ast) {
   return {};
 }
 
-std::optional<EvalNum> Evaluator::EvalOn(PrimTypeAST &ast) { return {}; }
+std::optional<EvalNum> Evaluator::EvalOn(PrimTypeAST & /*ast*/) { return {}; }
 
-std::optional<EvalNum> Evaluator::EvalOn(UserTypeAST &ast) { return {}; }
+std::optional<EvalNum> Evaluator::EvalOn(UserTypeAST & /*ast*/) { return {}; }
 
-std::optional<EvalNum> Evaluator::EvalOn(FuncTypeAST &ast) { return {}; }
+std::optional<EvalNum> Evaluator::EvalOn(FuncTypeAST & /*ast*/) { return {}; }
 
-std::optional<EvalNum> Evaluator::EvalOn(VolaTypeAST &ast) { return {}; }
+std::optional<EvalNum> Evaluator::EvalOn(VolaTypeAST & /*ast*/) { return {}; }
 
 std::optional<EvalNum> Evaluator::EvalOn(ArrayTypeAST &ast) {
   // evaluate expression
@@ -590,6 +655,10 @@ std::optional<EvalNum> Evaluator::EvalOn(ArrayTypeAST &ast) {
   return {};
 }
 
-std::optional<EvalNum> Evaluator::EvalOn(PointerTypeAST &ast) { return {}; }
+std::optional<EvalNum> Evaluator::EvalOn(PointerTypeAST & /*ast*/) {
+  return {};
+}
 
-std::optional<EvalNum> Evaluator::EvalOn(RefTypeAST &ast) { return {}; }
+std::optional<EvalNum> Evaluator::EvalOn(RefTypeAST & /*ast*/) { return {}; }
+
+}  // namespace yulang::front

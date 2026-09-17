@@ -3,7 +3,7 @@
 #include <cassert>
 #include <iomanip>
 
-using namespace yulang::mid;
+namespace yulang::mid {
 
 std::list<PassInfo *> &PassManager::GetPasses() {
   static std::list<PassInfo *> passes;
@@ -12,6 +12,8 @@ std::list<PassInfo *> &PassManager::GetPasses() {
 
 void PassManager::RegisterPass(PassInfo *info) { GetPasses().push_back(info); }
 
+// The fixed-point traversal follows the module/function/block pass hierarchy.
+// NOLINTNEXTLINE(readability-function-cognitive-complexity)
 void PassManager::RunPasses() const {
   bool changed = true;
   // run until nothing changes
@@ -36,7 +38,7 @@ void PassManager::RunPasses() const {
         // traverse all basic blocks
         for (const auto &func : *funcs_) {
           for (const auto &i : *func) {
-            auto block = std::static_pointer_cast<BlockSSA>(i.value());
+            const auto block = std::static_pointer_cast<BlockSSA>(i.value());
             if (pass->RunOnBlock(block)) changed = true;
           }
         }
@@ -47,12 +49,12 @@ void PassManager::RunPasses() const {
 
 void PassManager::ShowInfo(std::ostream &os) const {
   // display optimization level
-  os << "current optimization level: " << opt_level_ << std::endl;
-  os << std::endl;
+  os << "current optimization level: " << opt_level_ << '\n';
+  os << '\n';
   // show registed info
-  os << "registed passes:" << std::endl;
+  os << "registed passes:" << '\n';
   if (GetPasses().empty()) {
-    os << "  <none>" << std::endl;
+    os << "  <none>" << '\n';
     return;
   }
   for (const auto &i : GetPasses()) {
@@ -60,23 +62,25 @@ void PassManager::ShowInfo(std::ostream &os) const {
     os << std::setw(20) << std::left << i->name();
     os << "min_opt_level = " << i->min_opt_level() << ", ";
     os << "is_analysis = " << std::boolalpha << i->is_analysis();
-    os << std::endl;
+    os << '\n';
   }
-  os << std::endl;
+  os << '\n';
   // show enabled passes
   int count = 0;
-  os << "enabled passes:" << std::endl;
+  os << "enabled passes:" << '\n';
   for (const auto &i : GetPasses()) {
     if (opt_level_ >= i->min_opt_level()) {
       if (count % 5 == 0) os << "  ";
       os << std::setw(16) << std::left << i->name();
-      if (count % 5 == 4) os << std::endl;
+      if (count % 5 == 4) os << '\n';
       ++count;
     }
   }
   if (!count) {
-    os << "  <none>" << std::endl;
+    os << "  <none>" << '\n';
   } else if ((count - 1) % 5 != 4) {
-    os << std::endl;
+    os << '\n';
   }
 }
+
+}  // namespace yulang::mid

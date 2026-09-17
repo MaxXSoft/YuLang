@@ -10,20 +10,26 @@ namespace yulang::mid {
 // base class of all passes
 class PassBase {
  public:
+  PassBase() = default;
+  PassBase(const PassBase &) = default;
+  PassBase &operator=(const PassBase &) = default;
+  PassBase(PassBase &&) = default;
+  PassBase &operator=(PassBase &&) = default;
+
   virtual ~PassBase() = default;
 
   // return true if is module pass
-  virtual bool IsModulePass() const = 0;
+  [[nodiscard]] virtual bool IsModulePass() const = 0;
   // run on global values in module, return true if there is modification
   virtual bool RunOnModule(UserPtrList &global_vals) = 0;
 
   // return true if is function pass
-  virtual bool IsFunctionPass() const = 0;
+  [[nodiscard]] virtual bool IsFunctionPass() const = 0;
   // run on functions, return true if there is modification
   virtual bool RunOnFunction(const UserPtr &func) = 0;
 
   // return true if is block pass
-  virtual bool IsBlockPass() const = 0;
+  [[nodiscard]] virtual bool IsBlockPass() const = 0;
   // run on basic blocks, return true if there is modification
   virtual bool RunOnBlock(const BlockPtr &block) = 0;
 
@@ -58,34 +64,34 @@ using PassPtr = std::unique_ptr<PassBase>;
 // module pass
 class ModulePass : public PassBase {
  public:
-  bool IsModulePass() const override final { return true; }
-  bool IsFunctionPass() const override final { return false; }
-  bool IsBlockPass() const override final { return false; }
+  [[nodiscard]] bool IsModulePass() const final { return true; }
+  [[nodiscard]] bool IsFunctionPass() const final { return false; }
+  [[nodiscard]] bool IsBlockPass() const final { return false; }
 
-  bool RunOnFunction(const UserPtr &funcs) override final { return false; }
-  bool RunOnBlock(const BlockPtr &block) override final { return false; }
+  bool RunOnFunction(const UserPtr & /*funcs*/) final { return false; }
+  bool RunOnBlock(const BlockPtr & /*block*/) final { return false; }
 };
 
 // function pass
 class FunctionPass : public PassBase {
  public:
-  bool IsModulePass() const override final { return false; }
-  bool IsFunctionPass() const override final { return true; }
-  bool IsBlockPass() const override final { return false; }
+  [[nodiscard]] bool IsModulePass() const final { return false; }
+  [[nodiscard]] bool IsFunctionPass() const final { return true; }
+  [[nodiscard]] bool IsBlockPass() const final { return false; }
 
-  bool RunOnModule(UserPtrList &global_vals) override final { return false; }
-  bool RunOnBlock(const BlockPtr &block) override final { return false; }
+  bool RunOnModule(UserPtrList & /*global_vals*/) final { return false; }
+  bool RunOnBlock(const BlockPtr & /*block*/) final { return false; }
 };
 
 // basic block pass
 class BlockPass : public PassBase {
  public:
-  bool IsModulePass() const override final { return false; }
-  bool IsFunctionPass() const override final { return false; }
-  bool IsBlockPass() const override final { return true; }
+  [[nodiscard]] bool IsModulePass() const final { return false; }
+  [[nodiscard]] bool IsFunctionPass() const final { return false; }
+  [[nodiscard]] bool IsBlockPass() const final { return true; }
 
-  bool RunOnModule(UserPtrList &global_vals) override final { return false; }
-  bool RunOnFunction(const UserPtr &func) override final { return false; }
+  bool RunOnModule(UserPtrList & /*global_vals*/) final { return false; }
+  bool RunOnFunction(const UserPtr & /*func*/) final { return false; }
 };
 
 }  // namespace yulang::mid

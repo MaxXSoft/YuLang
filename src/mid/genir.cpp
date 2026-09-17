@@ -1,8 +1,10 @@
 #include "define/ast.h"
 #include "mid/irbuilder.h"
 
-using namespace yulang::define;
-using namespace yulang::mid;
+namespace yulang::define {
+
+using yulang::mid::IRBuilder;
+using yulang::mid::SSAPtr;
 
 SSAPtr VarLetDefAST::GenerateIR(IRBuilder &irb) {
   return irb.GenerateOn(*this);
@@ -12,13 +14,17 @@ SSAPtr FunDefAST::GenerateIR(IRBuilder &irb) { return irb.GenerateOn(*this); }
 
 SSAPtr DeclareAST::GenerateIR(IRBuilder &irb) { return irb.GenerateOn(*this); }
 
-SSAPtr TypeAliasAST::GenerateIR(IRBuilder &irb) {
-  return irb.GenerateOn(*this);
+SSAPtr TypeAliasAST::GenerateIR(IRBuilder & /*irb*/) {
+  return yulang::mid::IRBuilder::GenerateOn(*this);
 }
 
-SSAPtr StructAST::GenerateIR(IRBuilder &irb) { return irb.GenerateOn(*this); }
+SSAPtr StructAST::GenerateIR(IRBuilder & /*irb*/) {
+  return yulang::mid::IRBuilder::GenerateOn(*this);
+}
 
-SSAPtr EnumAST::GenerateIR(IRBuilder &irb) { return irb.GenerateOn(*this); }
+SSAPtr EnumAST::GenerateIR(IRBuilder & /*irb*/) {
+  return yulang::mid::IRBuilder::GenerateOn(*this);
+}
 
 SSAPtr ImportAST::GenerateIR(IRBuilder &irb) { return irb.GenerateOn(*this); }
 
@@ -28,11 +34,13 @@ SSAPtr VarLetElemAST::GenerateIR(IRBuilder &irb) {
 
 SSAPtr ArgElemAST::GenerateIR(IRBuilder &irb) { return irb.GenerateOn(*this); }
 
-SSAPtr StructElemAST::GenerateIR(IRBuilder &irb) {
-  return irb.GenerateOn(*this);
+SSAPtr StructElemAST::GenerateIR(IRBuilder & /*irb*/) {
+  return yulang::mid::IRBuilder::GenerateOn(*this);
 }
 
-SSAPtr EnumElemAST::GenerateIR(IRBuilder &irb) { return irb.GenerateOn(*this); }
+SSAPtr EnumElemAST::GenerateIR(IRBuilder & /*irb*/) {
+  return yulang::mid::IRBuilder::GenerateOn(*this);
+}
 
 SSAPtr BlockAST::GenerateIR(IRBuilder &irb) { return irb.GenerateOn(*this); }
 
@@ -78,20 +86,32 @@ SSAPtr NullAST::GenerateIR(IRBuilder &irb) { return irb.GenerateOn(*this); }
 
 SSAPtr ValInitAST::GenerateIR(IRBuilder &irb) { return irb.GenerateOn(*this); }
 
-SSAPtr PrimTypeAST::GenerateIR(IRBuilder &irb) { return irb.GenerateOn(*this); }
-
-SSAPtr UserTypeAST::GenerateIR(IRBuilder &irb) { return irb.GenerateOn(*this); }
-
-SSAPtr FuncTypeAST::GenerateIR(IRBuilder &irb) { return irb.GenerateOn(*this); }
-
-SSAPtr VolaTypeAST::GenerateIR(IRBuilder &irb) { return irb.GenerateOn(*this); }
-
-SSAPtr ArrayTypeAST::GenerateIR(IRBuilder &irb) {
-  return irb.GenerateOn(*this);
+SSAPtr PrimTypeAST::GenerateIR(IRBuilder & /*irb*/) {
+  return yulang::mid::IRBuilder::GenerateOn(*this);
 }
 
-SSAPtr PointerTypeAST::GenerateIR(IRBuilder &irb) {
-  return irb.GenerateOn(*this);
+SSAPtr UserTypeAST::GenerateIR(IRBuilder & /*irb*/) {
+  return yulang::mid::IRBuilder::GenerateOn(*this);
 }
 
-SSAPtr RefTypeAST::GenerateIR(IRBuilder &irb) { return irb.GenerateOn(*this); }
+SSAPtr FuncTypeAST::GenerateIR(IRBuilder & /*irb*/) {
+  return yulang::mid::IRBuilder::GenerateOn(*this);
+}
+
+SSAPtr VolaTypeAST::GenerateIR(IRBuilder & /*irb*/) {
+  return yulang::mid::IRBuilder::GenerateOn(*this);
+}
+
+SSAPtr ArrayTypeAST::GenerateIR(IRBuilder & /*irb*/) {
+  return yulang::mid::IRBuilder::GenerateOn(*this);
+}
+
+SSAPtr PointerTypeAST::GenerateIR(IRBuilder & /*irb*/) {
+  return yulang::mid::IRBuilder::GenerateOn(*this);
+}
+
+SSAPtr RefTypeAST::GenerateIR(IRBuilder & /*irb*/) {
+  return yulang::mid::IRBuilder::GenerateOn(*this);
+}
+
+}  // namespace yulang::define

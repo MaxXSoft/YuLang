@@ -1,5 +1,6 @@
 #include "mid/ssa.h"
 
+#include <array>
 #include <cassert>
 #include <cctype>
 #include <iomanip>
@@ -7,8 +8,9 @@
 
 #include "xstl/guard.h"
 
-using namespace yulang::mid;
-using namespace yulang::define;
+namespace yulang::mid {
+
+using yulang::define::TypePtr;
 
 namespace {
 
@@ -16,12 +18,12 @@ namespace {
 const char *kIndent = "  ";
 
 // linkage types
-const char *kLinkTypes[] = {
+const std::array kLinkTypes = {
     "internal", "inline", "external", "global_ctor", "global_dtor",
 };
 
 // binary operators
-const char *kBinOps[] = {
+const std::array kBinOps = {
     "add",  "sub", "mul", "udiv", "sdiv", "urem", "srem", "eq",   "neq",
     "ult",  "slt", "ule", "sle",  "ugt",  "sgt",  "uge",  "sge",  "and",
     "or",   "xor", "shl", "lshr", "ashr", "fadd", "fsub", "fmul", "fdiv",
@@ -29,21 +31,23 @@ const char *kBinOps[] = {
 };
 
 // unary operators
-const char *kUnaOps[] = {
+const std::array kUnaOps = {
     "neg",
     "lnot",
     "not",
     "fneg",
 };
 
-// null stream buffer
-class : public std::streambuf {
- public:
-  int overflow(int c) override { return c; }
-} null_buffer;
-
-// null output stream
-std::ostream null_os(&null_buffer);
+// Discard output while still visiting values to assign their IDs.
+std::ostream &NullStream() {
+  class NullBuffer : public std::streambuf {
+   protected:
+    int overflow(int c) override { return c; }
+  };
+  static NullBuffer buffer;
+  static std::ostream stream(&buffer);
+  return stream;
+}
 
 // indicate if is in expression
 int in_expr = 0;
@@ -158,26 +162,26 @@ inline bool PrintPrefix(std::ostream &os, IdManager &idm, const Value *val) {
 
 void LoadSSA::Dump(std::ostream &os, IdManager &idm) const {
   if (PrintPrefix(os, idm, this)) return;
-  auto inex = InExpr();
+  const auto inex = InExpr();
   os << "load ";
   PrintType(os, type());
   os << ", ";
   DumpWithType(os, idm, (*this)[0]);
-  os << std::endl;
+  os << '\n';
 }
 
 void StoreSSA::Dump(std::ostream &os, IdManager &idm) const {
-  auto inex = InExpr();
+  const auto inex = InExpr();
   os << kIndent << "store ";
   DumpWithType(os, idm, (*this)[0]);
   os << ", ";
   DumpWithType(os, idm, (*this)[1]);
-  os << std::endl;
+  os << '\n';
 }
 
 void AccessSSA::Dump(std::ostream &os, IdManager &idm) const {
   if (PrintPrefix(os, idm, this)) return;
-  auto inex = InExpr();
+  const auto inex = InExpr();
   os << "access ";
   if (acc_type_ == AccessType::Pointer) {
     os << "ptr ";
@@ -187,80 +191,80 @@ void AccessSSA::Dump(std::ostream &os, IdManager &idm) const {
   DumpWithType(os, idm, (*this)[0]);
   os << ", ";
   DumpVal(os, idm, (*this)[1]);
-  os << std::endl;
+  os << '\n';
 }
 
 void BinarySSA::Dump(std::ostream &os, IdManager &idm) const {
   if (PrintPrefix(os, idm, this)) return;
-  auto inex = InExpr();
+  const auto inex = InExpr();
   os << kBinOps[static_cast<int>(op_)] << ' ';
   PrintType(os, type());
   os << ' ';
   DumpVal(os, idm, (*this)[0]);
   os << ", ";
   DumpVal(os, idm, (*this)[1]);
-  os << std::endl;
+  os << '\n';
 }
 
 void UnarySSA::Dump(std::ostream &os, IdManager &idm) const {
   if (PrintPrefix(os, idm, this)) return;
-  auto inex = InExpr();
+  const auto inex = InExpr();
   os << kUnaOps[static_cast<int>(op_)] << ' ';
   PrintType(os, type());
   os << ' ';
   DumpVal(os, idm, (*this)[0]);
-  os << std::endl;
+  os << '\n';
 }
 
 void CastSSA::Dump(std::ostream &os, IdManager &idm) const {
   if (!IsConst() && PrintPrefix(os, idm, this)) return;
-  auto inex = InExpr();
+  const auto inex = InExpr();
   os << "cast ";
   PrintType(os, type());
   os << ' ';
   DumpVal(os, idm, (*this)[0]);
-  if (!IsConst()) os << std::endl;
+  if (!IsConst()) os << '\n';
 }
 
 void CallSSA::Dump(std::ostream &os, IdManager &idm) const {
   if (PrintPrefix(os, idm, this)) return;
-  auto inex = InExpr();
+  const auto inex = InExpr();
   os << "call ";
   DumpWithType(os, idm, (*this)[0].value());
   for (std::size_t i = 1; i < size(); ++i) {
     os << ", ";
     DumpVal(os, idm, (*this)[i]);
   }
-  os << std::endl;
+  os << '\n';
 }
 
 void BranchSSA::Dump(std::ostream &os, IdManager &idm) const {
-  auto inex = InExpr();
+  const auto inex = InExpr();
   os << kIndent << "branch ";
   DumpVal(os, idm, (*this)[0]);
   os << ", ";
   DumpVal(os, idm, (*this)[1]);
   os << ", ";
   DumpVal(os, idm, (*this)[2]);
-  os << std::endl;
+  os << '\n';
 }
 
 void JumpSSA::Dump(std::ostream &os, IdManager &idm) const {
-  auto inex = InExpr();
+  const auto inex = InExpr();
   os << kIndent << "jump ";
   DumpVal(os, idm, (*this)[0]);
-  os << std::endl;
+  os << '\n';
 }
 
 void ReturnSSA::Dump(std::ostream &os, IdManager &idm) const {
-  auto inex = InExpr();
+  const auto inex = InExpr();
   os << kIndent << "return ";
   if (!(*this)[0].value()) {
     os << "void";
   } else {
     DumpWithType(os, idm, (*this)[0]);
   }
-  os << std::endl;
+  os << '\n';
 }
 
 void FunctionSSA::Dump(std::ostream &os, IdManager &idm) const {
@@ -269,7 +273,7 @@ void FunctionSSA::Dump(std::ostream &os, IdManager &idm) const {
     PrintId(os, idm, this);
     return;
   }
-  if (size()) {
+  if (!empty()) {
     os << "define ";
   } else {
     os << "declare ";
@@ -278,19 +282,19 @@ void FunctionSSA::Dump(std::ostream &os, IdManager &idm) const {
   PrintType(os, type());
   os << ' ';
   PrintId(os, idm, this);
-  if (size()) {
+  if (!empty()) {
     idm.ResetId();
     // log block name first
     {
-      auto inex = InExpr();
-      for (const auto &i : *this) DumpVal(null_os, idm, i);
+      const auto inex = InExpr();
+      for (const auto &i : *this) DumpVal(NullStream(), idm, i);
     }
     // dump content of block
-    os << " {" << std::endl;
+    os << " {" << '\n';
     for (const auto &i : *this) DumpVal(os, idm, i);
     os << '}';
   }
-  os << std::endl;
+  os << '\n';
 }
 
 void GlobalVarSSA::Dump(std::ostream &os, IdManager &idm) const {
@@ -301,19 +305,19 @@ void GlobalVarSSA::Dump(std::ostream &os, IdManager &idm) const {
   os << (is_var_ ? "var" : "const") << ' ';
   PrintType(os, type());
   if ((*this)[0].value()) {
-    auto inex = InExpr();
+    const auto inex = InExpr();
     os << ", ";
     DumpVal(os, idm, (*this)[0]);
   }
-  os << std::endl;
+  os << '\n';
 }
 
 void AllocaSSA::Dump(std::ostream &os, IdManager &idm) const {
   if (PrintPrefix(os, idm, this)) return;
-  auto inex = InExpr();
+  const auto inex = InExpr();
   os << "alloca ";
   PrintType(os, type());
-  os << std::endl;
+  os << '\n';
 }
 
 void BlockSSA::Dump(std::ostream &os, IdManager &idm) const {
@@ -322,40 +326,40 @@ void BlockSSA::Dump(std::ostream &os, IdManager &idm) const {
   if (in_expr) return;
   os << ':';
   if (!empty()) {
-    auto inex = InExpr();
+    const auto inex = InExpr();
     os << " ; preds: ";
     DumpVal(os, idm, begin(), end());
   }
-  os << std::endl;
+  os << '\n';
   for (const auto &i : insts_) DumpVal(os, idm, i);
 }
 
-void ArgRefSSA::Dump(std::ostream &os, IdManager &idm) const {
+void ArgRefSSA::Dump(std::ostream &os, IdManager & /*idm*/) const {
   assert(in_expr);
   os << "arg " << index_;
 }
 
-void AsmSSA::Dump(std::ostream &os, IdManager &idm) const {
+void AsmSSA::Dump(std::ostream &os, IdManager & /*idm*/) const {
   os << kIndent << "asm \"";
   for (const auto &c : asm_str_) ConvertChar(os, c);
-  os << '"' << std::endl;
+  os << '"' << '\n';
 }
 
-void ConstIntSSA::Dump(std::ostream &os, IdManager &idm) const {
+void ConstIntSSA::Dump(std::ostream &os, IdManager & /*idm*/) const {
   assert(in_expr);
   os << "constant ";
   PrintType(os, type());
   os << ' ' << value_;
 }
 
-void ConstFloatSSA::Dump(std::ostream &os, IdManager &idm) const {
+void ConstFloatSSA::Dump(std::ostream &os, IdManager & /*idm*/) const {
   assert(in_expr);
   os << "constant ";
   PrintType(os, type());
   os << ' ' << value_;
 }
 
-void ConstStrSSA::Dump(std::ostream &os, IdManager &idm) const {
+void ConstStrSSA::Dump(std::ostream &os, IdManager & /*idm*/) const {
   assert(in_expr);
   os << "constant ";
   PrintType(os, type());
@@ -388,9 +392,11 @@ void ConstArraySSA::Dump(std::ostream &os, IdManager &idm) const {
   os << '}';
 }
 
-void ConstZeroSSA::Dump(std::ostream &os, IdManager &idm) const {
+void ConstZeroSSA::Dump(std::ostream &os, IdManager & /*idm*/) const {
   assert(in_expr);
   os << "constant ";
   PrintType(os, type());
   os << " zero";
 }
+
+}  // namespace yulang::mid

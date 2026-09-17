@@ -1,39 +1,43 @@
 #include "mid/module.h"
 
-using namespace yulang::mid;
-using namespace yulang::define;
-using namespace yulang::front;
-using namespace yulang::back;
+#include <stdexcept>
 
-#define CREATE_BINARY(op, lhs, rhs)                         \
-  do {                                                      \
-    const auto &type = lhs->type();                         \
-    if (type->IsInteger()) {                                \
-      return CreateBinary(BinaryOp::op, lhs, rhs, type);    \
-    } else {                                                \
-      assert(type->IsFloat());                              \
-      return CreateBinary(BinaryOp::F##op, lhs, rhs, type); \
-    }                                                       \
+namespace yulang::mid {
+
+using yulang::back::CodeGen;
+
+using yulang::define::FuncType;
+using yulang::define::Keyword;
+using yulang::define::MakePointer;
+using yulang::define::MakePrimType;
+using yulang::define::MakeVoid;
+using yulang::define::TypePtr;
+using yulang::define::TypePtrList;
+using yulang::front::Logger;
+
+#define CREATE_BINARY(op, lhs, rhs)                                           \
+  do {                                                                        \
+    const auto &type = (lhs)->type();                                         \
+    if (type->IsInteger()) return CreateBinary(BinaryOp::op, lhs, rhs, type); \
+    assert(type->IsFloat());                                                  \
+    return CreateBinary(BinaryOp::F##op, lhs, rhs, type);                     \
   } while (0)
 
-#define CREATE_RELOP(op, lhs, rhs)                                 \
-  do {                                                             \
-    auto bool_ty = MakePrimType(Keyword::Bool, false);             \
-    if (lhs->type()->IsInteger() || lhs->type()->IsPointer()) {    \
-      if (lhs->type()->IsUnsigned() || lhs->type()->IsPointer()) { \
-        return CreateBinary(BinaryOp::U##op, lhs, rhs, bool_ty);   \
-      } else {                                                     \
-        return CreateBinary(BinaryOp::S##op, lhs, rhs, bool_ty);   \
-      }                                                            \
-    } else {                                                       \
-      assert(lhs->type()->IsFloat());                              \
-      return CreateBinary(BinaryOp::F##op, lhs, rhs, bool_ty);     \
-    }                                                              \
+#define CREATE_RELOP(op, lhs, rhs)                                   \
+  do {                                                               \
+    const auto bool_ty = MakePrimType(Keyword::Bool, false);         \
+    if ((lhs)->type()->IsInteger() || (lhs)->type()->IsPointer()) {  \
+      if ((lhs)->type()->IsUnsigned() || (lhs)->type()->IsPointer()) \
+        return CreateBinary(BinaryOp::U##op, lhs, rhs, bool_ty);     \
+      return CreateBinary(BinaryOp::S##op, lhs, rhs, bool_ty);       \
+    }                                                                \
+    assert((lhs)->type()->IsFloat());                                \
+    return CreateBinary(BinaryOp::F##op, lhs, rhs, bool_ty);         \
   } while (0)
 
 #define CREATE_BITOP(op, lhs, rhs)                     \
   do {                                                 \
-    const auto &type = lhs->type();                    \
+    const auto &type = (lhs)->type();                  \
     assert(type->IsInteger());                         \
     return CreateBinary(BinaryOp::op, lhs, rhs, type); \
   } while (0)
@@ -66,7 +70,7 @@ void Module::Reset() {
   // reset logger stack
   while (!loggers_.empty()) loggers_.pop();
   // add a default logger
-  // TODO: not very elegant, fixme?
+  // TODO(YuLang): not very elegant, fixme?
   loggers_.push(std::make_shared<Logger>());
 }
 
@@ -99,7 +103,9 @@ BlockPtr Module::CreateBlock(const UserPtr &parent, const std::string &name) {
 
 SSAPtr Module::CreateArgRef(const SSAPtr &func, std::size_t index) {
   // assertion for type checking
-  auto args_type = *func->type()->GetArgsType();
+  const auto maybe_args = func->type()->GetArgsType();
+  if (!maybe_args) throw std::logic_error("expected function argument types");
+  const auto &args_type = *maybe_args;
   assert(index < args_type.size());
   // create argument reference
   auto arg_ref = MakeSSA<ArgRefSSA>(func, index);
@@ -109,14 +115,15 @@ SSAPtr Module::CreateArgRef(const SSAPtr &func, std::size_t index) {
 
 SSAPtr Module::CreateStore(const SSAPtr &value, const SSAPtr &pointer) {
   // get proper pointer
-  auto ptr = pointer, val = value;
+  auto ptr = pointer;
+  auto val = value;
   while (!ptr->type()->GetDerefedType() ||
          !ptr->type()->GetDerefedType()->CanAccept(val->type())) {
     ptr = ptr->GetAddr();
     assert(ptr);
   }
   // create cast (if necessary)
-  auto target_ty = ptr->type()->GetDerefedType();
+  const auto target_ty = ptr->type()->GetDerefedType();
   if (!val->type()->IsIdentical(target_ty)) {
     val = CreateCast(val, target_ty);
   }
@@ -158,7 +165,9 @@ SSAPtr Module::CreateJump(const BlockPtr &target) {
 SSAPtr Module::CreateReturn(const SSAPtr &value) {
   // get proper return value
   const auto &func_type = insert_block_->parent()->org_type();
-  auto ret_type = func_type->GetReturnType(*func_type->GetArgsType());
+  const auto args = func_type->GetArgsType();
+  if (!args) throw std::logic_error("expected function argument types");
+  const auto ret_type = func_type->GetReturnType(*args);
   auto val = value;
   if (ret_type->IsReference()) {
     val = val->GetAddr();
@@ -178,7 +187,7 @@ GlobalVarPtr Module::CreateGlobalVar(LinkageTypes link, bool is_var,
                                      const TypePtr &type, const SSAPtr &init) {
   // assertions for type checking
   assert(!type->IsVoid());
-  auto var_type = type->GetTrivialType();
+  const auto var_type = type->GetTrivialType();
   assert(!init || !type->IsReference() || var_type->IsIdentical(init->type()));
   assert(!init || init->IsConst());
   // create global variable definition
@@ -213,7 +222,7 @@ SSAPtr Module::CreateLoad(const SSAPtr &ptr, bool is_ref) {
   // assertion for type checking
   assert(ptr->type()->IsPointer());
   // create load
-  auto load = AddInst<LoadSSA>(ptr);
+  const auto load = AddInst<LoadSSA>(ptr);
   load->set_type(ptr->type()->GetDerefedType());
   load->set_org_type(ptr->org_type()->GetDerefedType());
   return is_ref ? CreateLoad(load, false) : load;
@@ -222,7 +231,9 @@ SSAPtr Module::CreateLoad(const SSAPtr &ptr, bool is_ref) {
 SSAPtr Module::CreateCall(const SSAPtr &callee, const SSAPtrList &args) {
   // assertion for type checking
   assert(callee->type()->IsFunction());
-  auto args_type = *callee->org_type()->GetArgsType();
+  const auto maybe_args = callee->org_type()->GetArgsType();
+  if (!maybe_args) throw std::logic_error("expected function argument types");
+  const auto &args_type = *maybe_args;
   assert(args_type.size() == args.size());
   // get argument list
   SSAPtrList casted_args;
@@ -235,7 +246,7 @@ SSAPtr Module::CreateCall(const SSAPtr &callee, const SSAPtrList &args) {
       assert(arg);
     }
     // perform necessary type casting
-    auto arg_ty = i->GetTrivialType();
+    const auto arg_ty = i->GetTrivialType();
     if (!arg->type()->IsIdentical(arg_ty)) {
       arg = CreateCast(arg, arg_ty);
     }
@@ -243,7 +254,7 @@ SSAPtr Module::CreateCall(const SSAPtr &callee, const SSAPtrList &args) {
   }
   // create call
   auto call = AddInst<CallSSA>(callee, casted_args);
-  auto ret_type = callee->org_type()->GetReturnType(args_type);
+  const auto ret_type = callee->org_type()->GetReturnType(args_type);
   call->set_types(ret_type);
   // create extra load if return type is reference
   if (ret_type->IsReference()) call = CreateLoad(call, false);
@@ -260,7 +271,7 @@ SSAPtr Module::CreatePtrAccess(const SSAPtr &ptr, const SSAPtr &index) {
   // assertion for type checking
   assert(ptr->type()->IsPointer() && index->type()->IsInteger());
   // create access
-  auto acc_type = AccessSSA::AccessType::Pointer;
+  const auto acc_type = AccessSSA::AccessType::Pointer;
   auto access = AddInst<AccessSSA>(acc_type, ptr, index);
   access->set_type(ptr->type());
   access->set_org_type(ptr->org_type());
@@ -276,7 +287,7 @@ SSAPtr Module::CreateElemAccess(const SSAPtr &ptr, const SSAPtr &index,
   assert(pointer->type()->GetDerefedType()->GetLength() &&
          index->type()->IsInteger());
   // create access
-  auto acc_type = AccessSSA::AccessType::Element;
+  const auto acc_type = AccessSSA::AccessType::Element;
   auto access = AddInst<AccessSSA>(acc_type, pointer, index);
   access->set_types(MakePointer(type));
   return access;
@@ -285,7 +296,7 @@ SSAPtr Module::CreateElemAccess(const SSAPtr &ptr, const SSAPtr &index,
 SSAPtr Module::CreateBinary(BinaryOp op, const SSAPtr &lhs, const SSAPtr &rhs,
                             const TypePtr &type) {
   // assertion for type checking
-  assert(lhs->type()->IsIdentical(rhs->type()));
+  assert((lhs)->type()->IsIdentical((rhs)->type()));
   // create binary
   auto binary = AddInst<BinarySSA>(op, lhs, rhs);
   binary->set_types(type);
@@ -299,24 +310,22 @@ SSAPtr Module::CreateUnary(UnaryOp op, const SSAPtr &opr, const TypePtr &type) {
 }
 
 SSAPtr Module::CreateEqual(const SSAPtr &lhs, const SSAPtr &rhs) {
-  auto bool_ty = MakePrimType(Keyword::Bool, false);
+  const auto bool_ty = MakePrimType(Keyword::Bool, false);
   if (lhs->type()->IsInteger() || lhs->type()->IsBool() ||
       lhs->type()->IsFunction() || lhs->type()->IsPointer()) {
     return CreateBinary(BinaryOp::Equal, lhs, rhs, bool_ty);
-  } else {
-    assert(lhs->type()->IsFloat());
-    return CreateBinary(BinaryOp::FEqual, lhs, rhs, bool_ty);
   }
+  assert((lhs)->type()->IsFloat());
+  return CreateBinary(BinaryOp::FEqual, lhs, rhs, bool_ty);
 }
 
 SSAPtr Module::CreateNeg(const SSAPtr &opr) {
   const auto &type = opr->type();
   if (type->IsInteger()) {
     return CreateUnary(UnaryOp::Neg, opr, type);
-  } else {
-    assert(type->IsFloat());
-    return CreateUnary(UnaryOp::FNeg, opr, type);
   }
+  assert(type->IsFloat());
+  return CreateUnary(UnaryOp::FNeg, opr, type);
 }
 
 SSAPtr Module::CreateAdd(const SSAPtr &lhs, const SSAPtr &rhs) {
@@ -334,34 +343,31 @@ SSAPtr Module::CreateMul(const SSAPtr &lhs, const SSAPtr &rhs) {
 SSAPtr Module::CreateDiv(const SSAPtr &lhs, const SSAPtr &rhs) {
   const auto &type = lhs->type();
   if (type->IsInteger()) {
-    auto op = type->IsUnsigned() ? BinaryOp::UDiv : BinaryOp::SDiv;
+    const auto op = type->IsUnsigned() ? BinaryOp::UDiv : BinaryOp::SDiv;
     return CreateBinary(op, lhs, rhs, type);
-  } else {
-    assert(type->IsFloat());
-    return CreateBinary(BinaryOp::FDiv, lhs, rhs, type);
   }
+  assert(type->IsFloat());
+  return CreateBinary(BinaryOp::FDiv, lhs, rhs, type);
 }
 
 SSAPtr Module::CreateRem(const SSAPtr &lhs, const SSAPtr &rhs) {
   const auto &type = lhs->type();
   if (type->IsInteger()) {
-    auto op = type->IsUnsigned() ? BinaryOp::URem : BinaryOp::SRem;
+    const auto op = type->IsUnsigned() ? BinaryOp::URem : BinaryOp::SRem;
     return CreateBinary(op, lhs, rhs, type);
-  } else {
-    assert(type->IsFloat());
-    return CreateBinary(BinaryOp::FRem, lhs, rhs, type);
   }
+  assert(type->IsFloat());
+  return CreateBinary(BinaryOp::FRem, lhs, rhs, type);
 }
 
 SSAPtr Module::CreateNotEq(const SSAPtr &lhs, const SSAPtr &rhs) {
-  auto bool_ty = MakePrimType(Keyword::Bool, false);
+  const auto bool_ty = MakePrimType(Keyword::Bool, false);
   if (lhs->type()->IsInteger() || lhs->type()->IsBool() ||
       lhs->type()->IsFunction() || lhs->type()->IsPointer()) {
     return CreateBinary(BinaryOp::NotEq, lhs, rhs, bool_ty);
-  } else {
-    assert(lhs->type()->IsFloat());
-    return CreateBinary(BinaryOp::FNotEq, lhs, rhs, bool_ty);
   }
+  assert((lhs)->type()->IsFloat());
+  return CreateBinary(BinaryOp::FNotEq, lhs, rhs, bool_ty);
 }
 
 SSAPtr Module::CreateLess(const SSAPtr &lhs, const SSAPtr &rhs) {
@@ -399,14 +405,14 @@ SSAPtr Module::CreateShl(const SSAPtr &lhs, const SSAPtr &rhs) {
 SSAPtr Module::CreateShr(const SSAPtr &lhs, const SSAPtr &rhs) {
   const auto &type = lhs->type();
   assert(type->IsInteger());
-  auto op = type->IsUnsigned() ? BinaryOp::LShr : BinaryOp::AShr;
+  const auto op = type->IsUnsigned() ? BinaryOp::LShr : BinaryOp::AShr;
   return CreateBinary(op, lhs, rhs, type);
 }
 
 SSAPtr Module::CreateCast(const SSAPtr &opr, const TypePtr &type) {
   // assertion for type checking
   const auto &opr_ty = opr->type();
-  auto target = type->GetTrivialType();
+  const auto target = type->GetTrivialType();
   assert(opr_ty->CanCastTo(target));
   // check if is redundant type casting
   if (opr_ty->IsIdentical(target)) return opr;
@@ -436,7 +442,7 @@ SSAPtr Module::CreateLogicNot(const SSAPtr &opr) {
   assert(type->IsInteger() || type->IsBool());
   static_cast<void>(type);
   // create logic not operation
-  auto bool_ty = MakePrimType(Keyword::Bool, false);
+  const auto bool_ty = MakePrimType(Keyword::Bool, false);
   return CreateUnary(UnaryOp::LogicNot, opr, bool_ty);
 }
 
@@ -466,12 +472,12 @@ SSAPtr Module::GetInt(std::uint64_t value, const TypePtr &type) {
 }
 
 SSAPtr Module::GetInt32(std::uint32_t value) {
-  auto type = MakePrimType(Keyword::Int32, false);
+  const auto type = MakePrimType(Keyword::Int32, false);
   return GetInt(value, type);
 }
 
 SSAPtr Module::GetBool(bool value) {
-  auto type = MakePrimType(Keyword::Bool, false);
+  const auto type = MakePrimType(Keyword::Bool, false);
   return GetInt(value, type);
 }
 
@@ -497,14 +503,15 @@ SSAPtr Module::GetString(const std::string &str, const TypePtr &type) {
 SSAPtr Module::GetStruct(const SSAPtrList &elems, const TypePtr &type) {
   // assertions for type checking
   assert(type->IsStruct() && type->GetLength() == elems.size());
-  auto struct_ty = type->GetTrivialType();
-  int index = 0;
-  static_cast<void>(index);
+  const auto struct_ty = type->GetTrivialType();
+#ifndef NDEBUG
+  std::size_t index = 0;
   for (const auto &i : elems) {
     assert(i->IsConst());
-    assert(struct_ty->GetElem(index++)->IsIdentical(i->type()));
-    static_cast<void>(i);
+    assert(struct_ty->GetElem(index)->IsIdentical(i->type()));
+    ++index;
   }
+#endif
   // create constant struct
   auto const_struct = MakeSSA<ConstStructSSA>(elems);
   const_struct->set_type(struct_ty);
@@ -515,7 +522,7 @@ SSAPtr Module::GetStruct(const SSAPtrList &elems, const TypePtr &type) {
 SSAPtr Module::GetArray(const SSAPtrList &elems, const TypePtr &type) {
   // assertions for type checking
   assert(type->IsArray() && type->GetLength() == elems.size());
-  auto array_ty = type->GetTrivialType();
+  const auto array_ty = type->GetTrivialType();
   for (const auto &i : elems) {
     assert(i->IsConst());
     assert(array_ty->GetDerefedType()->IsIdentical(i->type()));
@@ -529,19 +536,19 @@ SSAPtr Module::GetArray(const SSAPtrList &elems, const TypePtr &type) {
 }
 
 xstl::Guard Module::SetContext(const Logger &logger) {
-  auto log = std::make_shared<Logger>(logger);
+  const auto log = std::make_shared<Logger>(logger);
   loggers_.push(log);
   return xstl::Guard([this] { loggers_.pop(); });
 }
 
 xstl::Guard Module::EnterGlobalCtor() {
   // get current insert point
-  auto cur_block = insert_block_;
+  const auto cur_block = insert_block_;
   // initialize global function if it does not exist
   if (!global_ctor_) {
     // create function
-    auto link = LinkageTypes::GlobalCtor;
-    auto ty = std::make_shared<FuncType>(TypePtrList(), MakeVoid(), true);
+    const auto link = LinkageTypes::GlobalCtor;
+    const auto ty = std::make_shared<FuncType>(TypePtrList(), MakeVoid(), true);
     global_ctor_ = CreateFunction(link, "_$ctor", ty);
     // create basic blocks
     ctor_entry_ = CreateBlock(global_ctor_, "entry");
@@ -562,12 +569,12 @@ void Module::Dump(std::ostream &os) {
   // dump global variables
   for (const auto &i : vars_) {
     i->Dump(os, idm);
-    os << std::endl;
+    os << '\n';
   }
   // dump global functions
   for (const auto &i : funcs_) {
     i->Dump(os, idm);
-    os << std::endl;
+    os << '\n';
   }
 }
 
@@ -589,3 +596,5 @@ void Module::GenerateCode(CodeGen &gen) {
     i->GenerateCode(gen);
   }
 }
+
+}  // namespace yulang::mid

@@ -2,6 +2,7 @@
 #define YULANG_DEFINE_TOKEN_H_
 
 #include <cassert>
+#include <cstdint>
 
 // all supported keywords
 // clang-format off
@@ -45,7 +46,7 @@
 
 namespace yulang::define {
 
-enum class Token {
+enum class Token : std::uint8_t {
   Error,
   End,
   EOL,
@@ -59,8 +60,8 @@ enum class Token {
   Other,
 };
 
-enum class Keyword { YULANG_KEYWORDS(YULANG_EXPAND_FIRST) };
-enum class Operator { YULANG_OPERATORS(YULANG_EXPAND_FIRST) };
+enum class Keyword : std::uint8_t { YULANG_KEYWORDS(YULANG_EXPAND_FIRST) };
+enum class Operator : std::uint8_t { YULANG_OPERATORS(YULANG_EXPAND_FIRST) };
 
 // check if operator is assign ('=', '+=', '-=', ...)
 inline bool IsOperatorAssign(Operator op) {

@@ -1,38 +1,43 @@
 #include "front/lexer.h"
 
+#include <array>
 #include <cctype>
 #include <cstddef>
+#include <cstdint>
 #include <cstdlib>
 #include <cstring>
 #include <iostream>
+#include <limits>
+#include <string_view>
 
 #include "define/token.h"
 
-using namespace yulang::front;
-using namespace yulang::define;
+namespace yulang::front {
+
+using yulang::define::Keyword;
+using yulang::define::Operator;
+using yulang::define::Token;
 
 namespace {
 
-enum class NumberType { Normal, Hex, Bin, Float };
+enum class NumberType : std::uint8_t { Normal, Hex, Bin, Float };
 
-const char *kKeywords[] = {YULANG_KEYWORDS(YULANG_EXPAND_SECOND)};
-const char *kOperators[] = {YULANG_OPERATORS(YULANG_EXPAND_SECOND)};
+const std::array kKeywords = {YULANG_KEYWORDS(YULANG_EXPAND_SECOND)};
+const std::array kOperators = {YULANG_OPERATORS(YULANG_EXPAND_SECOND)};
 
 // get index of a string in string array
 template <typename T, std::size_t N>
-int GetIndex(const char *str, T (&str_array)[N]) {
+int GetIndex(const char *str, const std::array<T, N> &str_array) {
+  static_assert(N <= static_cast<std::size_t>(std::numeric_limits<int>::max()));
   for (std::size_t i = 0; i < N; ++i) {
-    if (!std::strcmp(str, str_array[i])) return i;
+    if (!std::strcmp(str, str_array[i])) return static_cast<int>(i);
   }
   return -1;
 }
 
 bool IsOperatorChar(char c) {
-  const char op_chars[] = "`~!@#$%^&*-=+\\|:<.>/?";
-  for (const auto &i : op_chars) {
-    if (i == c) return true;
-  }
-  return false;
+  constexpr std::string_view op_chars = "`~!@#$%^&*-=+\\|:<.>/?";
+  return op_chars.find(c) != std::string_view::npos;
 }
 
 }  // namespace
@@ -70,8 +75,8 @@ int Lexer::ReadEscape() {
     case '0':
       return '\0';
     case 'x': {
-      char hex[3] = {0};
-      char *end_pos;
+      std::array<char, 3> hex{};
+      char *end_pos = nullptr;
       // read 2 hex digits
       for (int i = 0; i < 2; ++i) {
         NextChar();
@@ -79,8 +84,8 @@ int Lexer::ReadEscape() {
         hex[i] = last_char_;
       }
       // convert to character
-      auto ret = std::strtol(hex, &end_pos, 16);
-      return *end_pos ? -1 : ret;
+      const auto ret = std::strtol(hex.data(), &end_pos, 16);
+      return *end_pos ? -1 : static_cast<int>(ret);
     }
     default:
       return -1;
@@ -99,14 +104,13 @@ Token Lexer::HandleId() {
     NextChar();
   } while (!IsEOL() && (std::isalnum(last_char_) || last_char_ == '_'));
   // check if string is keyword
-  int index = GetIndex(id.c_str(), kKeywords);
+  int const index = GetIndex(id.c_str(), kKeywords);
   if (index < 0) {
     id_val_ = id;
     return Token::Id;
-  } else {
-    key_val_ = static_cast<Keyword>(index);
-    return Token::Keyword;
   }
+  key_val_ = static_cast<Keyword>(index);
+  return Token::Keyword;
 }
 
 Token Lexer::HandleNum() {
@@ -136,9 +140,9 @@ Token Lexer::HandleNum() {
           // just zero
           int_val_ = 0;
           return Token::Int;
-        } else {
-          return LogError("invalid number literal");
         }
+        return LogError("invalid number literal");
+
         break;
       }
     }
@@ -154,8 +158,8 @@ Token Lexer::HandleNum() {
     NextChar();
   }
   // convert to number
-  char *end_pos;
-  Token ret;
+  char *end_pos = nullptr;
+  Token ret{Token::Error};
   switch (num_type) {
     case NumberType::Hex: {
       int_val_ = std::strtoull(num.c_str(), &end_pos, 16);
@@ -190,9 +194,9 @@ Token Lexer::HandleString() {
   while (last_char_ != '"') {
     if (last_char_ == '\\') {
       // read escape char
-      int ret = ReadEscape();
+      int const ret = ReadEscape();
       if (ret < 0) return LogError("invalid escape character");
-      str += ret;
+      str += static_cast<char>(ret);
     } else {
       str += last_char_;
     }
@@ -210,7 +214,7 @@ Token Lexer::HandleChar() {
   NextChar();
   if (last_char_ == '\\') {
     // read escape char
-    int ret = ReadEscape();
+    int const ret = ReadEscape();
     if (ret < 0) return LogError("invalid escape character");
     char_val_ = ret;
   } else {
@@ -229,31 +233,31 @@ Token Lexer::HandleOperator() {
   op += last_char_;
   NextChar();
   // check if is comment
-  if (op[0] == '/') {
-    if (!IsEOL()) {
-      switch (last_char_) {
-        case '/':
-          return HandleComment();
-        case '*':
-          return HandleBlockComment();
-      }
+  if ((op[0] == '/') && (!IsEOL())) {
+    switch (last_char_) {
+      case '/':
+        return HandleComment();
+      case '*':
+        return HandleBlockComment();
+      default:
+        break;
     }
   }
+
   // read rest chars
   while (!IsEOL() && IsOperatorChar(last_char_)) {
     op += last_char_;
     NextChar();
   }
   // check if operator is valid
-  int index = GetIndex(op.c_str(), kOperators);
+  int const index = GetIndex(op.c_str(), kOperators);
   if (index < 0) {
     // treat unknown operator as identifier
     id_val_ = op;
     return Token::Id;
-  } else {
-    op_val_ = static_cast<Operator>(index);
-    return Token::Operator;
   }
+  op_val_ = static_cast<Operator>(index);
+  return Token::Operator;
 }
 
 Token Lexer::HandleComment() {
@@ -268,7 +272,7 @@ Token Lexer::HandleBlockComment() {
   NextChar();
   // read until there is '*/' in stream
   bool star = false;
-  while (!in_.eof() && !(star && last_char_ == '/')) {
+  while (!in_.eof() && (!star || last_char_ != '/')) {
     star = last_char_ == '*';
     if (IsEOL() && !in_.eof()) logger_.IncreaseLinePos();
     NextChar();
@@ -328,3 +332,5 @@ Token Lexer::NextToken() {
   NextChar();
   return Token::Other;
 }
+
+}  // namespace yulang::front

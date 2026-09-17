@@ -16,7 +16,8 @@ namespace yulang::front {
 
 class Lexer {
  public:
-  Lexer(std::string_view file) : in_(std::string(file)), logger_(file) {
+  explicit Lexer(std::string_view file)
+      : in_(std::string(file)), logger_(file) {
     Reset();
   }
 
@@ -70,15 +71,15 @@ class Lexer {
 
   std::ifstream in_;
   Logger logger_;
-  char last_char_;
+  char last_char_{};
   // value of token
   std::string id_val_, str_val_;
-  std::uint64_t int_val_;
-  double fp_val_;
-  std::uint8_t char_val_;
-  define::Keyword key_val_;
-  define::Operator op_val_;
-  char other_val_;
+  std::uint64_t int_val_{};
+  double fp_val_{};
+  std::uint8_t char_val_{};
+  define::Keyword key_val_{};
+  define::Operator op_val_{};
+  char other_val_{};
 };
 
 // pointer to lexer

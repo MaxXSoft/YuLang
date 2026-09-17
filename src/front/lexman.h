@@ -19,7 +19,7 @@ using ModName = std::vector<std::string>;
 class LexerManager {
  public:
   LexerManager() { AddImportPath(0, std::filesystem::current_path()); }
-  LexerManager(const std::filesystem::path &file) {
+  explicit LexerManager(const std::filesystem::path &file) {
     AddImportPath(0, file);
     AddImportPath(0, std::filesystem::current_path());
   }
@@ -40,11 +40,11 @@ class LexerManager {
 
   // getters
   // current lexer
-  const LexerPtr &lexer() const { return lexer_; }
+  [[nodiscard]] const LexerPtr &lexer() const { return lexer_; }
 
  private:
   // import path records
-  std::multimap<int, std::filesystem::path, std::greater<int>> imp_paths_;
+  std::multimap<int, std::filesystem::path, std::greater<>> imp_paths_;
   // all loaded lexers
   std::unordered_map<std::string, LexerPtr> lexers_;
   // current lexer

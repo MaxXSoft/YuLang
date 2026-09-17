@@ -1,5 +1,6 @@
 #include "back/llvm/objgen.h"
 
+#include <array>
 #include <cassert>
 #include <memory>
 #include <optional>
@@ -17,8 +18,9 @@
 #include "llvm/TargetParser/Host.h"
 #include "llvm/TargetParser/Triple.h"
 
-using namespace yulang::front;
-using namespace yulang::back::ll;
+namespace yulang::back::ll {
+
+using yulang::front::Logger;
 
 void ObjectGen::InitTarget() {
   // initialize target registry
@@ -42,9 +44,9 @@ bool ObjectGen::GenerateTargetCode(const std::string &file,
     return false;
   }
   // get file type
-  auto file_type = type == CodeGenFileType::Asm
-                       ? llvm::CodeGenFileType::AssemblyFile
-                       : llvm::CodeGenFileType::ObjectFile;
+  const auto file_type = type == CodeGenFileType::Asm
+                             ? llvm::CodeGenFileType::AssemblyFile
+                             : llvm::CodeGenFileType::ObjectFile;
   // Use LLVM's target-specific code generation pipeline, as llc does.
   llvm::legacy::PassManager pass;
   if (machine_->addPassesToEmitFile(pass, out->os(), nullptr, file_type,
@@ -69,11 +71,14 @@ void ObjectGen::RunOptimization() {
   builder.registerLoopAnalyses(lam);
   builder.crossRegisterProxies(lam, fam, cgam, mam);
 
-  const llvm::OptimizationLevel levels[] = {
-      llvm::OptimizationLevel::O0, llvm::OptimizationLevel::O1,
-      llvm::OptimizationLevel::O2, llvm::OptimizationLevel::O3};
+  const std::array levels = {
+      llvm::OptimizationLevel::O0,
+      llvm::OptimizationLevel::O1,
+      llvm::OptimizationLevel::O2,
+      llvm::OptimizationLevel::O3,
+  };
   assert(opt_level_ < 4);
-  auto level = levels[opt_level_];
+  const auto level = levels[opt_level_];
   auto pm = opt_level_ == 0 ? builder.buildO0DefaultPipeline(level)
                             : builder.buildPerModuleDefaultPipeline(level);
   pm.run(*module_, mam);
@@ -85,22 +90,30 @@ bool ObjectGen::SetTargetTriple(const std::string &triple) {
   if (tt.empty()) {
     tt = llvm::sys::getDefaultTargetTriple();
   }
-  llvm::Triple target_triple(tt);
+  const llvm::Triple target_triple(tt);
   // get target info
   std::string error_msg;
-  auto target = llvm::TargetRegistry::lookupTarget(target_triple, error_msg);
+  const auto *target =
+      llvm::TargetRegistry::lookupTarget(target_triple, error_msg);
   if (!target) {
     Logger::LogRawError(error_msg);
     return false;
   }
   module_->setTargetTriple(target_triple);
   // initialize target machine
-  llvm::TargetOptions opt;
-  assert(opt_level_ < 4);
+  const llvm::TargetOptions opt;
+  if (opt_level_ > 3) {
+    Logger::LogRawError("invalid optimization level");
+    return false;
+  }
   auto codegen_level = llvm::CodeGenOpt::getLevel(static_cast<int>(opt_level_));
-  machine_ =
-      target->createTargetMachine(target_triple, cpu_, features_, opt,
-                                  std::nullopt, std::nullopt, *codegen_level);
+  if (!codegen_level) {
+    Logger::LogRawError("invalid optimization level");
+    return false;
+  }
+  machine_ = target->createTargetMachine(target_triple, cpu_, features_, opt,
+                                         std::nullopt, std::nullopt,
+                                         codegen_level.value());
   module_->setDataLayout(machine_->createDataLayout());
   return true;
 }
@@ -116,3 +129,5 @@ bool ObjectGen::GenerateObject(const std::string &file) {
 std::size_t ObjectGen::GetPointerSize() const {
   return module_->getDataLayout().getPointerSize();
 }
+
+}  // namespace yulang::back::ll

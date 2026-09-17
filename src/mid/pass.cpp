@@ -2,7 +2,7 @@
 
 #include "mid/ssa.h"
 
-using namespace yulang::mid;
+namespace yulang::mid {
 
 void LoadSSA::RunPass(PassBase &pass) { pass.RunOn(*this); }
 
@@ -47,3 +47,5 @@ void ConstStructSSA::RunPass(PassBase &pass) { pass.RunOn(*this); }
 void ConstArraySSA::RunPass(PassBase &pass) { pass.RunOn(*this); }
 
 void ConstZeroSSA::RunPass(PassBase &pass) { pass.RunOn(*this); }
+
+}  // namespace yulang::mid

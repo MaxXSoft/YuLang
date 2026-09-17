@@ -2,7 +2,7 @@
 
 #include <utility>
 
-using namespace yulang::front;
+namespace yulang::front {
 
 namespace {
 
@@ -18,7 +18,7 @@ bool LexerManager::AddImportPath(int priority, const Path &path) {
   // return false if is invalid path
   if (!std::filesystem::exists(path)) return false;
   // get full path
-  auto full_path = GetFullPath(path);
+  const auto full_path = GetFullPath(path);
   // insert if not exits
   for (const auto &[_, p] : imp_paths_) {
     if (p == full_path) return true;
@@ -31,7 +31,7 @@ bool LexerManager::LoadSource(const Path &file) {
   // return false if is invalid path
   if (!std::filesystem::exists(file)) return false;
   // add to import path
-  auto full_path = GetFullPath(file);
+  const auto full_path = GetFullPath(file);
   AddImportPath(0, full_path.parent_path());
   // create new lexer
   return !!SetLexer(full_path);
@@ -62,8 +62,8 @@ bool LexerManager::IsLoaded(const Path &file) {
 std::optional<LexerPtr> LexerManager::SetLexer(const Path &file) {
   auto last = lexer_;
   // find specific lexer
-  auto file_str = file.string();
-  auto it = lexers_.find(file_str);
+  const auto file_str = file.string();
+  const auto it = lexers_.find(file_str);
   if (it == lexers_.end()) {
     // not found, create lexer
     auto [it, _] = lexers_.insert({file_str, nullptr});
@@ -84,3 +84,5 @@ LexerPtr LexerManager::SetLexer(const LexerPtr &lexer) {
   lexer_ = lexer;
   return last;
 }
+
+}  // namespace yulang::front

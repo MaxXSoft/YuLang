@@ -1,11 +1,57 @@
 #include "mid/irbuilder.h"
 
 #include <cassert>
+#include <stdexcept>
 
 #include "mid/ssa.h"
 
-using namespace yulang::mid;
-using namespace yulang::define;
+namespace yulang::mid {
+
+using yulang::define::AccessAST;
+using yulang::define::ArgElemAST;
+using yulang::define::ArrayTypeAST;
+using yulang::define::AsmAST;
+using yulang::define::BinaryAST;
+using yulang::define::BlockAST;
+using yulang::define::BoolAST;
+using yulang::define::CastAST;
+using yulang::define::CharAST;
+using yulang::define::ControlAST;
+using yulang::define::DeclareAST;
+using yulang::define::EnumAST;
+using yulang::define::EnumElemAST;
+using yulang::define::FloatAST;
+using yulang::define::ForInAST;
+using yulang::define::FunCallAST;
+using yulang::define::FuncTypeAST;
+using yulang::define::FunDefAST;
+using yulang::define::GetDeAssignedOp;
+using yulang::define::IdAST;
+using yulang::define::IfAST;
+using yulang::define::ImportAST;
+using yulang::define::IndexAST;
+using yulang::define::IntAST;
+using yulang::define::IsOperatorAssign;
+using yulang::define::Keyword;
+using yulang::define::NullAST;
+using yulang::define::Operator;
+using yulang::define::PointerTypeAST;
+using yulang::define::PrimTypeAST;
+using yulang::define::Property;
+using yulang::define::RefTypeAST;
+using yulang::define::StringAST;
+using yulang::define::StructAST;
+using yulang::define::StructElemAST;
+using yulang::define::TypeAliasAST;
+using yulang::define::UnaryAST;
+using yulang::define::UserTypeAST;
+using yulang::define::ValInitAST;
+using yulang::define::VarLetDefAST;
+using yulang::define::VarLetElemAST;
+using yulang::define::VolaTypeAST;
+using yulang::define::WhenAST;
+using yulang::define::WhenElemAST;
+using yulang::define::WhileAST;
 
 namespace {
 
@@ -13,11 +59,11 @@ namespace {
 inline LinkageTypes GetLinkageType(Property prop) {
   if (prop == Property::Public || prop == Property::Extern) {
     return LinkageTypes::External;
-  } else if (prop == Property::Inline) {
-    return LinkageTypes::Inline;
-  } else {
-    return LinkageTypes::Internal;
   }
+  if (prop == Property::Inline) {
+    return LinkageTypes::Inline;
+  }
+  return LinkageTypes::Internal;
 }
 
 }  // namespace
@@ -38,59 +84,57 @@ SSAPtr IRBuilder::CreateBinOp(Operator op, const SSAPtr &lhs,
     }
     module_.CreateStore(val, lhs);
     return nullptr;
-  } else {
-    switch (op) {
-      case Operator::Add:
-      case Operator::Sub: {
-        if (lhs->type()->IsPointer() || rhs->type()->IsPointer()) {
-          // generate index
-          auto index = lhs->type()->IsPointer() ? rhs : lhs;
-          if (op == Operator::Sub) index = module_.CreateNeg(index);
-          // generate pointer operation
-          const auto &ptr = lhs->type()->IsPointer() ? lhs : rhs;
-          return module_.CreatePtrAccess(ptr, index);
-        } else {
-          return op == Operator::Add ? module_.CreateAdd(lhs, rhs)
-                                     : module_.CreateSub(lhs, rhs);
-        }
+  }
+  switch (op) {
+    case Operator::Add:
+    case Operator::Sub: {
+      if (lhs->type()->IsPointer() || rhs->type()->IsPointer()) {
+        // generate index
+        auto index = lhs->type()->IsPointer() ? rhs : lhs;
+        if (op == Operator::Sub) index = module_.CreateNeg(index);
+        // generate pointer operation
+        const auto &ptr = lhs->type()->IsPointer() ? lhs : rhs;
+        return module_.CreatePtrAccess(ptr, index);
       }
-      case Operator::Mul:
-        return module_.CreateMul(lhs, rhs);
-      case Operator::Div:
-        return module_.CreateDiv(lhs, rhs);
-      case Operator::Mod:
-        return module_.CreateRem(lhs, rhs);
-      case Operator::Equal:
-        return module_.CreateEqual(lhs, rhs);
-      case Operator::NotEqual:
-        return module_.CreateNotEq(lhs, rhs);
-      case Operator::Less:
-        return module_.CreateLess(lhs, rhs);
-      case Operator::LessEqual:
-        return module_.CreateLessEq(lhs, rhs);
-      case Operator::Great:
-        return module_.CreateGreat(lhs, rhs);
-      case Operator::GreatEqual:
-        return module_.CreateGreatEq(lhs, rhs);
-      case Operator::And:
-        return module_.CreateAnd(lhs, rhs);
-      case Operator::Or:
-        return module_.CreateOr(lhs, rhs);
-      case Operator::Xor:
-        return module_.CreateXor(lhs, rhs);
-      case Operator::Shl:
-        return module_.CreateShl(lhs, rhs);
-      case Operator::Shr:
-        return module_.CreateShr(lhs, rhs);
-      default:
-        assert(false);
-        return nullptr;
+      return op == Operator::Add ? module_.CreateAdd(lhs, rhs)
+                                 : module_.CreateSub(lhs, rhs);
     }
+    case Operator::Mul:
+      return module_.CreateMul(lhs, rhs);
+    case Operator::Div:
+      return module_.CreateDiv(lhs, rhs);
+    case Operator::Mod:
+      return module_.CreateRem(lhs, rhs);
+    case Operator::Equal:
+      return module_.CreateEqual(lhs, rhs);
+    case Operator::NotEqual:
+      return module_.CreateNotEq(lhs, rhs);
+    case Operator::Less:
+      return module_.CreateLess(lhs, rhs);
+    case Operator::LessEqual:
+      return module_.CreateLessEq(lhs, rhs);
+    case Operator::Great:
+      return module_.CreateGreat(lhs, rhs);
+    case Operator::GreatEqual:
+      return module_.CreateGreatEq(lhs, rhs);
+    case Operator::And:
+      return module_.CreateAnd(lhs, rhs);
+    case Operator::Or:
+      return module_.CreateOr(lhs, rhs);
+    case Operator::Xor:
+      return module_.CreateXor(lhs, rhs);
+    case Operator::Shl:
+      return module_.CreateShl(lhs, rhs);
+    case Operator::Shr:
+      return module_.CreateShr(lhs, rhs);
+    default:
+      assert(false);
+      return nullptr;
   }
 }
 
 SSAPtr IRBuilder::GenerateOn(VarLetDefAST &ast) {
-  auto context = module_.SetContext(ast.logger());
+  const auto context = module_.SetContext(ast.logger());
   last_prop_ = ast.prop();
   for (const auto &i : ast.defs()) {
     i->GenerateIR(*this);
@@ -99,22 +143,22 @@ SSAPtr IRBuilder::GenerateOn(VarLetDefAST &ast) {
 }
 
 SSAPtr IRBuilder::GenerateOn(FunDefAST &ast) {
-  auto context = module_.SetContext(ast.logger());
-  auto env = NewEnv();
+  const auto context = module_.SetContext(ast.logger());
+  const auto env = NewEnv();
   // get linkage type
   auto link = GetLinkageType(ast.prop());
   if (!ast.body()) link = LinkageTypes::External;
   // create function declaration
-  auto func = module_.CreateFunction(link, ast.id(), ast.ast_type());
+  const auto func = module_.CreateFunction(link, ast.id(), ast.ast_type());
   vals_->outer()->AddItem(ast.id(), func);
   if (!ast.body()) return nullptr;
   // generate arguments
-  auto args_block = module_.CreateBlock(func, "args");
+  const auto args_block = module_.CreateBlock(func, "args");
   module_.SetInsertPoint(args_block);
   std::size_t arg_index = 0;
   for (const auto &i : ast.args()) {
-    auto arg = i->GenerateIR(*this);
-    auto arg_ref = module_.CreateArgRef(func, arg_index++);
+    const auto arg = i->GenerateIR(*this);
+    const auto arg_ref = module_.CreateArgRef(func, arg_index++);
     // NOTE: do not use 'CreateInit' with reference specifier
     // because argument reference's type will always be right
     module_.CreateStore(arg_ref, arg);
@@ -126,7 +170,7 @@ SSAPtr IRBuilder::GenerateOn(FunDefAST &ast) {
   }
   // generate body
   func_exit_ = module_.CreateBlock(func, "func_exit");
-  auto body_ret = ast.body()->GenerateIR(*this);
+  const auto body_ret = ast.body()->GenerateIR(*this);
   // generate return
   if (ast.type()) {
     assert(body_ret);
@@ -136,7 +180,7 @@ SSAPtr IRBuilder::GenerateOn(FunDefAST &ast) {
   module_.CreateJump(func_exit_);
   module_.SetInsertPoint(func_exit_);
   if (ast.type()) {
-    auto ret = module_.CreateLoad(ret_val_, ret_is_ref_);
+    const auto ret = module_.CreateLoad(ret_val_, ret_is_ref_);
     module_.CreateReturn(ret);
   } else {
     module_.CreateReturn(nullptr);
@@ -145,9 +189,9 @@ SSAPtr IRBuilder::GenerateOn(FunDefAST &ast) {
 }
 
 SSAPtr IRBuilder::GenerateOn(DeclareAST &ast) {
-  auto context = module_.SetContext(ast.logger());
+  const auto context = module_.SetContext(ast.logger());
   // get linkage type
-  auto link = LinkageTypes::External;
+  const auto link = LinkageTypes::External;
   // get type of declaration
   const auto &type = ast.type()->ast_type();
   SSAPtr val;
@@ -164,42 +208,43 @@ SSAPtr IRBuilder::GenerateOn(DeclareAST &ast) {
   return nullptr;
 }
 
-SSAPtr IRBuilder::GenerateOn(TypeAliasAST &ast) {
+SSAPtr IRBuilder::GenerateOn(TypeAliasAST & /*ast*/) {
   // do nothing
   return nullptr;
 }
 
-SSAPtr IRBuilder::GenerateOn(StructAST &ast) {
+SSAPtr IRBuilder::GenerateOn(StructAST & /*ast*/) {
   // do nothing
   return nullptr;
 }
 
-SSAPtr IRBuilder::GenerateOn(EnumAST &ast) {
+SSAPtr IRBuilder::GenerateOn(EnumAST & /*ast*/) {
   // do nothing
   return nullptr;
 }
 
 SSAPtr IRBuilder::GenerateOn(ImportAST &ast) {
-  auto context = module_.SetContext(ast.logger());
+  const auto context = module_.SetContext(ast.logger());
   for (const auto &i : ast.defs()) i->GenerateIR(*this);
   return nullptr;
 }
 
 SSAPtr IRBuilder::GenerateOn(VarLetElemAST &ast) {
-  auto context = module_.SetContext(ast.logger());
+  const auto context = module_.SetContext(ast.logger());
   const auto &type = ast.ast_type();
   const auto &init = ast.init();
   SSAPtr val;
   // get linkage type
-  auto link = GetLinkageType(last_prop_);
+  const auto link = GetLinkageType(last_prop_);
   // check if is global definition
   if (vals_->is_root()) {
     // global variables/constants
-    auto var = module_.CreateGlobalVar(link, ast.is_var(), ast.id(), type);
+    const auto var =
+        module_.CreateGlobalVar(link, ast.is_var(), ast.id(), type);
     if (init) {
       if (init->IsLiteral()) {
         // generate initializer
-        auto var_init = init->GenerateIR(*this);
+        const auto var_init = init->GenerateIR(*this);
         var->set_init(var_init);
       } else {
         // set as variable since constructor will initialize it
@@ -207,7 +252,7 @@ SSAPtr IRBuilder::GenerateOn(VarLetElemAST &ast) {
         // generate zero initializer
         var->set_init(module_.GetZero(type));
         // generate initialization instructions
-        auto ctor = module_.EnterGlobalCtor();
+        const auto ctor = module_.EnterGlobalCtor();
         module_.CreateInit(init->GenerateIR(*this), var, type->IsReference());
       }
     } else if (link != LinkageTypes::External) {
@@ -217,7 +262,7 @@ SSAPtr IRBuilder::GenerateOn(VarLetElemAST &ast) {
     val = var;
   } else {
     // local variables/constants
-    auto alloca = module_.CreateAlloca(type);
+    const auto alloca = module_.CreateAlloca(type);
     if (init) {
       module_.CreateInit(init->GenerateIR(*this), alloca, type->IsReference());
     }
@@ -229,7 +274,7 @@ SSAPtr IRBuilder::GenerateOn(VarLetElemAST &ast) {
 }
 
 SSAPtr IRBuilder::GenerateOn(ArgElemAST &ast) {
-  auto context = module_.SetContext(ast.logger());
+  const auto context = module_.SetContext(ast.logger());
   // create allocation for arguments
   auto alloca = module_.CreateAlloca(ast.type()->ast_type());
   // add to envrionment
@@ -237,57 +282,57 @@ SSAPtr IRBuilder::GenerateOn(ArgElemAST &ast) {
   return alloca;
 }
 
-SSAPtr IRBuilder::GenerateOn(StructElemAST &ast) {
+SSAPtr IRBuilder::GenerateOn(StructElemAST & /*ast*/) {
   // do nothing
   return nullptr;
 }
 
-SSAPtr IRBuilder::GenerateOn(EnumElemAST &ast) {
+SSAPtr IRBuilder::GenerateOn(EnumElemAST & /*ast*/) {
   // do nothing
   return nullptr;
 }
 
 SSAPtr IRBuilder::GenerateOn(BlockAST &ast) {
-  auto context = module_.SetContext(ast.logger());
-  auto env = NewEnv();
+  const auto context = module_.SetContext(ast.logger());
+  const auto env = NewEnv();
   // create new block
   const auto &cur_func = module_.GetInsertPoint()->parent();
-  auto block = module_.CreateBlock(cur_func);
+  const auto block = module_.CreateBlock(cur_func);
   module_.CreateJump(block);
   module_.SetInsertPoint(block);
   // generate statements
   SSAPtr ret;
   for (std::size_t i = 0; i < ast.stmts().size(); ++i) {
     const auto &stmt = ast.stmts()[i];
-    auto val = stmt->GenerateIR(*this);
+    const auto val = stmt->GenerateIR(*this);
     if (i == ast.stmts().size() - 1) ret = val;
   }
   return ret;
 }
 
 SSAPtr IRBuilder::GenerateOn(IfAST &ast) {
-  auto context = module_.SetContext(ast.logger());
+  const auto context = module_.SetContext(ast.logger());
   // create basic blocks
   const auto &func = module_.GetInsertPoint()->parent();
-  auto then_block = module_.CreateBlock(func, "if_then");
-  auto else_block = module_.CreateBlock(func, "if_else");
-  auto end_block = module_.CreateBlock(func, "if_end");
+  const auto then_block = module_.CreateBlock(func, "if_then");
+  const auto else_block = module_.CreateBlock(func, "if_else");
+  const auto end_block = module_.CreateBlock(func, "if_end");
   // create return value of if statement
   const auto &if_type = ast.ast_type();
   SSAPtr if_val;
   if (!if_type->IsVoid()) if_val = module_.CreateAlloca(if_type);
   // create conditional branch
-  auto cond = ast.cond()->GenerateIR(*this);
+  const auto cond = ast.cond()->GenerateIR(*this);
   module_.CreateBranch(cond, then_block, else_block);
   // emit 'then' block
   module_.SetInsertPoint(then_block);
-  auto then_val = ast.then()->GenerateIR(*this);
+  const auto then_val = ast.then()->GenerateIR(*this);
   if (if_val) module_.CreateInit(then_val, if_val, if_type->IsReference());
   module_.CreateJump(end_block);
   // emit 'else' block
   module_.SetInsertPoint(else_block);
   if (ast.else_then()) {
-    auto else_val = ast.else_then()->GenerateIR(*this);
+    const auto else_val = ast.else_then()->GenerateIR(*this);
     if (if_val) {
       module_.CreateInit(else_val, if_val, if_type->IsReference());
     }
@@ -302,7 +347,7 @@ SSAPtr IRBuilder::GenerateOn(IfAST &ast) {
 }
 
 SSAPtr IRBuilder::GenerateOn(WhenAST &ast) {
-  auto context = module_.SetContext(ast.logger());
+  const auto context = module_.SetContext(ast.logger());
   WhenInfo info;
   // create basic blocks
   const auto &func = module_.GetInsertPoint()->parent();
@@ -322,7 +367,7 @@ SSAPtr IRBuilder::GenerateOn(WhenAST &ast) {
   when_info_.pop();
   // generate else branch
   if (ast.else_then()) {
-    auto else_val = ast.else_then()->GenerateIR(*this);
+    const auto else_val = ast.else_then()->GenerateIR(*this);
     if (info.ret_val) {
       module_.CreateInit(else_val, info.ret_val, info.is_ret_val_ref);
     }
@@ -337,19 +382,19 @@ SSAPtr IRBuilder::GenerateOn(WhenAST &ast) {
 }
 
 SSAPtr IRBuilder::GenerateOn(WhileAST &ast) {
-  auto context = module_.SetContext(ast.logger());
+  const auto context = module_.SetContext(ast.logger());
   // create basic blocks
   const auto &func = module_.GetInsertPoint()->parent();
-  auto cond_block = module_.CreateBlock(func, "while_cond");
-  auto body_block = module_.CreateBlock(func, "while_body");
-  auto end_block = module_.CreateBlock(func, "while_end");
+  const auto cond_block = module_.CreateBlock(func, "while_cond");
+  const auto body_block = module_.CreateBlock(func, "while_body");
+  const auto end_block = module_.CreateBlock(func, "while_end");
   // add to break/continue stack
-  break_cont_.push({end_block, cond_block});
+  break_cont_.emplace(end_block, cond_block);
   // create jump
   module_.CreateJump(cond_block);
   // emit 'cond' block
   module_.SetInsertPoint(cond_block);
-  auto cond = ast.cond()->GenerateIR(*this);
+  const auto cond = ast.cond()->GenerateIR(*this);
   module_.CreateBranch(cond, body_block, end_block);
   // emit 'body' block
   module_.SetInsertPoint(body_block);
@@ -363,35 +408,35 @@ SSAPtr IRBuilder::GenerateOn(WhileAST &ast) {
 }
 
 SSAPtr IRBuilder::GenerateOn(ForInAST &ast) {
-  auto context = module_.SetContext(ast.logger());
+  const auto context = module_.SetContext(ast.logger());
   // get iterator function
   const auto &next_func = vals_->GetItem(ast.next_id());
   const auto &last_func = vals_->GetItem(ast.last_id());
   // create new environment, insert loop variable
-  auto env = NewEnv();
-  auto loop_var = module_.CreateAlloca(ast.id_type());
+  const auto env = NewEnv();
+  const auto loop_var = module_.CreateAlloca(ast.id_type());
   vals_->AddItem(ast.id(), loop_var);
   // create basic blocks
   const auto &func = module_.GetInsertPoint()->parent();
-  auto cond_block = module_.CreateBlock(func, "for_cond");
-  auto body_block = module_.CreateBlock(func, "for_body");
-  auto end_block = module_.CreateBlock(func, "for_end");
+  const auto cond_block = module_.CreateBlock(func, "for_cond");
+  const auto body_block = module_.CreateBlock(func, "for_body");
+  const auto end_block = module_.CreateBlock(func, "for_end");
   // add to break/continue stack
-  break_cont_.push({end_block, cond_block});
+  break_cont_.emplace(end_block, cond_block);
   // generate expression
   const auto &expr_ty = ast.expr()->ast_type();
-  auto expr_ptr = module_.CreateAlloca(expr_ty);
+  const auto expr_ptr = module_.CreateAlloca(expr_ty);
   auto expr_val = ast.expr()->GenerateIR(*this);
   module_.CreateStore(expr_val, expr_ptr);
   expr_val = module_.CreateLoad(expr_ptr, expr_ty->IsReference());
   module_.CreateJump(cond_block);
   // emit 'cond' block
   module_.SetInsertPoint(cond_block);
-  auto last_val = module_.CreateCall(last_func, {expr_val});
+  const auto last_val = module_.CreateCall(last_func, {expr_val});
   module_.CreateBranch(last_val, end_block, body_block);
   // emit 'body' block
   module_.SetInsertPoint(body_block);
-  auto new_val = module_.CreateCall(next_func, {expr_val});
+  const auto new_val = module_.CreateCall(next_func, {expr_val});
   module_.CreateInit(new_val, loop_var, ast.id_type()->IsReference());
   ast.body()->GenerateIR(*this);
   module_.CreateJump(cond_block);
@@ -403,22 +448,22 @@ SSAPtr IRBuilder::GenerateOn(ForInAST &ast) {
 }
 
 SSAPtr IRBuilder::GenerateOn(AsmAST &ast) {
-  auto context = module_.SetContext(ast.logger());
+  const auto context = module_.SetContext(ast.logger());
   module_.CreateAsm(ast.asm_str());
   return nullptr;
 }
 
 SSAPtr IRBuilder::GenerateOn(ControlAST &ast) {
-  auto context = module_.SetContext(ast.logger());
+  const auto context = module_.SetContext(ast.logger());
   // create basic block
   const auto &func = module_.GetInsertPoint()->parent();
-  auto block = module_.CreateBlock(func);
+  const auto block = module_.CreateBlock(func);
   switch (ast.type()) {
     case Keyword::Break:
     case Keyword::Continue: {
       // generate target
       const auto &cur = break_cont_.top();
-      auto target = ast.type() == Keyword::Break ? cur.first : cur.second;
+      const auto target = ast.type() == Keyword::Break ? cur.first : cur.second;
       // generate jump
       module_.CreateJump(target);
       break;
@@ -426,7 +471,7 @@ SSAPtr IRBuilder::GenerateOn(ControlAST &ast) {
     case Keyword::Return: {
       // generate return value
       if (ast.expr()) {
-        auto val = ast.expr()->GenerateIR(*this);
+        const auto val = ast.expr()->GenerateIR(*this);
         module_.CreateInit(val, ret_val_, ret_is_ref_);
       }
       // generate jump
@@ -443,19 +488,19 @@ SSAPtr IRBuilder::GenerateOn(ControlAST &ast) {
 }
 
 SSAPtr IRBuilder::GenerateOn(WhenElemAST &ast) {
-  auto context = module_.SetContext(ast.logger());
+  const auto context = module_.SetContext(ast.logger());
   const auto &info = when_info_.top();
   // create basic blocks
   const auto &func = module_.GetInsertPoint()->parent();
-  auto body_block = module_.CreateBlock(func, "case_body");
-  auto exit_block = module_.CreateBlock(func, "case_exit");
+  const auto body_block = module_.CreateBlock(func, "case_body");
+  const auto exit_block = module_.CreateBlock(func, "case_exit");
   // generate conditions
   for (const auto &i : ast.conds()) {
     // generate comparison
-    auto rhs = i->GenerateIR(*this);
-    auto eq = module_.CreateEqual(info.expr, rhs);
+    const auto rhs = i->GenerateIR(*this);
+    const auto eq = module_.CreateEqual(info.expr, rhs);
     // generate branch
-    auto next_block = module_.CreateBlock(func);
+    const auto next_block = module_.CreateBlock(func);
     module_.CreateBranch(eq, body_block, next_block);
     module_.SetInsertPoint(next_block);
   }
@@ -463,7 +508,7 @@ SSAPtr IRBuilder::GenerateOn(WhenElemAST &ast) {
   module_.CreateJump(exit_block);
   // generate body
   module_.SetInsertPoint(body_block);
-  auto ret = ast.body()->GenerateIR(*this);
+  const auto ret = ast.body()->GenerateIR(*this);
   if (info.ret_val) {
     module_.CreateInit(ret, info.ret_val, info.is_ret_val_ref);
   }
@@ -474,21 +519,21 @@ SSAPtr IRBuilder::GenerateOn(WhenElemAST &ast) {
 }
 
 SSAPtr IRBuilder::GenerateOn(BinaryAST &ast) {
-  auto context = module_.SetContext(ast.logger());
+  const auto context = module_.SetContext(ast.logger());
   // generate lhs
-  auto lhs = ast.lhs()->GenerateIR(*this);
+  const auto lhs = ast.lhs()->GenerateIR(*this);
   // get name of overloaded function
-  auto op_func = ast.op_func_id();
+  const auto &op_func = ast.op_func_id();
   // check if is logic operator (perform short circuit)
   if (!op_func &&
       (ast.op() == Operator::LogicAnd || ast.op() == Operator::LogicOr)) {
     // create basic blocks
     const auto &func = module_.GetInsertPoint()->parent();
-    auto rhs_block = module_.CreateBlock(func, "logic_rhs");
-    auto end_block = module_.CreateBlock(func, "logic_end");
+    const auto rhs_block = module_.CreateBlock(func, "logic_rhs");
+    const auto end_block = module_.CreateBlock(func, "logic_end");
     // generate result value
     assert(ast.ast_type()->IsBool() && !ast.ast_type()->IsReference());
-    auto result = module_.CreateAlloca(ast.ast_type());
+    const auto result = module_.CreateAlloca(ast.ast_type());
     // handle by operator
     if (ast.op() == Operator::LogicAnd) {
       module_.CreateStore(module_.GetBool(false), result);
@@ -499,7 +544,7 @@ SSAPtr IRBuilder::GenerateOn(BinaryAST &ast) {
     }
     // emit 'rhs' block
     module_.SetInsertPoint(rhs_block);
-    auto rhs = ast.rhs()->GenerateIR(*this);
+    const auto rhs = ast.rhs()->GenerateIR(*this);
     module_.CreateStore(rhs, result);
     module_.CreateJump(end_block);
     // emit 'end' block
@@ -507,11 +552,11 @@ SSAPtr IRBuilder::GenerateOn(BinaryAST &ast) {
     return module_.CreateLoad(result, false);
   }
   // generate rhs
-  auto rhs = ast.rhs()->GenerateIR(*this);
+  const auto rhs = ast.rhs()->GenerateIR(*this);
   // try to handle operator overloading
   if (op_func) {
     // get function
-    auto callee = vals_->GetItem(*op_func);
+    const auto callee = vals_->GetItem(*op_func);
     // generate function call
     return module_.CreateCall(callee, {lhs, rhs});
   }
@@ -520,40 +565,40 @@ SSAPtr IRBuilder::GenerateOn(BinaryAST &ast) {
 }
 
 SSAPtr IRBuilder::GenerateOn(AccessAST &ast) {
-  auto context = module_.SetContext(ast.logger());
+  const auto context = module_.SetContext(ast.logger());
   // generate expression
-  auto expr = ast.expr()->GenerateIR(*this);
+  const auto expr = ast.expr()->GenerateIR(*this);
   const auto &expr_ty = ast.expr()->ast_type();
   assert(expr_ty->IsStruct());
   // get index of element
   auto index = expr_ty->GetElemIndex(ast.id());
-  assert(index);
+  if (!index) throw std::logic_error("unknown structure member");
   // generate access operation
-  auto elem_ty = expr_ty->GetElem(*index);
-  auto index_val = module_.GetInt32(*index);
-  auto ptr = module_.CreateElemAccess(expr, index_val, elem_ty);
+  const auto elem_ty = expr_ty->GetElem(index.value());
+  const auto index_val = module_.GetInt32(index.value());
+  const auto ptr = module_.CreateElemAccess(expr, index_val, elem_ty);
   // generate load
   return module_.CreateLoad(ptr, elem_ty->IsReference());
 }
 
 SSAPtr IRBuilder::GenerateOn(CastAST &ast) {
-  auto context = module_.SetContext(ast.logger());
+  const auto context = module_.SetContext(ast.logger());
   // generate expression
-  auto expr = ast.expr()->GenerateIR(*this);
+  const auto expr = ast.expr()->GenerateIR(*this);
   // create type casting
   return module_.CreateCast(expr, ast.type()->ast_type());
 }
 
 SSAPtr IRBuilder::GenerateOn(UnaryAST &ast) {
   using UnaryOp = UnaryAST::UnaryOp;
-  auto context = module_.SetContext(ast.logger());
+  const auto context = module_.SetContext(ast.logger());
   // generate operand
   auto opr = ast.opr()->GenerateIR(*this);
   // try to handle operator overloading
-  auto op_func = ast.op_func_id();
+  const auto &op_func = ast.op_func_id();
   if (op_func) {
     // get function
-    auto callee = vals_->GetItem(*op_func);
+    const auto callee = vals_->GetItem(*op_func);
     // generate function call
     return module_.CreateCall(callee, {opr});
   }
@@ -580,14 +625,14 @@ SSAPtr IRBuilder::GenerateOn(UnaryAST &ast) {
 }
 
 SSAPtr IRBuilder::GenerateOn(IndexAST &ast) {
-  auto context = module_.SetContext(ast.logger());
+  const auto context = module_.SetContext(ast.logger());
   // generate expression & index
-  auto expr = ast.expr()->GenerateIR(*this);
-  auto index = ast.index()->GenerateIR(*this);
+  const auto expr = ast.expr()->GenerateIR(*this);
+  const auto index = ast.index()->GenerateIR(*this);
   // get type of expression
   auto expr_ty = ast.expr()->ast_type();
   if (expr_ty->IsReference()) expr_ty = expr_ty->GetDerefedType();
-  auto elem_ty = expr_ty->GetDerefedType();
+  const auto elem_ty = expr_ty->GetDerefedType();
   // generate indexing operation
   SSAPtr ptr;
   if (expr_ty->IsArray()) {
@@ -600,9 +645,9 @@ SSAPtr IRBuilder::GenerateOn(IndexAST &ast) {
 }
 
 SSAPtr IRBuilder::GenerateOn(FunCallAST &ast) {
-  auto context = module_.SetContext(ast.logger());
+  const auto context = module_.SetContext(ast.logger());
   // generate callee
-  auto callee = ast.expr()->GenerateIR(*this);
+  const auto callee = ast.expr()->GenerateIR(*this);
   // generate arguments
   SSAPtrList args;
   for (const auto &i : ast.args()) {
@@ -613,22 +658,22 @@ SSAPtr IRBuilder::GenerateOn(FunCallAST &ast) {
 }
 
 SSAPtr IRBuilder::GenerateOn(IntAST &ast) {
-  auto context = module_.SetContext(ast.logger());
+  const auto context = module_.SetContext(ast.logger());
   return module_.GetInt(ast.value(), ast.ast_type());
 }
 
 SSAPtr IRBuilder::GenerateOn(FloatAST &ast) {
-  auto context = module_.SetContext(ast.logger());
+  const auto context = module_.SetContext(ast.logger());
   return module_.GetFloat(ast.value(), ast.ast_type());
 }
 
 SSAPtr IRBuilder::GenerateOn(CharAST &ast) {
-  auto context = module_.SetContext(ast.logger());
+  const auto context = module_.SetContext(ast.logger());
   return module_.GetInt(ast.c(), ast.ast_type());
 }
 
 SSAPtr IRBuilder::GenerateOn(IdAST &ast) {
-  auto context = module_.SetContext(ast.logger());
+  const auto context = module_.SetContext(ast.logger());
   // get value
   auto val = vals_->GetItem(ast.id());
   if (!val->type()->IsFunction()) {
@@ -638,22 +683,22 @@ SSAPtr IRBuilder::GenerateOn(IdAST &ast) {
 }
 
 SSAPtr IRBuilder::GenerateOn(StringAST &ast) {
-  auto context = module_.SetContext(ast.logger());
+  const auto context = module_.SetContext(ast.logger());
   return module_.GetString(ast.str(), ast.ast_type());
 }
 
 SSAPtr IRBuilder::GenerateOn(BoolAST &ast) {
-  auto context = module_.SetContext(ast.logger());
+  const auto context = module_.SetContext(ast.logger());
   return module_.GetBool(ast.value());
 }
 
 SSAPtr IRBuilder::GenerateOn(NullAST &ast) {
-  auto context = module_.SetContext(ast.logger());
+  const auto context = module_.SetContext(ast.logger());
   return module_.GetZero(ast.ast_type());
 }
 
 SSAPtr IRBuilder::GenerateOn(ValInitAST &ast) {
-  auto context = module_.SetContext(ast.logger());
+  const auto context = module_.SetContext(ast.logger());
   const auto &type = ast.type()->ast_type();
   if (ast.IsLiteral()) {
     // generate all elements
@@ -666,61 +711,61 @@ SSAPtr IRBuilder::GenerateOn(ValInitAST &ast) {
     if (type->IsArray()) {
       // generate constant array
       return module_.GetArray(elems, type);
-    } else {
-      assert(type->IsStruct());
-      // generate constant structure
-      return module_.GetStruct(elems, type);
     }
-  } else {
-    // create a temporary alloca
-    auto val = module_.CreateAlloca(type);
-    assert(!type->IsReference());
-    // generate zero initializer
-    auto zero = module_.GetZero(type);
-    module_.CreateStore(zero, val);
-    // generate elements
-    for (std::size_t i = 0; i < ast.elems().size(); ++i) {
-      auto elem = ast.elems()[i]->GenerateIR(*this);
-      const auto &ty = elem->type();
-      auto ptr = module_.CreateElemAccess(val, module_.GetInt32(i), ty);
-      module_.CreateStore(elem, ptr);
-    }
-    // generate load
-    return module_.CreateLoad(val, false);
+    assert(type->IsStruct());
+    // generate constant structure
+    return module_.GetStruct(elems, type);
   }
+  // create a temporary alloca
+  const auto address = module_.CreateAlloca(type);
+  assert(!type->IsReference());
+  // generate zero initializer
+  const auto zero = module_.GetZero(type);
+  module_.CreateStore(zero, address);
+  // generate elements
+  for (std::size_t i = 0; i < ast.elems().size(); ++i) {
+    const auto elem = ast.elems()[i]->GenerateIR(*this);
+    const auto &ty = elem->type();
+    const auto ptr = module_.CreateElemAccess(address, module_.GetInt32(i), ty);
+    module_.CreateStore(elem, ptr);
+  }
+  // generate load
+  return module_.CreateLoad(address, false);
 }
 
-SSAPtr IRBuilder::GenerateOn(PrimTypeAST &ast) {
+SSAPtr IRBuilder::GenerateOn(PrimTypeAST & /*ast*/) {
   // do nothing
   return nullptr;
 }
 
-SSAPtr IRBuilder::GenerateOn(UserTypeAST &ast) {
+SSAPtr IRBuilder::GenerateOn(UserTypeAST & /*ast*/) {
   // do nothing
   return nullptr;
 }
 
-SSAPtr IRBuilder::GenerateOn(FuncTypeAST &ast) {
+SSAPtr IRBuilder::GenerateOn(FuncTypeAST & /*ast*/) {
   // do nothing
   return nullptr;
 }
 
-SSAPtr IRBuilder::GenerateOn(VolaTypeAST &ast) {
+SSAPtr IRBuilder::GenerateOn(VolaTypeAST & /*ast*/) {
   // do nothing
   return nullptr;
 }
 
-SSAPtr IRBuilder::GenerateOn(ArrayTypeAST &ast) {
+SSAPtr IRBuilder::GenerateOn(ArrayTypeAST & /*ast*/) {
   // do nothing
   return nullptr;
 }
 
-SSAPtr IRBuilder::GenerateOn(PointerTypeAST &ast) {
+SSAPtr IRBuilder::GenerateOn(PointerTypeAST & /*ast*/) {
   // do nothing
   return nullptr;
 }
 
-SSAPtr IRBuilder::GenerateOn(RefTypeAST &ast) {
+SSAPtr IRBuilder::GenerateOn(RefTypeAST & /*ast*/) {
   // do nothing
   return nullptr;
 }
+
+}  // namespace yulang::mid

@@ -11,7 +11,7 @@ namespace yulang::front {
 
 class Parser {
  public:
-  Parser(LexerManager &lex_man) : lex_man_(lex_man) { Reset(); }
+  explicit Parser(LexerManager &lex_man) : lex_man_(lex_man) { Reset(); }
 
   // reset parser status
   void Reset() {
@@ -26,14 +26,13 @@ class Parser {
     if (cur_token_ == define::Token::End) {
       ended_ = true;
       return nullptr;
-    } else {
-      return ParseLine();
     }
+    return ParseLine();
   }
 
   // getters
   // returns true if parser met EOF
-  bool ended() const { return ended_; }
+  [[nodiscard]] bool ended() const { return ended_; }
 
  private:
   // get next token from lexer and skip all EOLs
@@ -44,34 +43,35 @@ class Parser {
   // get next token from lexer without skipping EOLs
   define::Token NextTokenKeepEOL() {
     last_token_ = cur_token_;
-    return cur_token_ = logger().error_num() ? define::Token::Error
-                                             : lexer()->NextToken();
+    return cur_token_ = Logger::error_num() ? define::Token::Error
+                                            : lexer()->NextToken();
   }
 
   // check if current token is a character (token type 'Other')
-  bool IsTokenChar(char c) const {
-    using namespace define;
+  [[nodiscard]] bool IsTokenChar(char c) const {
+    using define::Token;
     return (cur_token_ == Token::Other && lexer()->other_val() == c) ||
            (cur_token_ == Token::Id && lexer()->id_val().size() == 1 &&
             lexer()->id_val()[0] == c);
   }
 
   // check if current token is a keyword
-  bool IsTokenKeyword(define::Keyword key) const {
-    using namespace define;
+  [[nodiscard]] bool IsTokenKeyword(define::Keyword key) const {
+    using define::Token;
     return cur_token_ == Token::Keyword && lexer()->key_val() == key;
   }
 
   // check if current token is an operator
-  bool IsTokenOperator(define::Operator op) const {
-    using namespace define;
+  [[nodiscard]] bool IsTokenOperator(define::Operator op) const {
+    using define::Token;
     return cur_token_ == Token::Operator && lexer()->op_val() == op;
   }
 
   // check if current token is an assignment operator
-  bool IsAssign() const {
-    using namespace define;
-    return cur_token_ == Token::Operator && IsOperatorAssign(lexer()->op_val());
+  [[nodiscard]] bool IsAssign() const {
+    using define::Token;
+    return cur_token_ == Token::Operator &&
+           define::IsOperatorAssign(lexer()->op_val());
   }
 
   // create a new AST
@@ -165,14 +165,18 @@ class Parser {
 
   // private getters
   // current lexer
-  const LexerPtr &lexer() const { return lex_man_.lexer(); }
+  [[nodiscard]] const LexerPtr &lexer() const { return lex_man_.lexer(); }
   // current logger
-  const Logger &logger() const { return lex_man_.lexer()->logger(); }
+  [[nodiscard]] const Logger &logger() const {
+    return lex_man_.lexer()->logger();
+  }
 
+  // This service is bound to its owner for its entire lifetime.
+  // NOLINTNEXTLINE(cppcoreguidelines-avoid-const-or-ref-data-members)
   LexerManager &lex_man_;
-  define::Token last_token_, cur_token_;
-  bool ended_;
-  unsigned int in_import_;
+  define::Token last_token_{define::Token::End}, cur_token_{define::Token::End};
+  bool ended_{};
+  unsigned int in_import_{};
 };
 
 }  // namespace yulang::front

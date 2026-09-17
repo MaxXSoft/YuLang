@@ -4,6 +4,7 @@
 // reference: LLVM version 1.3
 
 #include <any>
+#include <cassert>
 #include <cstddef>
 #include <list>
 #include <memory>
@@ -11,6 +12,7 @@
 #include <ostream>
 #include <string_view>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 #include "define/type.h"
@@ -44,7 +46,7 @@ using UserPtrList = std::list<UserPtr>;
 // utility class for dumping SSA IR
 class IdManager {
  public:
-  IdManager() : cur_id_(0) {}
+  IdManager() = default;
 
   // reset status about identifier
   void ResetId();
@@ -57,12 +59,13 @@ class IdManager {
   // get name of specific value
   std::optional<std::string_view> GetName(const Value *val) const;
   // get name of specific value
-  std::optional<std::string_view> GetName(const SSAPtr &val) const {
+  [[nodiscard]] std::optional<std::string_view> GetName(
+      const SSAPtr &val) const {
     return GetName(val.get());
   }
 
  private:
-  std::size_t cur_id_;
+  std::size_t cur_id_{0};
   std::unordered_map<const Value *, std::size_t> ids_;
   std::unordered_map<const Value *, std::string_view> names_;
 };
@@ -70,14 +73,20 @@ class IdManager {
 // SSA value
 class Value {
  public:
+  Value() = default;
+  Value(const Value &) = delete;
+  Value &operator=(const Value &) = delete;
+  Value(Value &&) = delete;
+  Value &operator=(Value &&) = delete;
+
   virtual ~Value() = default;
 
   // dump the content of SSA value to output stream
   virtual void Dump(std::ostream &os, IdManager &idm) const = 0;
   // return true if current value is a constant
-  virtual bool IsConst() const = 0;
+  [[nodiscard]] virtual bool IsConst() const = 0;
   // get address value of current value
-  virtual SSAPtr GetAddr() const { return nullptr; }
+  [[nodiscard]] virtual SSAPtr GetAddr() const { return nullptr; }
 
   // run pass on current SSA value
   virtual void RunPass(PassBase &pass) = 0;
@@ -87,16 +96,26 @@ class Value {
   // add a use reference to current value
   void AddUse(Use *use) { uses_.push_back(use); }
   // remove use reference from current value
-  void RemoveUse(Use *use) { uses_.remove(use); }
+  void RemoveUse(Use *use) noexcept { uses_.remove(use); }
+  // Relocate a registered use without allocating a new list node.
+  void ReplaceUse(Use *old_use, Use *new_use) noexcept {
+    for (auto &use : uses_) {
+      if (use == old_use) {
+        use = new_use;
+        return;
+      }
+    }
+    assert(false && "use must be registered");
+  }
   // replace current value by another value
   void ReplaceBy(const SSAPtr &value);
 
   // getters
-  const front::LogPtr &logger() const { return logger_; }
-  const define::TypePtr &type() const { return type_; }
-  const define::TypePtr &org_type() const { return org_type_; }
-  const std::any &metadata() const { return metadata_; }
-  const std::list<Use *> &uses() const { return uses_; }
+  [[nodiscard]] const front::LogPtr &logger() const { return logger_; }
+  [[nodiscard]] const define::TypePtr &type() const { return type_; }
+  [[nodiscard]] const define::TypePtr &org_type() const { return org_type_; }
+  [[nodiscard]] const std::any &metadata() const { return metadata_; }
+  [[nodiscard]] const std::list<Use *> &uses() const { return uses_; }
 
   // setters
   void set_logger(const front::LogPtr &logger) { logger_ = logger; }
@@ -125,17 +144,17 @@ class Value {
 // bidirectional reference between SSA users and values
 class Use {
  public:
-  explicit Use(const SSAPtr &value, User *user) : value_(value), user_(user) {}
+  explicit Use(SSAPtr value, User *user)
+      : value_(std::move(value)), user_(user) {
+    if (value_) value_->AddUse(this);
+  }
   // copy constructor
   Use(const Use &use) : value_(use.value_), user_(use.user_) {
     if (value_) value_->AddUse(this);
   }
   // move constructor
   Use(Use &&use) noexcept : value_(std::move(use.value_)), user_(use.user_) {
-    if (value_) {
-      value_->RemoveUse(&use);
-      value_->AddUse(this);
-    }
+    if (value_) value_->ReplaceUse(&use, this);
   }
   // destructor
   ~Use() {
@@ -156,8 +175,9 @@ class Use {
   Use &operator=(Use &&use) noexcept {
     if (this != &use) {
       // update reference
-      if (use.value_) use.value_->RemoveUse(&use);
-      set_value(std::move(use.value_));
+      if (value_) value_->RemoveUse(this);
+      value_ = std::move(use.value_);
+      if (value_) value_->ReplaceUse(&use, this);
       user_ = use.user_;
     }
     return *this;
@@ -166,15 +186,17 @@ class Use {
   // setters
   void set_value(const SSAPtr &value) {
     if (value != value_) {
+      // Register first so allocation failure leaves the old relationship
+      // intact.
+      if (value) value->AddUse(this);
       if (value_) value_->RemoveUse(this);
       value_ = value;
-      if (value_) value_->AddUse(this);
     }
   }
 
   // getters
-  const SSAPtr &value() const { return value_; }
-  User *user() const { return user_; }
+  [[nodiscard]] const SSAPtr &value() const { return value_; }
+  [[nodiscard]] User *user() const { return user_; }
 
  private:
   SSAPtr value_;
@@ -193,7 +215,7 @@ class User : public Value {
   // clear all uses
   void Clear() { uses_.clear(); }
   // add new value to current user
-  void AddValue(const SSAPtr &value) { uses_.push_back(Use(value, this)); }
+  void AddValue(const SSAPtr &value) { uses_.emplace_back(value, this); }
 
   // access value in current user
   Use &operator[](std::size_t pos) { return uses_[pos]; }
@@ -201,16 +223,16 @@ class User : public Value {
   const Use &operator[](std::size_t pos) const { return uses_[pos]; }
   // begin iterator
   auto begin() { return uses_.begin(); }
-  auto begin() const { return uses_.begin(); }
+  [[nodiscard]] auto begin() const { return uses_.begin(); }
   // end iterator
   auto end() { return uses_.end(); }
-  auto end() const { return uses_.end(); }
+  [[nodiscard]] auto end() const { return uses_.end(); }
 
   // getters
   // count of elements in current user
-  std::size_t size() const { return uses_.size(); }
+  [[nodiscard]] std::size_t size() const { return uses_.size(); }
   // return true if no value in current user
-  bool empty() const { return uses_.empty(); }
+  [[nodiscard]] bool empty() const { return uses_.empty(); }
 
  private:
   std::vector<Use> uses_;

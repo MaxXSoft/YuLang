@@ -1,6 +1,8 @@
 #include "back/llvm/generator.h"
 
 #include <cassert>
+#include <cstdint>
+#include <stdexcept>
 #include <vector>
 
 #include "llvm/IR/Constant.h"
@@ -9,13 +11,37 @@
 #include "llvm/IR/InlineAsm.h"
 #include "llvm/Support/raw_os_ostream.h"
 
-using namespace yulang::define;
-using namespace yulang::mid;
-using namespace yulang::back::ll;
+namespace yulang::back::ll {
+
+using yulang::define::TypePtr;
+using yulang::mid::AccessSSA;
+using yulang::mid::AllocaSSA;
+using yulang::mid::ArgRefSSA;
+using yulang::mid::AsmSSA;
+using yulang::mid::BinarySSA;
+using yulang::mid::BlockSSA;
+using yulang::mid::BranchSSA;
+using yulang::mid::CallSSA;
+using yulang::mid::CastSSA;
+using yulang::mid::ConstArraySSA;
+using yulang::mid::ConstFloatSSA;
+using yulang::mid::ConstIntSSA;
+using yulang::mid::ConstStrSSA;
+using yulang::mid::ConstStructSSA;
+using yulang::mid::ConstZeroSSA;
+using yulang::mid::FunctionSSA;
+using yulang::mid::GlobalVarSSA;
+using yulang::mid::JumpSSA;
+using yulang::mid::LinkageTypes;
+using yulang::mid::LoadSSA;
+using yulang::mid::ReturnSSA;
+using yulang::mid::SSAPtr;
+using yulang::mid::StoreSSA;
+using yulang::mid::UnarySSA;
 
 namespace {
 
-enum class TypeKind {
+enum class TypeKind : std::uint8_t {
   Int,
   Float,
   Ptr,
@@ -26,15 +52,16 @@ enum class TypeKind {
 inline TypeKind GetTypeKind(const TypePtr &type) {
   if (type->IsInteger() || type->IsBool()) {
     return TypeKind::Int;
-  } else if (type->IsFloat()) {
-    return TypeKind::Float;
-  } else if (type->IsNull() || type->IsFunction() || type->IsArray() ||
-             type->IsPointer()) {
-    return TypeKind::Ptr;
-  } else {
-    assert(false);
-    return TypeKind::Int;
   }
+  if (type->IsFloat()) {
+    return TypeKind::Float;
+  }
+  if (type->IsNull() || type->IsFunction() || type->IsArray() ||
+      type->IsPointer()) {
+    return TypeKind::Ptr;
+  }
+  assert(false);
+  return TypeKind::Int;
 }
 
 // convert SSA IR's linkage type to LLVM linkage type
@@ -48,7 +75,6 @@ inline llvm::GlobalValue::LinkageTypes GetLinkType(LinkageTypes link) {
     case LinkageTypes::External:
       return LinkTypes::ExternalLinkage;
     case LinkageTypes::GlobalCtor:
-      return LinkTypes::InternalLinkage;
     case LinkageTypes::GlobalDtor:
       return LinkTypes::InternalLinkage;
     default:
@@ -60,7 +86,7 @@ inline llvm::GlobalValue::LinkageTypes GetLinkType(LinkageTypes link) {
 }  // namespace
 
 llvm::Value *LLVMGen::GetVal(const SSAPtr &ssa) {
-  auto val = std::any_cast<llvm::Value *>(&ssa->metadata());
+  const auto *val = std::any_cast<llvm::Value *>(&ssa->metadata());
   if (!val) {
     ssa->GenerateCode(*this);
     val = std::any_cast<llvm::Value *>(&ssa->metadata());
@@ -74,35 +100,38 @@ void LLVMGen::SetVal(mid::Value &ssa, llvm::Value *val) {
 }
 
 void LLVMGen::CreateCtorArray(llvm::Function *ctor) {
-  using namespace llvm;
-  auto type = ctor->getType();
-  auto global_ty =
+  auto *type = ctor->getType();
+  auto *global_ty =
       llvm::StructType::get(builder_.getInt32Ty(), type, builder_.getPtrTy());
-  auto global_arr_ty = llvm::ArrayType::get(global_ty, 1);
-  auto global_init =
-      ConstantStruct::get(global_ty, builder_.getInt32(65535), ctor,
-                          Constant::getNullValue(builder_.getPtrTy()));
-  auto global_arr_init = ConstantArray::get(global_arr_ty, global_init);
-  auto global_link = GlobalValue::LinkageTypes::AppendingLinkage;
-  new GlobalVariable(*module_, global_arr_ty, true, global_link,
-                     global_arr_init, "llvm.global_ctors");
+  auto *global_arr_ty = llvm::ArrayType::get(global_ty, 1);
+  auto *global_init = llvm::ConstantStruct::get(
+      global_ty, builder_.getInt32(65535), ctor,
+      llvm::Constant::getNullValue(builder_.getPtrTy()));
+  auto *global_arr_init = llvm::ConstantArray::get(global_arr_ty, global_init);
+  const auto global_link = llvm::GlobalValue::LinkageTypes::AppendingLinkage;
+  new llvm::GlobalVariable(*module_, global_arr_ty, true, global_link,
+                           global_arr_init, "llvm.global_ctors");
+  // The GlobalVariable constructor transfers ownership to module_.
+  // NOLINTNEXTLINE(clang-analyzer-cplusplus.NewDeleteLeaks)
 }
 
 llvm::Type *LLVMGen::GenerateType(const TypePtr &type) {
   // dispatcher
   if (type->IsPointer() || type->IsFunction() || type->IsNull()) {
     return builder_.getPtrTy();
-  } else if (type->IsInteger() || type->IsFloat() || type->IsBool() ||
-             type->IsVoid()) {
-    return GeneratePrimType(type);
-  } else if (type->IsStruct()) {
-    return GenerateStructType(type);
-  } else if (type->IsArray()) {
-    return GenerateArrayType(type);
-  } else {
-    assert(false);
-    return nullptr;
   }
+  if (type->IsInteger() || type->IsFloat() || type->IsBool() ||
+      type->IsVoid()) {
+    return GeneratePrimType(type);
+  }
+  if (type->IsStruct()) {
+    return GenerateStructType(type);
+  }
+  if (type->IsArray()) {
+    return GenerateArrayType(type);
+  }
+  assert(false);
+  return nullptr;
 }
 
 llvm::Type *LLVMGen::GeneratePrimType(const TypePtr &type) {
@@ -110,21 +139,22 @@ llvm::Type *LLVMGen::GeneratePrimType(const TypePtr &type) {
     // LLVM's integer types does not distinction
     // between signed and unsigned
     return llvm::Type::getIntNTy(context_, type->GetSize() * 8);
-  } else if (type->IsFloat()) {
+  }
+  if (type->IsFloat()) {
     return type->GetSize() == 4 ? llvm::Type::getFloatTy(context_)
                                 : llvm::Type::getDoubleTy(context_);
-  } else if (type->IsBool()) {
-    return llvm::Type::getInt1Ty(context_);
-  } else {
-    assert(type->IsVoid());
-    return llvm::Type::getVoidTy(context_);
   }
+  if (type->IsBool()) {
+    return llvm::Type::getInt1Ty(context_);
+  }
+  assert(type->IsVoid());
+  return llvm::Type::getVoidTy(context_);
 }
 
 llvm::Type *LLVMGen::GenerateStructType(const TypePtr &type) {
-  // TODO: optimize
+  // TODO(YuLang): optimize
   // try to find in look up table
-  auto it = type_lut_.find(type);
+  const auto it = type_lut_.find(type);
   if (it != type_lut_.end()) return it->second;
   // try to find in type table
   for (const auto &[ty, ll_ty] : types_) {
@@ -136,13 +166,13 @@ llvm::Type *LLVMGen::GenerateStructType(const TypePtr &type) {
   // not found, create new structure type
   std::vector<llvm::Type *> elems;
   // create type of structure
-  auto id = type->GetTypeId();
-  auto struct_ty = llvm::StructType::create(context_, id);
-  types_.push_back({type, struct_ty});
+  const auto id = type->GetTypeId();
+  auto *struct_ty = llvm::StructType::create(context_, id);
+  types_.emplace_back(type, struct_ty);
   type_lut_.insert({type, struct_ty});
   // create type of elements
   for (std::size_t i = 0; i < type->GetLength(); ++i) {
-    auto elem = GenerateType(type->GetElem(i));
+    auto *elem = GenerateType(type->GetElem(i));
     elems.push_back(elem);
   }
   // update structure type
@@ -153,10 +183,11 @@ llvm::Type *LLVMGen::GenerateStructType(const TypePtr &type) {
 llvm::Type *LLVMGen::GenerateFuncType(const TypePtr &type) {
   // get return type
   auto args = type->GetArgsType();
-  auto ret = GenerateType(type->GetReturnType(*args));
+  if (!args) throw std::logic_error("expected function argument types");
+  auto *ret = GenerateType(type->GetReturnType(args.value()));
   // get type of parameters
   std::vector<llvm::Type *> params;
-  for (const auto &i : *args) {
+  for (const auto &i : args.value()) {
     params.push_back(GenerateType(i));
   }
   // create function type
@@ -164,31 +195,31 @@ llvm::Type *LLVMGen::GenerateFuncType(const TypePtr &type) {
 }
 
 llvm::Type *LLVMGen::GenerateArrayType(const TypePtr &type) {
-  auto base = type->GetDerefedType();
+  const auto base = type->GetDerefedType();
   return llvm::ArrayType::get(GenerateType(base), type->GetLength());
 }
 
 void LLVMGen::GenerateOn(LoadSSA &ssa) {
-  auto ptr = GetVal(ssa[0].value());
-  auto ty = GenerateType(ssa.type());
-  auto load = builder_.CreateLoad(ty, ptr, ssa.type()->IsVola());
+  auto *ptr = GetVal(ssa[0].value());
+  auto *ty = GenerateType(ssa.type());
+  auto *load = builder_.CreateLoad(ty, ptr, ssa.type()->IsVola());
   load->setAlignment(llvm::Align(ssa.type()->GetAlignSize()));
   SetVal(ssa, load);
 }
 
 void LLVMGen::GenerateOn(StoreSSA &ssa) {
-  auto val = GetVal(ssa[0].value());
-  auto ptr = GetVal(ssa[1].value());
-  auto type = ssa[1].value()->type()->GetDerefedType();
-  auto store = builder_.CreateStore(val, ptr, type->IsVola());
+  auto *val = GetVal(ssa[0].value());
+  auto *ptr = GetVal(ssa[1].value());
+  const auto type = ssa[1].value()->type()->GetDerefedType();
+  auto *store = builder_.CreateStore(val, ptr, type->IsVola());
   store->setAlignment(llvm::Align(type->GetAlignSize()));
   SetVal(ssa, store);
 }
 
 void LLVMGen::GenerateOn(AccessSSA &ssa) {
-  auto ptr = GetVal(ssa[0].value());
-  auto index = GetVal(ssa[1].value());
-  auto ty = GenerateType(ssa[0].value()->type()->GetDerefedType());
+  auto *ptr = GetVal(ssa[0].value());
+  auto *index = GetVal(ssa[1].value());
+  auto *ty = GenerateType(ssa[0].value()->type()->GetDerefedType());
   llvm::Value *val = nullptr;
   if (ssa.acc_type() == AccessSSA::AccessType::Pointer) {
     val = builder_.CreateInBoundsGEP(ty, ptr, index);
@@ -202,8 +233,8 @@ void LLVMGen::GenerateOn(AccessSSA &ssa) {
 void LLVMGen::GenerateOn(BinarySSA &ssa) {
   using BinaryOp = BinarySSA::Operator;
   // get operands
-  auto lhs = GetVal(ssa[0].value());
-  auto rhs = GetVal(ssa[1].value());
+  auto *lhs = GetVal(ssa[0].value());
+  auto *rhs = GetVal(ssa[1].value());
   // generate code
   llvm::Value *val = nullptr;
   switch (ssa.op()) {
@@ -319,7 +350,7 @@ void LLVMGen::GenerateOn(BinarySSA &ssa) {
 void LLVMGen::GenerateOn(UnarySSA &ssa) {
   using UnaryOp = UnarySSA::Operator;
   // get operand
-  auto opr = GetVal(ssa[0].value());
+  auto *opr = GetVal(ssa[0].value());
   const auto &type = ssa[0].value()->type();
   // generate code
   llvm::Value *val = nullptr;
@@ -330,7 +361,7 @@ void LLVMGen::GenerateOn(UnarySSA &ssa) {
     case UnaryOp::LogicNot: {
       llvm::Value *bool_val = opr;
       if (type->IsInteger()) {
-        auto zero = builder_.getIntN(type->GetSize() * 8, 0);
+        auto *zero = builder_.getIntN(type->GetSize() * 8, 0);
         bool_val = builder_.CreateICmpNE(opr, zero);
       }
       val = builder_.CreateXor(bool_val, builder_.getInt1(true));
@@ -349,15 +380,18 @@ void LLVMGen::GenerateOn(UnarySSA &ssa) {
   SetVal(ssa, val);
 }
 
+// Keep the exhaustive type/operator dispatch together for semantic review.
+// NOLINTNEXTLINE(readability-function-cognitive-complexity)
 void LLVMGen::GenerateOn(CastSSA &ssa) {
   // get operand
-  auto val = GetVal(ssa[0].value());
-  const auto &src = ssa[0].value()->type(), &dst = ssa.type();
+  auto *val = GetVal(ssa[0].value());
+  const auto &src = ssa[0].value()->type();
+  const auto &dst = ssa.type();
   // generate type casting
   llvm::Value *ret = nullptr;
-  auto type = GenerateType(dst);
-  auto src_kind = GetTypeKind(src);
-  auto dst_kind = GetTypeKind(dst);
+  auto *type = GenerateType(dst);
+  const auto src_kind = GetTypeKind(src);
+  const auto dst_kind = GetTypeKind(dst);
   if (src_kind == TypeKind::Int && dst_kind == TypeKind::Int) {
     // int -> int
     if (src->GetSize() < dst->GetSize()) {
@@ -366,7 +400,7 @@ void LLVMGen::GenerateOn(CastSSA &ssa) {
     } else if (src->GetSize() > dst->GetSize()) {
       // the value should not be truncated if casted to a boolean
       if (dst->IsBool()) {
-        auto zero = builder_.getIntN(src->GetSize() * 8, 0);
+        auto *zero = builder_.getIntN(src->GetSize() * 8, 0);
         ret = builder_.CreateICmpNE(val, zero);
       } else {
         ret = builder_.CreateTrunc(val, type);
@@ -404,53 +438,53 @@ void LLVMGen::GenerateOn(CastSSA &ssa) {
 
 void LLVMGen::GenerateOn(CallSSA &ssa) {
   // get callee
-  auto callee = GetVal(ssa[0].value());
+  auto *callee = GetVal(ssa[0].value());
   // get arguments
   std::vector<llvm::Value *> args;
   for (std::size_t i = 1; i < ssa.size(); ++i) {
     args.push_back(GetVal(ssa[i].value()));
   }
   // get function type
-  auto func_ty = llvm::dyn_cast<llvm::FunctionType>(
+  auto *func_ty = llvm::dyn_cast<llvm::FunctionType>(
       GenerateFuncType(ssa[0].value()->type()));
   // create call
-  auto call = builder_.CreateCall(func_ty, callee, args);
+  auto *call = builder_.CreateCall(func_ty, callee, args);
   SetVal(ssa, call);
 }
 
 void LLVMGen::GenerateOn(BranchSSA &ssa) {
-  using namespace llvm;
-  auto cond = GetVal(ssa[0].value());
-  auto true_block = dyn_cast<BasicBlock>(GetVal(ssa[1].value()));
-  auto false_block = dyn_cast<BasicBlock>(GetVal(ssa[2].value()));
-  auto branch = builder_.CreateCondBr(cond, true_block, false_block);
+  auto *cond = GetVal(ssa[0].value());
+  auto *true_block = llvm::dyn_cast<llvm::BasicBlock>(GetVal(ssa[1].value()));
+  auto *false_block = llvm::dyn_cast<llvm::BasicBlock>(GetVal(ssa[2].value()));
+  auto *branch = builder_.CreateCondBr(cond, true_block, false_block);
   SetVal(ssa, branch);
 }
 
 void LLVMGen::GenerateOn(JumpSSA &ssa) {
-  auto target = llvm::dyn_cast<llvm::BasicBlock>(GetVal(ssa[0].value()));
-  auto jump = builder_.CreateBr(target);
+  auto *target = llvm::dyn_cast<llvm::BasicBlock>(GetVal(ssa[0].value()));
+  auto *jump = builder_.CreateBr(target);
   SetVal(ssa, jump);
 }
 
 void LLVMGen::GenerateOn(ReturnSSA &ssa) {
   llvm::Value *val = nullptr;
   if (ssa[0].value()) val = GetVal(ssa[0].value());
-  auto ret = builder_.CreateRet(val);
+  auto *ret = builder_.CreateRet(val);
   SetVal(ssa, ret);
 }
 
 void LLVMGen::GenerateOn(FunctionSSA &ssa) {
-  using namespace llvm;
   // get linkage type
-  auto link = GetLinkType(ssa.link());
+  const auto link = GetLinkType(ssa.link());
   // get function type
-  auto type = dyn_cast<FunctionType>(GenerateFuncType(ssa.type()));
+  auto *type = llvm::dyn_cast<llvm::FunctionType>(GenerateFuncType(ssa.type()));
   // create function declaration
-  auto func = Function::Create(type, link, ssa.name(), module_.get());
+  auto *func = llvm::Function::Create(type, link, ssa.name(), module_.get());
   SetVal(ssa, func);
   // create argument attributes
-  auto args = *ssa.org_type()->GetArgsType();
+  const auto maybe_args = ssa.org_type()->GetArgsType();
+  if (!maybe_args) throw std::logic_error("expected function argument types");
+  const auto &args = *maybe_args;
   unsigned int arg_index = 0;
   for (const auto &i : args) {
     if (i->IsReference()) {
@@ -459,7 +493,7 @@ void LLVMGen::GenerateOn(FunctionSSA &ssa) {
     arg_index++;
   }
   // create return value attributes
-  auto ret = ssa.org_type()->GetReturnType(args);
+  const auto ret = ssa.org_type()->GetReturnType(args);
   if (ret->IsReference()) {
     auto attrs = func->getAttributes();
     attrs = attrs.addDereferenceableRetAttr(context_, ret->GetSize());
@@ -470,40 +504,39 @@ void LLVMGen::GenerateOn(FunctionSSA &ssa) {
   // generate function body
   if (!ssa.empty()) {
     // create & emit entry block
-    auto entry = BasicBlock::Create(context_, "entry", func);
+    auto *entry = llvm::BasicBlock::Create(context_, "entry", func);
     builder_.SetInsertPoint(entry);
     // emit other blocks
     for (const auto &i : ssa) GetVal(i.value());
     // create jump
-    auto first = dyn_cast<BasicBlock>(GetVal(ssa[0].value()));
+    auto *first = llvm::dyn_cast<llvm::BasicBlock>(GetVal(ssa[0].value()));
     builder_.SetInsertPoint(entry);
     builder_.CreateBr(first);
   }
 }
 
 void LLVMGen::GenerateOn(GlobalVarSSA &ssa) {
-  using namespace llvm;
   // get linkage type
-  auto link = GetLinkType(ssa.link());
+  const auto link = GetLinkType(ssa.link());
   // get initializer
-  Constant *init = nullptr;
-  if (ssa.init()) init = dyn_cast<Constant>(GetVal(ssa.init()));
+  llvm::Constant *init = nullptr;
+  if (ssa.init()) init = llvm::dyn_cast<llvm::Constant>(GetVal(ssa.init()));
   // create global variable
-  auto type = GenerateType(ssa.type()->GetDerefedType());
-  auto global = new GlobalVariable(*module_, type, !ssa.is_var(), link, nullptr,
-                                   ssa.name());
+  auto *type = GenerateType(ssa.type()->GetDerefedType());
+  auto *global = new llvm::GlobalVariable(*module_, type, !ssa.is_var(), link,
+                                          nullptr, ssa.name());
   global->setInitializer(init);
   SetVal(ssa, global);
 }
 
 void LLVMGen::GenerateOn(AllocaSSA &ssa) {
   // set insert point to entry block
-  auto last_block = builder_.GetInsertBlock();
+  auto *last_block = builder_.GetInsertBlock();
   auto &entry = last_block->getParent()->getEntryBlock();
   builder_.SetInsertPoint(&entry);
   // create alloca
-  auto type = ssa.type()->GetDerefedType();
-  auto alloca = builder_.CreateAlloca(GenerateType(type));
+  const auto type = ssa.type()->GetDerefedType();
+  auto *alloca = builder_.CreateAlloca(GenerateType(type));
   alloca->setAlignment(llvm::Align(type->GetAlignSize()));
   SetVal(ssa, alloca);
   // restore insert point
@@ -512,11 +545,11 @@ void LLVMGen::GenerateOn(AllocaSSA &ssa) {
 
 void LLVMGen::GenerateOn(BlockSSA &ssa) {
   // create new block
-  auto parent = llvm::dyn_cast<llvm::Function>(GetVal(ssa.parent()));
-  auto block = llvm::BasicBlock::Create(context_, ssa.name(), parent);
+  auto *parent = llvm::dyn_cast<llvm::Function>(GetVal(ssa.parent()));
+  auto *block = llvm::BasicBlock::Create(context_, ssa.name(), parent);
   SetVal(ssa, block);
   // emit current block
-  auto last_block = builder_.GetInsertBlock();
+  auto *last_block = builder_.GetInsertBlock();
   builder_.SetInsertPoint(block);
   // generate instructions
   for (const auto &i : ssa.insts()) GetVal(i);
@@ -525,14 +558,14 @@ void LLVMGen::GenerateOn(BlockSSA &ssa) {
 }
 
 void LLVMGen::GenerateOn(ArgRefSSA &ssa) {
-  auto func = llvm::dyn_cast<llvm::Function>(GetVal(ssa.func()));
-  auto arg = func->args().begin() + ssa.index();
+  auto *func = llvm::dyn_cast<llvm::Function>(GetVal(ssa.func()));
+  auto *arg = func->args().begin() + ssa.index();
   SetVal(ssa, arg);
 }
 
 void LLVMGen::GenerateOn(AsmSSA &ssa) {
-  auto type = llvm::FunctionType::get(builder_.getVoidTy(), false);
-  auto asm_func = llvm::InlineAsm::get(type, ssa.asm_str(), "", true);
+  auto *type = llvm::FunctionType::get(builder_.getVoidTy(), false);
+  auto *asm_func = llvm::InlineAsm::get(type, ssa.asm_str(), "", true);
   builder_.CreateCall(asm_func);
   SetVal(ssa, nullptr);
 }
@@ -551,58 +584,58 @@ void LLVMGen::GenerateOn(ConstFloatSSA &ssa) {
   llvm::Value *val = nullptr;
   if (ssa.type()->GetSize() == 4) {
     // float32
-    llvm::APFloat af(static_cast<float>(ssa.value()));
+    llvm::APFloat const af(static_cast<float>(ssa.value()));
     val = llvm::ConstantFP::get(context_, af);
   } else {
     // float64
-    llvm::APFloat af(ssa.value());
+    llvm::APFloat const af(ssa.value());
     val = llvm::ConstantFP::get(context_, af);
   }
   SetVal(ssa, val);
 }
 
 void LLVMGen::GenerateOn(ConstStrSSA &ssa) {
-  auto val = builder_.CreateGlobalString(ssa.str(), "", 0, module_.get());
+  auto *val = builder_.CreateGlobalString(ssa.str(), "", 0, module_.get());
   SetVal(ssa, val);
 }
 
 void LLVMGen::GenerateOn(ConstStructSSA &ssa) {
-  using namespace llvm;
   // generate elements
-  std::vector<Constant *> elems;
+  std::vector<llvm::Constant *> elems;
   for (const auto &i : ssa) {
-    auto val = GetVal(i.value());
-    auto const_val = dyn_cast<Constant>(val);
+    auto *val = GetVal(i.value());
+    auto *const_val = llvm::dyn_cast<llvm::Constant>(val);
     assert(const_val);
     elems.push_back(const_val);
   }
   // generate constant structure
-  auto type = GenerateType(ssa.type());
-  auto val = ConstantStruct::get(dyn_cast<llvm::StructType>(type), elems);
+  auto *type = GenerateType(ssa.type());
+  auto *val =
+      llvm::ConstantStruct::get(llvm::dyn_cast<llvm::StructType>(type), elems);
   SetVal(ssa, val);
 }
 
 void LLVMGen::GenerateOn(ConstArraySSA &ssa) {
-  using namespace llvm;
   // generate elements
-  std::vector<Constant *> elems;
+  std::vector<llvm::Constant *> elems;
   for (const auto &i : ssa) {
-    auto val = GetVal(i.value());
-    auto const_val = dyn_cast<Constant>(val);
+    auto *val = GetVal(i.value());
+    auto *const_val = llvm::dyn_cast<llvm::Constant>(val);
     assert(const_val);
     elems.push_back(const_val);
   }
   // generate constant array
-  auto type = GenerateType(ssa.type());
-  auto val = ConstantArray::get(dyn_cast<llvm::ArrayType>(type), elems);
+  auto *type = GenerateType(ssa.type());
+  auto *val =
+      llvm::ConstantArray::get(llvm::dyn_cast<llvm::ArrayType>(type), elems);
   SetVal(ssa, val);
 }
 
 void LLVMGen::GenerateOn(ConstZeroSSA &ssa) {
-  auto type = GenerateType(ssa.type());
+  auto *type = GenerateType(ssa.type());
   // Scalars and pointers require ConstantInt/ConstantFP/ConstantPointerNull;
   // ConstantAggregateZero is only valid for aggregate types.
-  auto val = llvm::Constant::getNullValue(type);
+  auto *val = llvm::Constant::getNullValue(type);
   SetVal(ssa, val);
 }
 
@@ -610,3 +643,5 @@ void LLVMGen::Dump(std::ostream &os) const {
   llvm::raw_os_ostream raw(os);
   module_->print(raw, nullptr);
 }
+
+}  // namespace yulang::back::ll

@@ -1,13 +1,60 @@
 #include "front/parser.h"
 
+#include <array>
 #include <cassert>
 #include <sstream>
 #include <stack>
 
 #include "define/token.h"
 
-using namespace yulang::front;
-using namespace yulang::define;
+namespace yulang::front {
+
+using yulang::define::AccessAST;
+using yulang::define::ArgElemAST;
+using yulang::define::ArrayTypeAST;
+using yulang::define::AsmAST;
+using yulang::define::ASTPtr;
+using yulang::define::ASTPtrList;
+using yulang::define::BinaryAST;
+using yulang::define::BlockAST;
+using yulang::define::BoolAST;
+using yulang::define::CastAST;
+using yulang::define::CharAST;
+using yulang::define::ControlAST;
+using yulang::define::DeclareAST;
+using yulang::define::EnumAST;
+using yulang::define::EnumElemAST;
+using yulang::define::FloatAST;
+using yulang::define::ForInAST;
+using yulang::define::FunCallAST;
+using yulang::define::FuncTypeAST;
+using yulang::define::FunDefAST;
+using yulang::define::IdAST;
+using yulang::define::IfAST;
+using yulang::define::ImportAST;
+using yulang::define::IndexAST;
+using yulang::define::IntAST;
+using yulang::define::Keyword;
+using yulang::define::NullAST;
+using yulang::define::Operator;
+using yulang::define::PointerTypeAST;
+using yulang::define::PrimTypeAST;
+using yulang::define::Property;
+using yulang::define::RefTypeAST;
+using yulang::define::StringAST;
+using yulang::define::StructAST;
+using yulang::define::StructElemAST;
+using yulang::define::Token;
+using yulang::define::TypeAliasAST;
+using yulang::define::UnaryAST;
+using yulang::define::UserTypeAST;
+using yulang::define::ValInitAST;
+using yulang::define::VarLetDefAST;
+using yulang::define::VarLetElemAST;
+using yulang::define::VolaTypeAST;
+using yulang::define::WhenAST;
+using yulang::define::WhenElemAST;
+using yulang::define::WhileAST;
 
 namespace {
 
@@ -16,10 +63,10 @@ using UnaryOp = UnaryAST::UnaryOp;
 
 // table of operator's precedence
 // -1 if it's not a binary/assign operator
-const int kOpPrecTable[] = {YULANG_OPERATORS(YULANG_EXPAND_THIRD)};
+const std::array kOpPrecTable = {YULANG_OPERATORS(YULANG_EXPAND_THIRD)};
 
 // table of operator's name
-const char *kOperators[] = {YULANG_OPERATORS(YULANG_EXPAND_SECOND)};
+const std::array kOperators = {YULANG_OPERATORS(YULANG_EXPAND_SECOND)};
 
 // return precedence of specific operator
 inline int GetOpPrec(Operator op) { return kOpPrecTable[static_cast<int>(op)]; }
@@ -126,7 +173,7 @@ ASTPtr Parser::ParseDeclare(Property prop) {
   }
   // get identifier
   if (!ExpectId()) return nullptr;
-  auto id = lexer()->id_val();
+  const auto id = lexer()->id_val();
   NextToken();
   // check & eat ':'
   if (!ExpectChar(':')) return nullptr;
@@ -147,7 +194,7 @@ ASTPtr Parser::ParseTypeAlias(Property prop) {
   NextToken();
   // get identifier
   if (!ExpectId()) return nullptr;
-  auto id = lexer()->id_val();
+  const auto id = lexer()->id_val();
   NextToken();
   // check & eat '='
   if (!IsTokenOperator(Operator::Assign)) return LogError("expected '='");
@@ -169,7 +216,7 @@ ASTPtr Parser::ParseStruct(Property prop) {
   NextToken();
   // get identifier
   if (!ExpectId()) return nullptr;
-  auto id = lexer()->id_val();
+  const auto id = lexer()->id_val();
   NextToken();
   // check & eat '{'
   if (!ExpectChar('{')) return nullptr;
@@ -200,7 +247,7 @@ ASTPtr Parser::ParseEnum(Property prop) {
   NextToken();
   // get identifier
   if (!ExpectId()) return nullptr;
-  auto id = lexer()->id_val();
+  const auto id = lexer()->id_val();
   NextToken();
   // get type
   ASTPtr type;
@@ -246,7 +293,7 @@ ASTPtr Parser::ParseImport(Property prop) {
     NextToken();
   }
   // get module path
-  auto mod_path = lex_man_.GetModPath(mod_name);
+  const auto mod_path = lex_man_.GetModPath(mod_name);
   if (mod_path.empty()) return LogError("invalid module name");
   // check if module is loaded
   if (lex_man_.IsLoaded(mod_path)) {
@@ -254,15 +301,16 @@ ASTPtr Parser::ParseImport(Property prop) {
     return MakeAST<ImportAST>(log, ASTPtrList());
   }
   // switch lexer
-  auto last_token = last_token_, cur_token = cur_token_;
+  const auto last_token = last_token_;
+  const auto cur_token = cur_token_;
   auto last_lex = lex_man_.SetLexer(mod_path);
-  assert(last_lex && *last_lex);
+  if (!last_lex || !*last_lex) return LogError("failed to switch import lexer");
   NextToken();
   // get all public/extern/inline definitions
   ASTPtrList defs;
   ++in_import_;
-  while (!logger().error_num() && cur_token_ != Token::End) {
-    auto prop = GetProp();
+  while (!Logger::error_num() && cur_token_ != Token::End) {
+    const auto prop = GetProp();
     if (prop != Property::None) {
       auto def = GetStatement(prop);
       if (!def) return nullptr;
@@ -273,7 +321,7 @@ ASTPtr Parser::ParseImport(Property prop) {
   }
   --in_import_;
   // reset to original status
-  lex_man_.SetLexer(*last_lex);
+  lex_man_.SetLexer(last_lex.value());
   last_token_ = last_token;
   cur_token_ = cur_token;
   return MakeAST<ImportAST>(log, std::move(defs));
@@ -283,7 +331,7 @@ ASTPtr Parser::ParseVarLetElem(Property prop, bool is_var) {
   auto log = logger();
   // get identifier
   if (!ExpectId()) return nullptr;
-  auto id = lexer()->id_val();
+  const auto id = lexer()->id_val();
   NextToken();
   // get type
   ASTPtr type;
@@ -308,7 +356,7 @@ ASTPtr Parser::ParseArgElem() {
   auto log = logger();
   // get identifier
   if (!ExpectId()) return nullptr;
-  auto id = lexer()->id_val();
+  const auto id = lexer()->id_val();
   NextToken();
   // check ':'
   if (!ExpectChar(':')) return nullptr;
@@ -322,7 +370,7 @@ ASTPtr Parser::ParseStructElem() {
   auto log = logger();
   // get identifier
   if (!ExpectId()) return nullptr;
-  auto id = lexer()->id_val();
+  const auto id = lexer()->id_val();
   NextToken();
   // check ':'
   if (!ExpectChar(':')) return nullptr;
@@ -335,7 +383,7 @@ ASTPtr Parser::ParseStructElem() {
 ASTPtr Parser::ParseEnumElem() {
   auto log = logger();
   // get identifier
-  auto id = lexer()->id_val();
+  const auto id = lexer()->id_val();
   NextToken();
   // get expression
   ASTPtr expr;
@@ -465,7 +513,7 @@ ASTPtr Parser::ParseForIn() {
   NextToken();
   // get identifier
   if (!ExpectId()) return nullptr;
-  auto id = lexer()->id_val();
+  const auto id = lexer()->id_val();
   NextToken();
   // check 'in'
   if (!IsTokenKeyword(Keyword::In)) return LogError("expected 'in'");
@@ -487,7 +535,7 @@ ASTPtr Parser::ParseAsm() {
   // get string list
   std::ostringstream oss;
   while (cur_token_ == Token::String) {
-    oss << lexer()->str_val() << std::endl;
+    oss << lexer()->str_val() << '\n';
     NextToken();
   }
   // check & eat '}'
@@ -498,7 +546,7 @@ ASTPtr Parser::ParseAsm() {
 ASTPtr Parser::ParseControl() {
   auto log = logger();
   // get keyword type
-  auto type = lexer()->key_val();
+  const auto type = lexer()->key_val();
   NextToken();
   // check return expression
   ASTPtr expr;
@@ -557,13 +605,13 @@ ASTPtr Parser::ParseBinary() {
   // convert to postfix expression
   while (cur_token_ == Token::Operator && last_token_ != Token::EOL) {
     // get operator
-    auto op = lexer()->op_val();
+    const auto op = lexer()->op_val();
     if (GetOpPrec(op) < 0) break;
     NextToken();
     // handle operator
     while (!ops.empty() && GetOpPrec(ops.top()) >= GetOpPrec(op)) {
       // create a new binary AST
-      auto cur_op = ops.top();
+      const auto cur_op = ops.top();
       ops.pop();
       auto rhs = std::move(oprs.top());
       oprs.pop();
@@ -581,7 +629,7 @@ ASTPtr Parser::ParseBinary() {
   // clear stacks
   while (!ops.empty()) {
     // create a new binary AST
-    auto cur_op = ops.top();
+    const auto cur_op = ops.top();
     ops.pop();
     auto rhs = std::move(oprs.top());
     oprs.pop();
@@ -610,11 +658,11 @@ ASTPtr Parser::ParseCast() {
 
 ASTPtr Parser::ParseUnary() {
   auto log = logger();
-  UnaryOp una_op;
+  UnaryOp una_op{};
   // check if need to get operator
   if (cur_token_ == Token::Operator) {
     // get & check unary operator
-    auto op = lexer()->op_val();
+    const auto op = lexer()->op_val();
     switch (op) {
       case Operator::Add:
         una_op = UnaryOp::Pos;
@@ -721,7 +769,7 @@ ASTPtr Parser::ParseAccess(ASTPtr expr) {
   NextToken();
   // get id
   if (!ExpectId()) return nullptr;
-  auto id = lexer()->id_val();
+  const auto id = lexer()->id_val();
   NextToken();
   // check if is a dot function call
   if (IsTokenChar('(') && last_token_ != Token::EOL) {
@@ -731,11 +779,11 @@ ASTPtr Parser::ParseAccess(ASTPtr expr) {
     args.push_back(std::move(expr));
     if (!GetExprList(args)) return nullptr;
     // generate function call
-    auto id_ast = MakeAST<IdAST>(log, std::move(id));
+    auto id_ast = MakeAST<IdAST>(log, id);
     return MakeAST<FunCallAST>(log, std::move(id_ast), std::move(args));
   }
   // just access
-  return MakeAST<AccessAST>(log, std::move(expr), std::move(id));
+  return MakeAST<AccessAST>(log, std::move(expr), id);
 }
 
 ASTPtr Parser::ParseValue() {
@@ -764,9 +812,8 @@ ASTPtr Parser::ParseValue() {
     default: {
       if (IsTokenChar('[')) {
         return ParseValInit();
-      } else {
-        return LogError("invalid value");
       }
+      return LogError("invalid value");
     }
   }
 }
@@ -879,17 +926,18 @@ ASTPtr Parser::ParseValType() {
   if (IsTokenChar('(')) {
     // function type
     return ParseFunc();
-  } else if (cur_token_ == Token::Keyword) {
+  }
+  if (cur_token_ == Token::Keyword) {
     // primitive type
     return ParsePrimType();
-  } else if (cur_token_ == Token::Id) {
+  }
+  if (cur_token_ == Token::Id) {
     // user defined type
     auto type = MakeAST<UserTypeAST>(lexer()->id_val());
     NextToken();
     return type;
-  } else {
-    return LogError("invalid value type");
   }
+  return LogError("invalid value type");
 }
 
 ASTPtr Parser::ParsePrimType() {
@@ -993,11 +1041,13 @@ Property Parser::GetProp() {
     // eat 'public'
     NextToken();
     return Property::Public;
-  } else if (IsTokenKeyword(Keyword::Extern)) {
+  }
+  if (IsTokenKeyword(Keyword::Extern)) {
     // eat 'extern'
     NextToken();
     return Property::Extern;
-  } else if (IsTokenKeyword(Keyword::Inline)) {
+  }
+  if (IsTokenKeyword(Keyword::Inline)) {
     // eat 'inline'
     NextToken();
     return Property::Inline;
@@ -1050,7 +1100,7 @@ bool Parser::ExpectChar(char c) {
   if (!IsTokenChar(c)) {
     std::string msg = "expected '";
     msg = msg + c + "'";
-    LogError(msg.c_str());
+    LogError(msg);
     return false;
   }
   NextToken();
@@ -1072,3 +1122,5 @@ bool Parser::ExpectEOL() {
   }
   return true;
 }
+
+}  // namespace yulang::front

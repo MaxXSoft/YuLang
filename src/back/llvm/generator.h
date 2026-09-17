@@ -20,7 +20,7 @@ namespace yulang::back::ll {
 
 class LLVMGen : public CodeGenInterface {
  public:
-  LLVMGen(const std::string &file_name)
+  explicit LLVMGen(const std::string &file_name)
       : builder_(context_),
         module_(std::make_unique<llvm::Module>(file_name, context_)) {}
 
@@ -56,7 +56,7 @@ class LLVMGen : public CodeGenInterface {
   // generate code or get from metadata
   llvm::Value *GetVal(const mid::SSAPtr &ssa);
   // store llvm value to metadata
-  void SetVal(mid::Value &ssa, llvm::Value *val);
+  static void SetVal(mid::Value &ssa, llvm::Value *val);
   // create global ctor array
   void CreateCtorArray(llvm::Function *ctor);
 

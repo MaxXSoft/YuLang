@@ -1,6 +1,6 @@
 #include "mid/usedef.h"
 
-using namespace yulang::mid;
+namespace yulang::mid {
 
 void IdManager::ResetId() {
   cur_id_ = 0;
@@ -8,14 +8,13 @@ void IdManager::ResetId() {
 }
 
 std::size_t IdManager::GetId(const Value *val) {
-  auto it = ids_.find(val);
+  const auto it = ids_.find(val);
   if (it == ids_.end()) {
-    auto id = cur_id_++;
+    const auto id = cur_id_++;
     ids_.insert({val, id});
     return id;
-  } else {
-    return it->second;
   }
+  return it->second;
 }
 
 void IdManager::LogName(const Value *val, std::string_view name) {
@@ -23,17 +22,16 @@ void IdManager::LogName(const Value *val, std::string_view name) {
 }
 
 std::optional<std::string_view> IdManager::GetName(const Value *v) const {
-  auto it = names_.find(v);
+  const auto it = names_.find(v);
   if (it != names_.end()) {
     return it->second;
-  } else {
-    return {};
   }
+  return {};
 }
 
 void Value::ReplaceBy(const SSAPtr &value) {
   // copy an use list from current value
-  auto uses = uses_;
+  const auto uses = uses_;
   // reroute all uses to new value
   for (const auto &use : uses) {
     use->set_value(value);
@@ -42,11 +40,13 @@ void Value::ReplaceBy(const SSAPtr &value) {
 
 void User::RemoveNull() {
   std::size_t len = 0;
-  for (std::size_t i = 0; i < uses_.size(); ++i) {
-    if (uses_[i].value()) {
-      uses_[len].set_value(uses_[i].value());
+  for (const auto &use : uses_) {
+    if (use.value()) {
+      uses_[len].set_value(use.value());
       ++len;
     }
   }
   if (len < uses_.size()) Resize(len);
 }
+
+}  // namespace yulang::mid

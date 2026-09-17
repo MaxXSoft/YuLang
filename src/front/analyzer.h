@@ -19,7 +19,7 @@ namespace yulang::front {
 
 class Analyzer {
  public:
-  Analyzer(Evaluator &eval) : eval_(eval) { Reset(); }
+  explicit Analyzer(Evaluator &eval) : eval_(eval) { Reset(); }
 
   void Reset() {
     symbols_ = define::MakeEnv();
@@ -44,7 +44,7 @@ class Analyzer {
   define::TypePtr AnalyzeOn(define::WhenAST &ast);
   define::TypePtr AnalyzeOn(define::WhileAST &ast);
   define::TypePtr AnalyzeOn(define::ForInAST &ast);
-  define::TypePtr AnalyzeOn(define::AsmAST &ast);
+  static define::TypePtr AnalyzeOn(define::AsmAST &ast);
   define::TypePtr AnalyzeOn(define::ControlAST &ast);
   define::TypePtr AnalyzeOn(define::WhenElemAST &ast);
   define::TypePtr AnalyzeOn(define::BinaryAST &ast);
@@ -53,15 +53,15 @@ class Analyzer {
   define::TypePtr AnalyzeOn(define::UnaryAST &ast);
   define::TypePtr AnalyzeOn(define::IndexAST &ast);
   define::TypePtr AnalyzeOn(define::FunCallAST &ast);
-  define::TypePtr AnalyzeOn(define::IntAST &ast);
-  define::TypePtr AnalyzeOn(define::FloatAST &ast);
-  define::TypePtr AnalyzeOn(define::CharAST &ast);
+  static define::TypePtr AnalyzeOn(define::IntAST &ast);
+  static define::TypePtr AnalyzeOn(define::FloatAST &ast);
+  static define::TypePtr AnalyzeOn(define::CharAST &ast);
   define::TypePtr AnalyzeOn(define::IdAST &ast);
-  define::TypePtr AnalyzeOn(define::StringAST &ast);
-  define::TypePtr AnalyzeOn(define::BoolAST &ast);
-  define::TypePtr AnalyzeOn(define::NullAST &ast);
+  static define::TypePtr AnalyzeOn(define::StringAST &ast);
+  static define::TypePtr AnalyzeOn(define::BoolAST &ast);
+  static define::TypePtr AnalyzeOn(define::NullAST &ast);
   define::TypePtr AnalyzeOn(define::ValInitAST &ast);
-  define::TypePtr AnalyzeOn(define::PrimTypeAST &ast);
+  static define::TypePtr AnalyzeOn(define::PrimTypeAST &ast);
   define::TypePtr AnalyzeOn(define::UserTypeAST &ast);
   define::TypePtr AnalyzeOn(define::FuncTypeAST &ast);
   define::TypePtr AnalyzeOn(define::VolaTypeAST &ast);
@@ -75,31 +75,33 @@ class Analyzer {
   // switch to new environment
   xstl::Guard NewEnv();
   // perform name mangling
-  std::string MangleFuncName(const std::string &id,
-                             const define::TypePtrList &args);
+  static std::string MangleFuncName(const std::string &id,
+                                    const define::TypePtrList &args);
   // check and add user type
   bool AddUserType(const Logger &log, const std::string &id,
-                   define::TypePtr type);
+                   const define::TypePtr &type);
   // find function type in current environment
   // call 'id_setter' using function name
   // print error message if not found
   define::TypePtr FindFuncType(const Logger &log, const std::string &id,
                                const define::TypePtrList &args,
-                               IdSetter id_setter);
+                               const IdSetter &id_setter);
   // check if is valid initialization
   // type: variable type, init: initializer type
-  bool CheckInit(const Logger &log, const define::TypePtr &type,
-                 const define::TypePtr &init);
+  static bool CheckInit(const Logger &log, const define::TypePtr &type,
+                        const define::TypePtr &init);
   // check if is valid initialization (with identifier)
-  bool CheckInit(const Logger &log, const define::TypePtr &type,
-                 const define::TypePtr &init, std::string_view id);
+  static bool CheckInit(const Logger &log, const define::TypePtr &type,
+                        const define::TypePtr &init, std::string_view id);
   // check if is valid operator overloading
   // if so, return function's return type, otherwise log error
   std::optional<define::TypePtr> CheckOpOverload(
       const Logger &log, const std::string &op_name,
-      const define::TypePtrList &args, IdSetter id_setter);
+      const define::TypePtrList &args, const IdSetter &id_setter);
 
   // evaluator
+  // This service is bound to its owner for its entire lifetime.
+  // NOLINTNEXTLINE(cppcoreguidelines-avoid-const-or-ref-data-members)
   Evaluator &eval_;
   // symbol tables & user defined types (structs, enums, aliases)
   define::EnvPtr symbols_, user_types_;
@@ -115,11 +117,11 @@ class Analyzer {
   define::TypePtr last_enum_type_;
   std::string last_enum_elem_name_;
   // used when analyzing var/let definitions
-  define::Property last_prop_;
+  define::Property last_prop_{define::Property::None};
   // used when analyzing 'when' statements
   define::TypePtr last_when_expr_type_;
   // used when analyzing while loop & for loop
-  std::uint64_t in_loop_;
+  std::uint64_t in_loop_{};
 };
 
 }  // namespace yulang::front

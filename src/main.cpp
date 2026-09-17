@@ -1,3 +1,5 @@
+#include <cstdint>
+#include <cstdio>
 #include <cstdlib>
 #include <fstream>
 #include <iostream>
@@ -18,16 +20,27 @@
 #include "version.h"
 #include "xstl/argparse.h"
 
-using namespace std;
-using namespace yulang::define;
-using namespace yulang::front;
-using namespace yulang::mid;
-using namespace yulang::back;
-using namespace yulang::back::ll;
+using std::cerr;
+using std::cout;
+using std::string;
+using std::vector;
+using yulang::define::BaseType;
+using yulang::front::Analyzer;
+using yulang::front::Evaluator;
+using yulang::front::LexerManager;
+using yulang::front::Logger;
+using yulang::front::Parser;
+using yulang::mid::IRBuilder;
+using yulang::mid::PassManager;
+
+using yulang::back::ll::LLVMGen;
+using yulang::back::ll::ObjectGen;
+
+using yulang::back::CodeGen;
 
 namespace {
 
-enum class OutputType {
+enum class OutputType : std::uint8_t {
   AST,
   YuIR,
   LLVM,
@@ -58,31 +71,33 @@ xstl::ArgParser GetArgp() {
 }
 
 void PrintVersion() {
-  cout << APP_NAME << " version " << APP_VERSION << endl;
-  cout << "Compiler of the Yu programming language." << endl;
-  cout << endl;
+  cout << APP_NAME << " version " << APP_VERSION << '\n';
+  cout << "Compiler of the Yu programming language." << '\n';
+  cout << '\n';
   cout << "Copyright (C) 2010-2020 MaxXing. License GPLv3.";
-  cout << endl;
+  cout << '\n';
 }
 
-void ParseArgument(xstl::ArgParser &argp, int argc, const char *argv[]) {
-  auto ret = argp.Parse(argc, argv);
+void ParseArgument(xstl::ArgParser &argp, int argc, const char **argv) {
+  const auto ret = argp.Parse(argc, argv);
   // check if need to exit program
   if (argp.GetValue<bool>("help")) {
     argp.PrintHelp();
     std::exit(0);
-  } else if (argp.GetValue<bool>("version")) {
+  }
+  if (argp.GetValue<bool>("version")) {
     PrintVersion();
     std::exit(0);
-  } else if (!ret) {
+  }
+  if (!ret) {
     cerr << "invalid input, run '";
-    cerr << argp.program_name() << " -h' for help" << endl;
+    cerr << argp.program_name() << " -h' for help" << '\n';
     std::exit(1);
   }
 }
 
-OutputType GetOutputType(xstl::ArgParser &argp) {
-  auto out_type = argp.GetValue<string>("outtype");
+OutputType GetOutputType(xstl::ArgParser const &argp) {
+  const auto out_type = argp.GetValue<string>("outtype");
   int type_index = 0;
   for (const auto &i : {"ast", "yuir", "llvm", "asm", "obj"}) {
     if (out_type == i) return static_cast<OutputType>(type_index);
@@ -93,8 +108,8 @@ OutputType GetOutputType(xstl::ArgParser &argp) {
   return OutputType::AST;
 }
 
-int GetOptLevel(xstl::ArgParser &argp) {
-  auto opt_level = argp.GetValue<int>("opt-level");
+int GetOptLevel(xstl::ArgParser const &argp) {
+  const auto opt_level = argp.GetValue<int>("opt-level");
   if (opt_level < 0 || opt_level > 3) {
     Logger::LogRawError("invalid optimization level");
     std::exit(1);
@@ -102,7 +117,8 @@ int GetOptLevel(xstl::ArgParser &argp) {
   return opt_level;
 }
 
-void InitializeTarget(xstl::ArgParser &argp, ObjectGen &obj_gen, int opt) {
+void InitializeTarget(xstl::ArgParser const &argp, ObjectGen &obj_gen,
+                      int opt) {
   obj_gen.set_opt_level(opt);
   obj_gen.set_cpu(argp.GetValue<string>("cpu"));
   obj_gen.set_features(argp.GetValue<string>("features"));
@@ -114,8 +130,8 @@ void InitializeTarget(xstl::ArgParser &argp, ObjectGen &obj_gen, int opt) {
 bool CompileToIR(const xstl::ArgParser &argp, std::ostream &os,
                  LexerManager &lex_man, IRBuilder &irb, OutputType type) {
   // initialize lexer manager & logger
-  auto file = argp.GetValue<string>("input");
-  auto imp_path = argp.GetValue<vector<string>>("imppath");
+  const auto file = argp.GetValue<string>("input");
+  const auto imp_path = argp.GetValue<vector<string>>("imppath");
   if (!lex_man.LoadSource(file)) return false;
   if (!imp_path.empty()) {
     for (const auto &i : imp_path) {
@@ -128,18 +144,19 @@ bool CompileToIR(const xstl::ArgParser &argp, std::ostream &os,
   Evaluator eval;
   Analyzer ana(eval);
   // compile source code
-  auto dump_ast = type == OutputType::AST;
+  const auto dump_ast = type == OutputType::AST;
   while (auto ast = parser.ParseNext()) {
     // perform semantic analyze
     if (!ast->SemaAnalyze(ana)) break;
     ast->Eval(eval);
+    if (Logger::error_num()) break;
     // dump to output
     if (dump_ast) ast->Dump(os);
     // generate IR
     ast->GenerateIR(irb);
   }
   // check if need to exit
-  auto err_num = Logger::error_num();
+  const auto err_num = Logger::error_num();
   return err_num == 0;
 }
 
@@ -152,8 +169,8 @@ bool RunPasses(const xstl::ArgParser &argp, std::ostream &os, IRBuilder &irb,
   if (argp.GetValue<bool>("verbose")) pass_man.ShowInfo(cerr);
   irb.module().RunPasses(pass_man);
   // check if need to dump IR
-  auto dump_yuir = type == OutputType::YuIR;
-  auto err_num = Logger::error_num();
+  const auto dump_yuir = type == OutputType::YuIR;
+  const auto err_num = Logger::error_num();
   if (!err_num && dump_yuir) irb.module().Dump(os);
   return err_num == 0;
 }
@@ -190,21 +207,21 @@ bool GenerateCode(std::ostream &os, IRBuilder &irb, CodeGen &gen,
 
 }  // namespace
 
-int main(int argc, const char *argv[]) {
+int main(int argc, const char *argv[]) try {
   // set up argument parser
   auto argp = GetArgp();
 
   // parse argument
   ParseArgument(argp, argc, argv);
-  auto out_type = GetOutputType(argp);
-  auto opt_level = GetOptLevel(argp);
+  const auto out_type = GetOutputType(argp);
+  const auto opt_level = GetOptLevel(argp);
 
   // initialize output stream
-  auto out_file = argp.GetValue<string>("output");
+  const auto out_file = argp.GetValue<string>("output");
   std::ofstream ofs;
-  auto text_output = out_type == OutputType::AST ||
-                     out_type == OutputType::YuIR ||
-                     out_type == OutputType::LLVM;
+  const auto text_output = out_type == OutputType::AST ||
+                           out_type == OutputType::YuIR ||
+                           out_type == OutputType::LLVM;
   if (text_output && !out_file.empty()) {
     ofs.open(out_file);
     if (!ofs) {
@@ -244,4 +261,8 @@ int main(int argc, const char *argv[]) {
     return 1;
   }
   return 0;
+} catch (...) {
+  std::fputs("error: compilation failed with an unexpected exception\n",
+             stderr);
+  return 1;
 }

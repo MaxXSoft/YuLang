@@ -141,7 +141,7 @@ class Module {
     insert_pos_ = pos;
   }
   // get current insert point (basic block)
-  const BlockPtr &GetInsertPoint() const { return insert_block_; }
+  [[nodiscard]] const BlockPtr &GetInsertPoint() const { return insert_block_; }
   // set current context (logger)
   xstl::Guard SetContext(const front::Logger &logger);
   // set insert point to global constructor
@@ -183,7 +183,7 @@ class Module {
   // global constructor stuffs
   UserPtr global_ctor_;
   BlockPtr ctor_entry_, ctor_exit_;
-  bool is_ctor_sealed_;
+  bool is_ctor_sealed_{};
   // current insert point
   BlockPtr insert_block_;
   SSAPtrList::iterator insert_pos_;
@@ -207,7 +207,7 @@ inline Module MakeModule(const BlockPtr &block, SSAPtrList::iterator pos) {
 
 // make a temporary module to create specific IR, for one-time use only
 inline Module MakeModule() {
-  auto block = std::make_shared<BlockSSA>(nullptr, "");
+  const auto block = std::make_shared<BlockSSA>(nullptr, "");
   return MakeModule(block);
 }
 

@@ -2,8 +2,9 @@
 
 #include "mid/ssa.h"
 
-using namespace yulang::mid;
-using namespace yulang::back;
+namespace yulang::mid {
+
+using back::CodeGen;
 
 void LoadSSA::GenerateCode(CodeGen &gen) { gen.GenerateOn(*this); }
 
@@ -48,3 +49,5 @@ void ConstStructSSA::GenerateCode(CodeGen &gen) { gen.GenerateOn(*this); }
 void ConstArraySSA::GenerateCode(CodeGen &gen) { gen.GenerateOn(*this); }
 
 void ConstZeroSSA::GenerateCode(CodeGen &gen) { gen.GenerateOn(*this); }
+
+}  // namespace yulang::mid

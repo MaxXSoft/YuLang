@@ -1,5 +1,6 @@
 #include "define/type.h"
 
+#include <algorithm>
 #include <cassert>
 #include <sstream>
 #include <stack>
@@ -7,7 +8,7 @@
 
 #include "xstl/guard.h"
 
-using namespace yulang::define;
+namespace yulang::define {
 
 namespace {
 
@@ -43,7 +44,7 @@ bool PrimType::IsIdentical(const TypePtr &type) const {
   if (IsVoid() && type->IsVoid()) return true;
   if (IsNull() && type->IsNull()) return true;
   if (IsInteger() && type->IsInteger()) {
-    // TODO: distinction between pointer-sized types and integer types?
+    // TODO(YuLang): distinction between pointer-sized types and integer types?
     return IsUnsigned() == type->IsUnsigned() && GetSize() == type->GetSize();
   }
   if (IsFloat() && type->IsFloat()) return GetSize() == type->GetSize();
@@ -54,7 +55,6 @@ bool PrimType::IsIdentical(const TypePtr &type) const {
 std::size_t PrimType::GetSize() const {
   switch (type_) {
     case Type::Bool:
-      return 1;
     case Type::Int8:
     case Type::UInt8:
       return 1;
@@ -118,12 +118,13 @@ TypePtr PrimType::GetValueType(bool is_right) const {
 }
 
 void StructType::CalcSize() {
-  std::size_t sum = 0, max_base_size = 1;
+  std::size_t sum = 0;
+  std::size_t max_base_size = 1;
   for (const auto &[_, t] : elems_) {
     sum += t->GetSize();
     // update 'max_base_size'
-    auto base_size = t->GetAlignSize();
-    if (base_size > max_base_size) max_base_size = base_size;
+    const auto base_size = t->GetAlignSize();
+    max_base_size = std::max(base_size, max_base_size);
   }
   size_ = (((sum - 1) / max_base_size) + 1) * max_base_size;
   base_size_ = max_base_size;
@@ -142,8 +143,8 @@ bool StructType::IsIdentical(const TypePtr &type) const {
     }
   }
   // prevent infinite loop
-  ident_types.push({this, type.get()});
-  auto pop = xstl::Guard([] { ident_types.pop(); });
+  ident_types.emplace(this, type.get());
+  const auto pop = xstl::Guard([] { ident_types.pop(); });
   // check if is identical
   if (!type->IsStruct()) return false;
   if (elems_.size() != type->GetLength()) return false;
@@ -179,10 +180,10 @@ TypePtr StructType::GetTrivialType() const {
   // initialize as an empty struct type
   TypePairList elems;
   auto type = std::make_shared<StructType>(elems, id_, false);
-  trivial_types.push({this, type});
+  trivial_types.emplace(this, type);
   // convert elements
   for (const auto &i : elems_) {
-    elems.push_back({i.first, i.second->GetTrivialType()});
+    elems.emplace_back(i.first, i.second->GetTrivialType());
   }
   // update type
   type->set_elems(std::move(elems));
@@ -234,7 +235,7 @@ bool FuncType::CanCastTo(const TypePtr &type) const {
 
 bool FuncType::IsIdentical(const TypePtr &type) const {
   if (!type->IsFunction()) return false;
-  auto ret = type->GetReturnType(args_);
+  const auto ret = type->GetReturnType(args_);
   return ret ? ret_->IsIdentical(ret) : false;
 }
 
@@ -253,12 +254,10 @@ TypePtr FuncType::GetReturnType(const TypePtrList &args) const {
       if (args[i]->IsConst() && !args_[i]->GetDerefedType()->IsConst()) {
         return nullptr;
       }
-    } else if (args_[i]->IsPointer()) {
-      // check pointer's const cast
-      if (args[i]->GetDerefedType()->IsConst() &&
-          !args_[i]->GetDerefedType()->IsConst()) {
-        return nullptr;
-      }
+    } else if (args_[i]->IsPointer() && args[i]->GetDerefedType()->IsConst() &&
+               !args_[i]->GetDerefedType()->IsConst()) {
+      // Reject discarding const from a pointer target.
+      return nullptr;
     }
   }
   return ret_;
@@ -373,12 +372,13 @@ TypePtr RefType::GetValueType(bool is_right) const {
   if (is_right) {
     // return non-referenced right value type
     return base_->GetValueType(is_right);
-  } else {
-    // return self
-    return std::make_shared<RefType>(base_);
   }
+  // return self
+  return std::make_shared<RefType>(base_);
 }
 
 TypePtr RefType::GetTrivialType() const {
   return std::make_shared<PointerType>(base_->GetTrivialType(), false);
 }
+
+}  // namespace yulang::define

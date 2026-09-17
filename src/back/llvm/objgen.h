@@ -2,6 +2,7 @@
 #define YULANG_BACK_LLVM_OBJGEN_H_
 
 #include <cstddef>
+#include <cstdint>
 #include <ostream>
 #include <string>
 
@@ -12,8 +13,7 @@ namespace yulang::back::ll {
 
 class ObjectGen {
  public:
-  ObjectGen(const ModulePtr &module)
-      : module_(module), opt_level_(0), machine_(nullptr) {
+  explicit ObjectGen(const ModulePtr &module) : module_(module) {
     InitTarget();
   }
 
@@ -26,7 +26,7 @@ class ObjectGen {
   // generate object file
   bool GenerateObject(const std::string &file);
   // get pointer size of current target
-  std::size_t GetPointerSize() const;
+  [[nodiscard]] std::size_t GetPointerSize() const;
 
   // setters
   void set_opt_level(std::size_t opt_level) { opt_level_ = opt_level; }
@@ -35,20 +35,22 @@ class ObjectGen {
 
  private:
   // file type of code generation
-  enum class CodeGenFileType {
+  enum class CodeGenFileType : std::uint8_t {
     Asm,
     Object,
   };
 
-  void InitTarget();
+  static void InitTarget();
   bool GenerateTargetCode(const std::string &file, CodeGenFileType type);
 
   // LLVM module
+  // This service is bound to its owner for its entire lifetime.
+  // NOLINTNEXTLINE(cppcoreguidelines-avoid-const-or-ref-data-members)
   const ModulePtr &module_;
   // optimization level
-  std::size_t opt_level_;
+  std::size_t opt_level_{0};
   // target info
-  llvm::TargetMachine *machine_;
+  llvm::TargetMachine *machine_{nullptr};
   // CPU & features
   std::string cpu_, features_;
 };

@@ -15,6 +15,11 @@ namespace yulang::mid {
 // pass information
 class PassInfo {
  public:
+  PassInfo(const PassInfo &) = delete;
+  PassInfo &operator=(const PassInfo &) = delete;
+  PassInfo(PassInfo &&) = delete;
+  PassInfo &operator=(PassInfo &&) = delete;
+
   PassInfo(std::string_view name, PassPtr pass, std::size_t min_opt_level,
            bool is_analysis)
       : name_(name),
@@ -24,10 +29,10 @@ class PassInfo {
   virtual ~PassInfo() = default;
 
   // getters
-  std::string_view name() const { return name_; }
-  const PassPtr &pass() const { return pass_; }
-  std::size_t min_opt_level() const { return min_opt_level_; }
-  bool is_analysis() const { return is_analysis_; }
+  [[nodiscard]] std::string_view name() const { return name_; }
+  [[nodiscard]] const PassPtr &pass() const { return pass_; }
+  [[nodiscard]] std::size_t min_opt_level() const { return min_opt_level_; }
+  [[nodiscard]] bool is_analysis() const { return is_analysis_; }
 
  private:
   std::string_view name_;
@@ -39,7 +44,7 @@ class PassInfo {
 // pass manager for all SSA IR passes
 class PassManager {
  public:
-  PassManager() : opt_level_(0) {}
+  PassManager() = default;
 
   // register a new pass
   static void RegisterPass(PassInfo *info);
@@ -55,14 +60,14 @@ class PassManager {
   void set_funcs(UserPtrList *funcs) { funcs_ = funcs; }
 
   // getters
-  std::size_t opt_level() const { return opt_level_; }
+  [[nodiscard]] std::size_t opt_level() const { return opt_level_; }
 
  private:
   // get pass info list
   static std::list<PassInfo *> &GetPasses();
 
-  std::size_t opt_level_;
-  UserPtrList *vars_, *funcs_;
+  std::size_t opt_level_{0};
+  UserPtrList *vars_{}, *funcs_{};
 };
 
 // helper class for registering a pass
@@ -78,7 +83,7 @@ class RegisterPass : public PassInfo {
 
 // register a pass
 #define REGISTER_PASS(cls, name, min_opt_level, is_analysis) \
-  static RegisterPass<cls> pass_##name(#name, min_opt_level, is_analysis)
+  RegisterPass<cls> pass_##name(#name, min_opt_level, is_analysis)
 
 }  // namespace yulang::mid
 

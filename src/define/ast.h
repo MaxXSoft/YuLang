@@ -30,17 +30,23 @@ class IRBuilder;
 namespace yulang::define {
 
 // property of statements
-enum class Property { None, Public, Extern, Inline };
+enum class Property : std::uint8_t { None, Public, Extern, Inline };
 
 // definition of base class of all ASTs
 class BaseAST {
  public:
+  BaseAST() = default;
+  BaseAST(const BaseAST &) = default;
+  BaseAST &operator=(const BaseAST &) = default;
+  BaseAST(BaseAST &&) = default;
+  BaseAST &operator=(BaseAST &&) = default;
+
   virtual ~BaseAST() = default;
 
   // return true if current AST is an identifier
-  virtual bool IsId() const = 0;
+  [[nodiscard]] virtual bool IsId() const = 0;
   // return true if current AST is a literal value
-  virtual bool IsLiteral() const = 0;
+  [[nodiscard]] virtual bool IsLiteral() const = 0;
 
   // dump the content of AST to output stream
   virtual void Dump(std::ostream &os) const = 0;
@@ -58,8 +64,8 @@ class BaseAST {
   }
 
   // getters
-  const front::Logger &logger() const { return logger_; }
-  const TypePtr &ast_type() const { return ast_type_; }
+  [[nodiscard]] const front::Logger &logger() const { return logger_; }
+  [[nodiscard]] const TypePtr &ast_type() const { return ast_type_; }
 
  private:
   front::Logger logger_;
@@ -75,8 +81,8 @@ class VarLetDefAST : public BaseAST {
   VarLetDefAST(Property prop, ASTPtrList defs)
       : prop_(prop), defs_(std::move(defs)) {}
 
-  bool IsId() const override { return false; }
-  bool IsLiteral() const override { return false; }
+  [[nodiscard]] bool IsId() const override { return false; }
+  [[nodiscard]] bool IsLiteral() const override { return false; }
 
   void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
@@ -84,8 +90,8 @@ class VarLetDefAST : public BaseAST {
   mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
 
   // getters
-  Property prop() const { return prop_; }
-  const ASTPtrList &defs() const { return defs_; }
+  [[nodiscard]] Property prop() const { return prop_; }
+  [[nodiscard]] const ASTPtrList &defs() const { return defs_; }
 
  private:
   Property prop_;
@@ -95,16 +101,16 @@ class VarLetDefAST : public BaseAST {
 // function definition
 class FunDefAST : public BaseAST {
  public:
-  FunDefAST(Property prop, const std::string &id, ASTPtrList args, ASTPtr type,
+  FunDefAST(Property prop, std::string id, ASTPtrList args, ASTPtr type,
             ASTPtr body)
       : prop_(prop),
-        id_(id),
+        id_(std::move(id)),
         type_(std::move(type)),
         body_(std::move(body)),
         args_(std::move(args)) {}
 
-  bool IsId() const override { return false; }
-  bool IsLiteral() const override { return false; }
+  [[nodiscard]] bool IsId() const override { return false; }
+  [[nodiscard]] bool IsLiteral() const override { return false; }
 
   void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
@@ -112,11 +118,11 @@ class FunDefAST : public BaseAST {
   mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
 
   // getters
-  Property prop() const { return prop_; }
-  const std::string &id() const { return id_; }
-  const ASTPtrList &args() const { return args_; }
-  const ASTPtr &type() const { return type_; }
-  const ASTPtr &body() const { return body_; }
+  [[nodiscard]] Property prop() const { return prop_; }
+  [[nodiscard]] const std::string &id() const { return id_; }
+  [[nodiscard]] const ASTPtrList &args() const { return args_; }
+  [[nodiscard]] const ASTPtr &type() const { return type_; }
+  [[nodiscard]] const ASTPtr &body() const { return body_; }
 
   // setters
   void set_id(const std::string &id) { id_ = id; }
@@ -131,11 +137,14 @@ class FunDefAST : public BaseAST {
 // declaration
 class DeclareAST : public BaseAST {
  public:
-  DeclareAST(Property prop, bool is_var, const std::string &id, ASTPtr type)
-      : prop_(prop), is_var_(is_var), id_(id), type_(std::move(type)) {}
+  DeclareAST(Property prop, bool is_var, std::string id, ASTPtr type)
+      : prop_(prop),
+        is_var_(is_var),
+        id_(std::move(id)),
+        type_(std::move(type)) {}
 
-  bool IsId() const override { return false; }
-  bool IsLiteral() const override { return false; }
+  [[nodiscard]] bool IsId() const override { return false; }
+  [[nodiscard]] bool IsLiteral() const override { return false; }
 
   void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
@@ -143,10 +152,10 @@ class DeclareAST : public BaseAST {
   mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
 
   // getters
-  Property prop() const { return prop_; }
-  bool is_var() const { return is_var_; }
-  const std::string &id() const { return id_; }
-  const ASTPtr &type() const { return type_; }
+  [[nodiscard]] Property prop() const { return prop_; }
+  [[nodiscard]] bool is_var() const { return is_var_; }
+  [[nodiscard]] const std::string &id() const { return id_; }
+  [[nodiscard]] const ASTPtr &type() const { return type_; }
 
   // setters
   void set_id(const std::string &id) { id_ = id; }
@@ -161,11 +170,11 @@ class DeclareAST : public BaseAST {
 // type alias
 class TypeAliasAST : public BaseAST {
  public:
-  TypeAliasAST(Property prop, const std::string &id, ASTPtr type)
-      : prop_(prop), id_(id), type_(std::move(type)) {}
+  TypeAliasAST(Property prop, std::string id, ASTPtr type)
+      : prop_(prop), id_(std::move(id)), type_(std::move(type)) {}
 
-  bool IsId() const override { return false; }
-  bool IsLiteral() const override { return false; }
+  [[nodiscard]] bool IsId() const override { return false; }
+  [[nodiscard]] bool IsLiteral() const override { return false; }
 
   void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
@@ -173,9 +182,9 @@ class TypeAliasAST : public BaseAST {
   mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
 
   // getters
-  Property prop() const { return prop_; }
-  const std::string &id() const { return id_; }
-  const ASTPtr &type() const { return type_; }
+  [[nodiscard]] Property prop() const { return prop_; }
+  [[nodiscard]] const std::string &id() const { return id_; }
+  [[nodiscard]] const ASTPtr &type() const { return type_; }
 
  private:
   Property prop_;
@@ -186,11 +195,11 @@ class TypeAliasAST : public BaseAST {
 // structure definition
 class StructAST : public BaseAST {
  public:
-  StructAST(Property prop, const std::string &id, ASTPtrList defs)
-      : prop_(prop), id_(id), defs_(std::move(defs)) {}
+  StructAST(Property prop, std::string id, ASTPtrList defs)
+      : prop_(prop), id_(std::move(id)), defs_(std::move(defs)) {}
 
-  bool IsId() const override { return false; }
-  bool IsLiteral() const override { return false; }
+  [[nodiscard]] bool IsId() const override { return false; }
+  [[nodiscard]] bool IsLiteral() const override { return false; }
 
   void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
@@ -198,9 +207,9 @@ class StructAST : public BaseAST {
   mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
 
   // getters
-  Property prop() const { return prop_; }
-  const std::string &id() const { return id_; }
-  const ASTPtrList &defs() const { return defs_; }
+  [[nodiscard]] Property prop() const { return prop_; }
+  [[nodiscard]] const std::string &id() const { return id_; }
+  [[nodiscard]] const ASTPtrList &defs() const { return defs_; }
 
  private:
   Property prop_;
@@ -211,11 +220,14 @@ class StructAST : public BaseAST {
 // enumeration definition
 class EnumAST : public BaseAST {
  public:
-  EnumAST(Property prop, const std::string &id, ASTPtr type, ASTPtrList defs)
-      : prop_(prop), id_(id), type_(std::move(type)), defs_(std::move(defs)) {}
+  EnumAST(Property prop, std::string id, ASTPtr type, ASTPtrList defs)
+      : prop_(prop),
+        id_(std::move(id)),
+        type_(std::move(type)),
+        defs_(std::move(defs)) {}
 
-  bool IsId() const override { return false; }
-  bool IsLiteral() const override { return false; }
+  [[nodiscard]] bool IsId() const override { return false; }
+  [[nodiscard]] bool IsLiteral() const override { return false; }
 
   void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
@@ -223,10 +235,10 @@ class EnumAST : public BaseAST {
   mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
 
   // getters
-  Property prop() const { return prop_; }
-  const std::string &id() const { return id_; }
-  const ASTPtr &type() const { return type_; }
-  const ASTPtrList &defs() const { return defs_; }
+  [[nodiscard]] Property prop() const { return prop_; }
+  [[nodiscard]] const std::string &id() const { return id_; }
+  [[nodiscard]] const ASTPtr &type() const { return type_; }
+  [[nodiscard]] const ASTPtrList &defs() const { return defs_; }
 
  private:
   Property prop_;
@@ -238,10 +250,10 @@ class EnumAST : public BaseAST {
 // imported definitions
 class ImportAST : public BaseAST {
  public:
-  ImportAST(ASTPtrList defs) : defs_(std::move(defs)) {}
+  explicit ImportAST(ASTPtrList defs) : defs_(std::move(defs)) {}
 
-  bool IsId() const override { return false; }
-  bool IsLiteral() const override { return false; }
+  [[nodiscard]] bool IsId() const override { return false; }
+  [[nodiscard]] bool IsLiteral() const override { return false; }
 
   void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
@@ -249,7 +261,7 @@ class ImportAST : public BaseAST {
   mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
 
   // getters
-  const ASTPtrList &defs() const { return defs_; }
+  [[nodiscard]] const ASTPtrList &defs() const { return defs_; }
 
  private:
   ASTPtrList defs_;
@@ -258,14 +270,14 @@ class ImportAST : public BaseAST {
 // variable/constant definition element
 class VarLetElemAST : public BaseAST {
  public:
-  VarLetElemAST(const std::string &id, ASTPtr type, ASTPtr init, bool is_var)
-      : id_(id),
+  VarLetElemAST(std::string id, ASTPtr type, ASTPtr init, bool is_var)
+      : id_(std::move(id)),
         type_(std::move(type)),
         init_(std::move(init)),
         is_var_(is_var) {}
 
-  bool IsId() const override { return false; }
-  bool IsLiteral() const override { return false; }
+  [[nodiscard]] bool IsId() const override { return false; }
+  [[nodiscard]] bool IsLiteral() const override { return false; }
 
   void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
@@ -273,10 +285,10 @@ class VarLetElemAST : public BaseAST {
   mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
 
   // getters
-  const std::string &id() const { return id_; }
-  const ASTPtr &type() const { return type_; }
-  const ASTPtr &init() const { return init_; }
-  bool is_var() const { return is_var_; }
+  [[nodiscard]] const std::string &id() const { return id_; }
+  [[nodiscard]] const ASTPtr &type() const { return type_; }
+  [[nodiscard]] const ASTPtr &init() const { return init_; }
+  [[nodiscard]] bool is_var() const { return is_var_; }
 
   // setters
   void set_init(ASTPtr init) { init_ = std::move(init); }
@@ -290,11 +302,11 @@ class VarLetElemAST : public BaseAST {
 // argument definition
 class ArgElemAST : public BaseAST {
  public:
-  ArgElemAST(const std::string &id, ASTPtr type)
-      : id_(id), type_(std::move(type)) {}
+  ArgElemAST(std::string id, ASTPtr type)
+      : id_(std::move(id)), type_(std::move(type)) {}
 
-  bool IsId() const override { return false; }
-  bool IsLiteral() const override { return false; }
+  [[nodiscard]] bool IsId() const override { return false; }
+  [[nodiscard]] bool IsLiteral() const override { return false; }
 
   void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
@@ -302,8 +314,8 @@ class ArgElemAST : public BaseAST {
   mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
 
   // getters
-  const std::string &id() const { return id_; }
-  const ASTPtr &type() const { return type_; }
+  [[nodiscard]] const std::string &id() const { return id_; }
+  [[nodiscard]] const ASTPtr &type() const { return type_; }
 
  private:
   std::string id_;
@@ -313,11 +325,11 @@ class ArgElemAST : public BaseAST {
 // element of structure elements
 class StructElemAST : public BaseAST {
  public:
-  StructElemAST(const std::string &id, ASTPtr type)
-      : id_(id), type_(std::move(type)) {}
+  StructElemAST(std::string id, ASTPtr type)
+      : id_(std::move(id)), type_(std::move(type)) {}
 
-  bool IsId() const override { return false; }
-  bool IsLiteral() const override { return false; }
+  [[nodiscard]] bool IsId() const override { return false; }
+  [[nodiscard]] bool IsLiteral() const override { return false; }
 
   void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
@@ -325,8 +337,8 @@ class StructElemAST : public BaseAST {
   mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
 
   // getters
-  const std::string &id() const { return id_; }
-  const ASTPtr &type() const { return type_; }
+  [[nodiscard]] const std::string &id() const { return id_; }
+  [[nodiscard]] const ASTPtr &type() const { return type_; }
 
  private:
   std::string id_;
@@ -336,11 +348,11 @@ class StructElemAST : public BaseAST {
 // element of enumeration list
 class EnumElemAST : public BaseAST {
  public:
-  EnumElemAST(const std::string &id, ASTPtr expr)
-      : id_(id), expr_(std::move(expr)) {}
+  EnumElemAST(std::string id, ASTPtr expr)
+      : id_(std::move(id)), expr_(std::move(expr)) {}
 
-  bool IsId() const override { return false; }
-  bool IsLiteral() const override { return false; }
+  [[nodiscard]] bool IsId() const override { return false; }
+  [[nodiscard]] bool IsLiteral() const override { return false; }
 
   void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
@@ -348,8 +360,8 @@ class EnumElemAST : public BaseAST {
   mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
 
   // getters
-  const std::string &id() const { return id_; }
-  const ASTPtr &expr() const { return expr_; }
+  [[nodiscard]] const std::string &id() const { return id_; }
+  [[nodiscard]] const ASTPtr &expr() const { return expr_; }
 
   // setters
   void set_expr(ASTPtr expr) { expr_ = std::move(expr); }
@@ -362,10 +374,10 @@ class EnumElemAST : public BaseAST {
 // statement block
 class BlockAST : public BaseAST {
  public:
-  BlockAST(ASTPtrList stmts) : stmts_(std::move(stmts)) {}
+  explicit BlockAST(ASTPtrList stmts) : stmts_(std::move(stmts)) {}
 
-  bool IsId() const override { return false; }
-  bool IsLiteral() const override { return false; }
+  [[nodiscard]] bool IsId() const override { return false; }
+  [[nodiscard]] bool IsLiteral() const override { return false; }
 
   void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
@@ -373,7 +385,7 @@ class BlockAST : public BaseAST {
   mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
 
   // getters
-  const ASTPtrList &stmts() const { return stmts_; }
+  [[nodiscard]] const ASTPtrList &stmts() const { return stmts_; }
 
   // setters
   void set_stmts(ASTPtrList stmts) { stmts_ = std::move(stmts); }
@@ -393,8 +405,8 @@ class IfAST : public BaseAST {
         then_(std::move(then)),
         else_then_(std::move(else_then)) {}
 
-  bool IsId() const override { return false; }
-  bool IsLiteral() const override { return false; }
+  [[nodiscard]] bool IsId() const override { return false; }
+  [[nodiscard]] bool IsLiteral() const override { return false; }
 
   void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
@@ -402,9 +414,9 @@ class IfAST : public BaseAST {
   mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
 
   // getters
-  const ASTPtr &cond() const { return cond_; }
-  const ASTPtr &then() const { return then_; }
-  const ASTPtr &else_then() const { return else_then_; }
+  [[nodiscard]] const ASTPtr &cond() const { return cond_; }
+  [[nodiscard]] const ASTPtr &then() const { return then_; }
+  [[nodiscard]] const ASTPtr &else_then() const { return else_then_; }
 
   // setters
   void set_cond(ASTPtr cond) { cond_ = std::move(cond); }
@@ -423,8 +435,8 @@ class WhenAST : public BaseAST {
         else_then_(std::move(else_then)),
         elems_(std::move(elems)) {}
 
-  bool IsId() const override { return false; }
-  bool IsLiteral() const override { return false; }
+  [[nodiscard]] bool IsId() const override { return false; }
+  [[nodiscard]] bool IsLiteral() const override { return false; }
 
   void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
@@ -432,9 +444,9 @@ class WhenAST : public BaseAST {
   mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
 
   // getters
-  const ASTPtr &expr() const { return expr_; }
-  const ASTPtrList &elems() const { return elems_; }
-  const ASTPtr &else_then() const { return else_then_; }
+  [[nodiscard]] const ASTPtr &expr() const { return expr_; }
+  [[nodiscard]] const ASTPtrList &elems() const { return elems_; }
+  [[nodiscard]] const ASTPtr &else_then() const { return else_then_; }
 
   // setters
   void set_expr(ASTPtr expr) { expr_ = std::move(expr); }
@@ -451,8 +463,8 @@ class WhileAST : public BaseAST {
   WhileAST(ASTPtr cond, ASTPtr body)
       : cond_(std::move(cond)), body_(std::move(body)) {}
 
-  bool IsId() const override { return false; }
-  bool IsLiteral() const override { return false; }
+  [[nodiscard]] bool IsId() const override { return false; }
+  [[nodiscard]] bool IsLiteral() const override { return false; }
 
   void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
@@ -460,8 +472,8 @@ class WhileAST : public BaseAST {
   mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
 
   // getters
-  const ASTPtr &cond() const { return cond_; }
-  const ASTPtr &body() const { return body_; }
+  [[nodiscard]] const ASTPtr &cond() const { return cond_; }
+  [[nodiscard]] const ASTPtr &body() const { return body_; }
 
   // setters
   void set_cond(ASTPtr cond) { cond_ = std::move(cond); }
@@ -474,11 +486,11 @@ class WhileAST : public BaseAST {
 // for-in statement
 class ForInAST : public BaseAST {
  public:
-  ForInAST(const std::string &id, ASTPtr expr, ASTPtr body)
-      : id_(id), expr_(std::move(expr)), body_(std::move(body)) {}
+  ForInAST(std::string id, ASTPtr expr, ASTPtr body)
+      : id_(std::move(id)), expr_(std::move(expr)), body_(std::move(body)) {}
 
-  bool IsId() const override { return false; }
-  bool IsLiteral() const override { return false; }
+  [[nodiscard]] bool IsId() const override { return false; }
+  [[nodiscard]] bool IsLiteral() const override { return false; }
 
   void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
@@ -486,12 +498,12 @@ class ForInAST : public BaseAST {
   mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
 
   // getters
-  const std::string &id() const { return id_; }
-  const std::string &next_id() const { return next_id_; }
-  const std::string &last_id() const { return last_id_; }
-  const TypePtr &id_type() const { return id_type_; }
-  const ASTPtr &expr() const { return expr_; }
-  const ASTPtr &body() const { return body_; }
+  [[nodiscard]] const std::string &id() const { return id_; }
+  [[nodiscard]] const std::string &next_id() const { return next_id_; }
+  [[nodiscard]] const std::string &last_id() const { return last_id_; }
+  [[nodiscard]] const TypePtr &id_type() const { return id_type_; }
+  [[nodiscard]] const ASTPtr &expr() const { return expr_; }
+  [[nodiscard]] const ASTPtr &body() const { return body_; }
 
   // setters
   void set_next_id(const std::string &next_id) { next_id_ = next_id; }
@@ -509,10 +521,10 @@ class ForInAST : public BaseAST {
 // inline assembly
 class AsmAST : public BaseAST {
  public:
-  AsmAST(const std::string &asm_str) : asm_str_(asm_str) {}
+  explicit AsmAST(std::string asm_str) : asm_str_(std::move(asm_str)) {}
 
-  bool IsId() const override { return false; }
-  bool IsLiteral() const override { return false; }
+  [[nodiscard]] bool IsId() const override { return false; }
+  [[nodiscard]] bool IsLiteral() const override { return false; }
 
   void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
@@ -520,7 +532,7 @@ class AsmAST : public BaseAST {
   mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
 
   // getters
-  const std::string &asm_str() const { return asm_str_; }
+  [[nodiscard]] const std::string &asm_str() const { return asm_str_; }
 
  private:
   std::string asm_str_;
@@ -531,8 +543,8 @@ class ControlAST : public BaseAST {
  public:
   ControlAST(Keyword type, ASTPtr expr) : type_(type), expr_(std::move(expr)) {}
 
-  bool IsId() const override { return false; }
-  bool IsLiteral() const override { return false; }
+  [[nodiscard]] bool IsId() const override { return false; }
+  [[nodiscard]] bool IsLiteral() const override { return false; }
 
   void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
@@ -540,8 +552,8 @@ class ControlAST : public BaseAST {
   mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
 
   // getters
-  Keyword type() const { return type_; }
-  const ASTPtr &expr() const { return expr_; }
+  [[nodiscard]] Keyword type() const { return type_; }
+  [[nodiscard]] const ASTPtr &expr() const { return expr_; }
 
   // setters
   void set_expr(ASTPtr expr) { expr_ = std::move(expr); }
@@ -557,8 +569,8 @@ class WhenElemAST : public BaseAST {
   WhenElemAST(ASTPtrList conds, ASTPtr body)
       : conds_(std::move(conds)), body_(std::move(body)) {}
 
-  bool IsId() const override { return false; }
-  bool IsLiteral() const override { return false; }
+  [[nodiscard]] bool IsId() const override { return false; }
+  [[nodiscard]] bool IsLiteral() const override { return false; }
 
   void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
@@ -566,8 +578,8 @@ class WhenElemAST : public BaseAST {
   mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
 
   // getters
-  const ASTPtrList &conds() const { return conds_; }
-  const ASTPtr &body() const { return body_; }
+  [[nodiscard]] const ASTPtrList &conds() const { return conds_; }
+  [[nodiscard]] const ASTPtr &body() const { return body_; }
 
   // setters
   void set_conds(ASTPtrList conds) { conds_ = std::move(conds); }
@@ -587,8 +599,8 @@ class BinaryAST : public BaseAST {
   BinaryAST(Operator op, ASTPtr lhs, ASTPtr rhs)
       : op_(op), lhs_(std::move(lhs)), rhs_(std::move(rhs)) {}
 
-  bool IsId() const override { return false; }
-  bool IsLiteral() const override { return false; }
+  [[nodiscard]] bool IsId() const override { return false; }
+  [[nodiscard]] bool IsLiteral() const override { return false; }
 
   void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
@@ -596,10 +608,12 @@ class BinaryAST : public BaseAST {
   mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
 
   // getters
-  Operator op() const { return op_; }
-  const std::optional<std::string> &op_func_id() const { return op_func_id_; }
-  const ASTPtr &lhs() const { return lhs_; }
-  const ASTPtr &rhs() const { return rhs_; }
+  [[nodiscard]] Operator op() const { return op_; }
+  [[nodiscard]] const std::optional<std::string> &op_func_id() const {
+    return op_func_id_;
+  }
+  [[nodiscard]] const ASTPtr &lhs() const { return lhs_; }
+  [[nodiscard]] const ASTPtr &rhs() const { return rhs_; }
 
   // setters
   void set_op_func_id(const std::string &id) { op_func_id_ = id; }
@@ -614,11 +628,11 @@ class BinaryAST : public BaseAST {
 
 class AccessAST : public BaseAST {
  public:
-  AccessAST(ASTPtr expr, const std::string &id)
-      : id_(id), expr_(std::move(expr)) {}
+  AccessAST(ASTPtr expr, std::string id)
+      : id_(std::move(id)), expr_(std::move(expr)) {}
 
-  bool IsId() const override { return false; }
-  bool IsLiteral() const override { return false; }
+  [[nodiscard]] bool IsId() const override { return false; }
+  [[nodiscard]] bool IsLiteral() const override { return false; }
 
   void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
@@ -626,8 +640,8 @@ class AccessAST : public BaseAST {
   mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
 
   // getters
-  const std::string &id() const { return id_; }
-  const ASTPtr &expr() const { return expr_; }
+  [[nodiscard]] const std::string &id() const { return id_; }
+  [[nodiscard]] const ASTPtr &expr() const { return expr_; }
 
  private:
   std::string id_;
@@ -640,8 +654,8 @@ class CastAST : public BaseAST {
   CastAST(ASTPtr expr, ASTPtr type)
       : expr_(std::move(expr)), type_(std::move(type)) {}
 
-  bool IsId() const override { return false; }
-  bool IsLiteral() const override { return expr_->IsLiteral(); }
+  [[nodiscard]] bool IsId() const override { return false; }
+  [[nodiscard]] bool IsLiteral() const override { return expr_->IsLiteral(); }
 
   void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
@@ -649,8 +663,8 @@ class CastAST : public BaseAST {
   mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
 
   // getters
-  const ASTPtr &expr() const { return expr_; }
-  const ASTPtr &type() const { return type_; }
+  [[nodiscard]] const ASTPtr &expr() const { return expr_; }
+  [[nodiscard]] const ASTPtr &type() const { return type_; }
 
   // setters
   void set_expr(ASTPtr expr) { expr_ = std::move(expr); }
@@ -662,12 +676,20 @@ class CastAST : public BaseAST {
 // unary expression
 class UnaryAST : public BaseAST {
  public:
-  enum class UnaryOp { Pos, Neg, LogicNot, Not, DeRef, AddrOf, SizeOf };
+  enum class UnaryOp : std::uint8_t {
+    Pos,
+    Neg,
+    LogicNot,
+    Not,
+    DeRef,
+    AddrOf,
+    SizeOf,
+  };
 
   UnaryAST(UnaryOp op, ASTPtr opr) : op_(op), opr_(std::move(opr)) {}
 
-  bool IsId() const override { return false; }
-  bool IsLiteral() const override { return false; }
+  [[nodiscard]] bool IsId() const override { return false; }
+  [[nodiscard]] bool IsLiteral() const override { return false; }
 
   void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
@@ -675,9 +697,11 @@ class UnaryAST : public BaseAST {
   mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
 
   // getters
-  UnaryOp op() const { return op_; }
-  const std::optional<std::string> &op_func_id() const { return op_func_id_; }
-  const ASTPtr &opr() const { return opr_; }
+  [[nodiscard]] UnaryOp op() const { return op_; }
+  [[nodiscard]] const std::optional<std::string> &op_func_id() const {
+    return op_func_id_;
+  }
+  [[nodiscard]] const ASTPtr &opr() const { return opr_; }
 
   // setters
   void set_op_func_id(const std::string &id) { op_func_id_ = id; }
@@ -695,8 +719,8 @@ class IndexAST : public BaseAST {
   IndexAST(ASTPtr expr, ASTPtr index)
       : expr_(std::move(expr)), index_(std::move(index)) {}
 
-  bool IsId() const override { return false; }
-  bool IsLiteral() const override { return false; }
+  [[nodiscard]] bool IsId() const override { return false; }
+  [[nodiscard]] bool IsLiteral() const override { return false; }
 
   void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
@@ -704,8 +728,8 @@ class IndexAST : public BaseAST {
   mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
 
   // getters
-  const ASTPtr &expr() const { return expr_; }
-  const ASTPtr &index() const { return index_; }
+  [[nodiscard]] const ASTPtr &expr() const { return expr_; }
+  [[nodiscard]] const ASTPtr &index() const { return index_; }
 
   // setter
   void set_index(ASTPtr index) { index_ = std::move(index); }
@@ -720,8 +744,8 @@ class FunCallAST : public BaseAST {
   FunCallAST(ASTPtr expr, ASTPtrList args)
       : expr_(std::move(expr)), args_(std::move(args)) {}
 
-  bool IsId() const override { return false; }
-  bool IsLiteral() const override { return false; }
+  [[nodiscard]] bool IsId() const override { return false; }
+  [[nodiscard]] bool IsLiteral() const override { return false; }
 
   void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
@@ -729,8 +753,8 @@ class FunCallAST : public BaseAST {
   mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
 
   // getters
-  const ASTPtr &expr() const { return expr_; }
-  const ASTPtrList &args() const { return args_; }
+  [[nodiscard]] const ASTPtr &expr() const { return expr_; }
+  [[nodiscard]] const ASTPtrList &args() const { return args_; }
 
   // setters
   void set_args(ASTPtrList args) { args_ = std::move(args); }
@@ -744,10 +768,10 @@ class FunCallAST : public BaseAST {
 // integer number literal
 class IntAST : public BaseAST {
  public:
-  IntAST(std::uint64_t value) : value_(value) {}
+  explicit IntAST(std::uint64_t value) : value_(value) {}
 
-  bool IsId() const override { return false; }
-  bool IsLiteral() const override { return true; }
+  [[nodiscard]] bool IsId() const override { return false; }
+  [[nodiscard]] bool IsLiteral() const override { return true; }
 
   void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
@@ -755,7 +779,7 @@ class IntAST : public BaseAST {
   mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
 
   // getters
-  std::uint64_t value() const { return value_; }
+  [[nodiscard]] std::uint64_t value() const { return value_; }
 
  private:
   std::uint64_t value_;
@@ -764,10 +788,10 @@ class IntAST : public BaseAST {
 // floating point number literal
 class FloatAST : public BaseAST {
  public:
-  FloatAST(double value) : value_(value) {}
+  explicit FloatAST(double value) : value_(value) {}
 
-  bool IsId() const override { return false; }
-  bool IsLiteral() const override { return true; }
+  [[nodiscard]] bool IsId() const override { return false; }
+  [[nodiscard]] bool IsLiteral() const override { return true; }
 
   void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
@@ -775,7 +799,7 @@ class FloatAST : public BaseAST {
   mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
 
   // getters
-  double value() const { return value_; }
+  [[nodiscard]] double value() const { return value_; }
 
  private:
   double value_;
@@ -784,10 +808,10 @@ class FloatAST : public BaseAST {
 // character literal
 class CharAST : public BaseAST {
  public:
-  CharAST(std::uint8_t c) : c_(c) {}
+  explicit CharAST(std::uint8_t c) : c_(c) {}
 
-  bool IsId() const override { return false; }
-  bool IsLiteral() const override { return true; }
+  [[nodiscard]] bool IsId() const override { return false; }
+  [[nodiscard]] bool IsLiteral() const override { return true; }
 
   void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
@@ -795,7 +819,7 @@ class CharAST : public BaseAST {
   mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
 
   // getters
-  std::uint8_t c() const { return c_; }
+  [[nodiscard]] std::uint8_t c() const { return c_; }
 
  private:
   std::uint8_t c_;
@@ -804,10 +828,10 @@ class CharAST : public BaseAST {
 // identifier
 class IdAST : public BaseAST {
  public:
-  IdAST(const std::string &id) : id_(id) {}
+  explicit IdAST(std::string id) : id_(std::move(id)) {}
 
-  bool IsId() const override { return true; }
-  bool IsLiteral() const override { return false; }
+  [[nodiscard]] bool IsId() const override { return true; }
+  [[nodiscard]] bool IsLiteral() const override { return false; }
 
   void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
@@ -815,7 +839,7 @@ class IdAST : public BaseAST {
   mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
 
   // getters
-  const std::string &id() const { return id_; }
+  [[nodiscard]] const std::string &id() const { return id_; }
 
   // setters
   void set_id(const std::string &id) { id_ = id; }
@@ -827,10 +851,10 @@ class IdAST : public BaseAST {
 // string literal
 class StringAST : public BaseAST {
  public:
-  StringAST(const std::string &str) : str_(str) {}
+  explicit StringAST(std::string str) : str_(std::move(str)) {}
 
-  bool IsId() const override { return false; }
-  bool IsLiteral() const override { return true; }
+  [[nodiscard]] bool IsId() const override { return false; }
+  [[nodiscard]] bool IsLiteral() const override { return true; }
 
   void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
@@ -838,7 +862,7 @@ class StringAST : public BaseAST {
   mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
 
   // getters
-  const std::string &str() const { return str_; }
+  [[nodiscard]] const std::string &str() const { return str_; }
 
  private:
   std::string str_;
@@ -847,10 +871,10 @@ class StringAST : public BaseAST {
 // boolean literal
 class BoolAST : public BaseAST {
  public:
-  BoolAST(bool value) : value_(value) {}
+  explicit BoolAST(bool value) : value_(value) {}
 
-  bool IsId() const override { return false; }
-  bool IsLiteral() const override { return true; }
+  [[nodiscard]] bool IsId() const override { return false; }
+  [[nodiscard]] bool IsLiteral() const override { return true; }
 
   void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
@@ -858,7 +882,7 @@ class BoolAST : public BaseAST {
   mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
 
   // getters
-  bool value() const { return value_; }
+  [[nodiscard]] bool value() const { return value_; }
 
  private:
   bool value_;
@@ -867,10 +891,10 @@ class BoolAST : public BaseAST {
 // null pointer literal
 class NullAST : public BaseAST {
  public:
-  NullAST() {}
+  NullAST() = default;
 
-  bool IsId() const override { return false; }
-  bool IsLiteral() const override { return true; }
+  [[nodiscard]] bool IsId() const override { return false; }
+  [[nodiscard]] bool IsLiteral() const override { return true; }
 
   void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
@@ -884,8 +908,8 @@ class ValInitAST : public BaseAST {
   ValInitAST(ASTPtr type, ASTPtrList elems)
       : type_(std::move(type)), elems_(std::move(elems)) {}
 
-  bool IsId() const override { return false; }
-  bool IsLiteral() const override {
+  [[nodiscard]] bool IsId() const override { return false; }
+  [[nodiscard]] bool IsLiteral() const override {
     for (const auto &i : elems_) {
       if (!i->IsLiteral()) return false;
     }
@@ -898,8 +922,8 @@ class ValInitAST : public BaseAST {
   mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
 
   // getters
-  const ASTPtr &type() const { return type_; }
-  const ASTPtrList &elems() const { return elems_; }
+  [[nodiscard]] const ASTPtr &type() const { return type_; }
+  [[nodiscard]] const ASTPtrList &elems() const { return elems_; }
 
   // setters
   void set_elems(ASTPtrList elems) { elems_ = std::move(elems); }
@@ -915,10 +939,10 @@ class ValInitAST : public BaseAST {
 // primitive type
 class PrimTypeAST : public BaseAST {
  public:
-  PrimTypeAST(Keyword type) : type_(type) {}
+  explicit PrimTypeAST(Keyword type) : type_(type) {}
 
-  bool IsId() const override { return false; }
-  bool IsLiteral() const override { return false; }
+  [[nodiscard]] bool IsId() const override { return false; }
+  [[nodiscard]] bool IsLiteral() const override { return false; }
 
   void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
@@ -926,7 +950,7 @@ class PrimTypeAST : public BaseAST {
   mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
 
   // getter
-  Keyword type() const { return type_; }
+  [[nodiscard]] Keyword type() const { return type_; }
 
  private:
   Keyword type_;
@@ -935,10 +959,10 @@ class PrimTypeAST : public BaseAST {
 // user defined type
 class UserTypeAST : public BaseAST {
  public:
-  UserTypeAST(const std::string &id) : id_(id) {}
+  explicit UserTypeAST(std::string id) : id_(std::move(id)) {}
 
-  bool IsId() const override { return false; }
-  bool IsLiteral() const override { return false; }
+  [[nodiscard]] bool IsId() const override { return false; }
+  [[nodiscard]] bool IsLiteral() const override { return false; }
 
   void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
@@ -946,7 +970,7 @@ class UserTypeAST : public BaseAST {
   mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
 
   // getters
-  const std::string &id() const { return id_; }
+  [[nodiscard]] const std::string &id() const { return id_; }
 
  private:
   std::string id_;
@@ -958,8 +982,8 @@ class FuncTypeAST : public BaseAST {
   FuncTypeAST(ASTPtrList args, ASTPtr ret)
       : args_(std::move(args)), ret_(std::move(ret)) {}
 
-  bool IsId() const override { return false; }
-  bool IsLiteral() const override { return false; }
+  [[nodiscard]] bool IsId() const override { return false; }
+  [[nodiscard]] bool IsLiteral() const override { return false; }
 
   void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
@@ -967,8 +991,8 @@ class FuncTypeAST : public BaseAST {
   mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
 
   // getters
-  const ASTPtrList &args() const { return args_; }
-  const ASTPtr &ret() const { return ret_; }
+  [[nodiscard]] const ASTPtrList &args() const { return args_; }
+  [[nodiscard]] const ASTPtr &ret() const { return ret_; }
 
  private:
   ASTPtrList args_;
@@ -978,10 +1002,10 @@ class FuncTypeAST : public BaseAST {
 // volatiled type
 class VolaTypeAST : public BaseAST {
  public:
-  VolaTypeAST(ASTPtr type) : type_(std::move(type)) {}
+  explicit VolaTypeAST(ASTPtr type) : type_(std::move(type)) {}
 
-  bool IsId() const override { return false; }
-  bool IsLiteral() const override { return false; }
+  [[nodiscard]] bool IsId() const override { return false; }
+  [[nodiscard]] bool IsLiteral() const override { return false; }
 
   void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
@@ -989,7 +1013,7 @@ class VolaTypeAST : public BaseAST {
   mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
 
   // getters
-  const ASTPtr &type() const { return type_; }
+  [[nodiscard]] const ASTPtr &type() const { return type_; }
 
  private:
   ASTPtr type_;
@@ -1001,8 +1025,8 @@ class ArrayTypeAST : public BaseAST {
   ArrayTypeAST(ASTPtr base, ASTPtr expr)
       : base_(std::move(base)), expr_(std::move(expr)) {}
 
-  bool IsId() const override { return false; }
-  bool IsLiteral() const override { return false; }
+  [[nodiscard]] bool IsId() const override { return false; }
+  [[nodiscard]] bool IsLiteral() const override { return false; }
 
   void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
@@ -1010,8 +1034,8 @@ class ArrayTypeAST : public BaseAST {
   mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
 
   // getters
-  const ASTPtr &base() const { return base_; }
-  const ASTPtr &expr() const { return expr_; }
+  [[nodiscard]] const ASTPtr &base() const { return base_; }
+  [[nodiscard]] const ASTPtr &expr() const { return expr_; }
 
   // setter
   void set_expr(ASTPtr expr) { expr_ = std::move(expr); }
@@ -1026,8 +1050,8 @@ class PointerTypeAST : public BaseAST {
   PointerTypeAST(bool is_var, ASTPtr base)
       : is_var_(is_var), base_(std::move(base)) {}
 
-  bool IsId() const override { return false; }
-  bool IsLiteral() const override { return false; }
+  [[nodiscard]] bool IsId() const override { return false; }
+  [[nodiscard]] bool IsLiteral() const override { return false; }
 
   void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
@@ -1035,8 +1059,8 @@ class PointerTypeAST : public BaseAST {
   mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
 
   // getters
-  bool is_var() const { return is_var_; }
-  const ASTPtr &base() const { return base_; }
+  [[nodiscard]] bool is_var() const { return is_var_; }
+  [[nodiscard]] const ASTPtr &base() const { return base_; }
 
  private:
   bool is_var_;
@@ -1049,8 +1073,8 @@ class RefTypeAST : public BaseAST {
   RefTypeAST(bool is_var, ASTPtr base)
       : is_var_(is_var), base_(std::move(base)) {}
 
-  bool IsId() const override { return false; }
-  bool IsLiteral() const override { return false; }
+  [[nodiscard]] bool IsId() const override { return false; }
+  [[nodiscard]] bool IsLiteral() const override { return false; }
 
   void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(front::Analyzer &ana) override;
@@ -1058,8 +1082,8 @@ class RefTypeAST : public BaseAST {
   mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
 
   // getters
-  bool is_var() const { return is_var_; }
-  const ASTPtr &base() const { return base_; }
+  [[nodiscard]] bool is_var() const { return is_var_; }
+  [[nodiscard]] const ASTPtr &base() const { return base_; }
 
  private:
   bool is_var_;
