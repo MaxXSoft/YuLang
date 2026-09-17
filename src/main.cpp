@@ -1,6 +1,6 @@
 #include <cstdint>
-#include <cstdio>
 #include <cstdlib>
+#include <exception>
 #include <fstream>
 #include <iostream>
 #include <string>
@@ -9,6 +9,7 @@
 #include "back/codegen.h"
 #include "back/llvm/generator.h"
 #include "back/llvm/objgen.h"
+#include "define/panic.h"
 #include "define/type.h"
 #include "front/analyzer.h"
 #include "front/eval.h"
@@ -261,8 +262,6 @@ int main(int argc, const char *argv[]) try {
     return 1;
   }
   return 0;
-} catch (...) {
-  std::fputs("error: compilation failed with an unexpected exception\n",
-             stderr);
-  return 1;
+} catch (const std::exception &e) {
+  PANIC(e.what());
 }

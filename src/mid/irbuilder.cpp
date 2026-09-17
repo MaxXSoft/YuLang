@@ -1,8 +1,8 @@
 #include "mid/irbuilder.h"
 
 #include <cassert>
-#include <stdexcept>
 
+#include "define/panic.h"
 #include "mid/ssa.h"
 
 namespace yulang::mid {
@@ -572,7 +572,7 @@ SSAPtr IRBuilder::GenerateOn(AccessAST &ast) {
   assert(expr_ty->IsStruct());
   // get index of element
   auto index = expr_ty->GetElemIndex(ast.id());
-  if (!index) throw std::logic_error("unknown structure member");
+  if (!index) PANIC("unknown structure member");
   // generate access operation
   const auto elem_ty = expr_ty->GetElem(index.value());
   const auto index_val = module_.GetInt32(index.value());

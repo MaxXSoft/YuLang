@@ -2,9 +2,9 @@
 
 #include <cassert>
 #include <cstdint>
-#include <stdexcept>
 #include <vector>
 
+#include "define/panic.h"
 #include "llvm/IR/Constant.h"
 #include "llvm/IR/DerivedTypes.h"
 #include "llvm/IR/GlobalValue.h"
@@ -183,7 +183,7 @@ llvm::Type *LLVMGen::GenerateStructType(const TypePtr &type) {
 llvm::Type *LLVMGen::GenerateFuncType(const TypePtr &type) {
   // get return type
   auto args = type->GetArgsType();
-  if (!args) throw std::logic_error("expected function argument types");
+  if (!args) PANIC("expected function argument types");
   auto *ret = GenerateType(type->GetReturnType(args.value()));
   // get type of parameters
   std::vector<llvm::Type *> params;
@@ -483,7 +483,7 @@ void LLVMGen::GenerateOn(FunctionSSA &ssa) {
   SetVal(ssa, func);
   // create argument attributes
   const auto maybe_args = ssa.org_type()->GetArgsType();
-  if (!maybe_args) throw std::logic_error("expected function argument types");
+  if (!maybe_args) PANIC("expected function argument types");
   const auto &args = *maybe_args;
   unsigned int arg_index = 0;
   for (const auto &i : args) {

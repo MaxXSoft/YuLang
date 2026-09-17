@@ -2,8 +2,9 @@
 
 #include <cassert>
 #include <cmath>
-#include <stdexcept>
 #include <type_traits>
+
+#include "define/panic.h"
 
 namespace yulang::front {
 
@@ -291,7 +292,7 @@ std::optional<EvalNum> Evaluator::EvalOn(EnumElemAST &ast) {
   // add to environment
   if (enum_values_->GetItem(last_enum_name_, false)) {
     auto &val = enum_values_->AccessItem(last_enum_name_);
-    if (!val) throw std::logic_error("missing enumeration environment");
+    if (!val) PANIC("missing enumeration environment");
     val->insert({ast.id(), last_enum_val_++});
   } else {
     enum_values_->AddItem(last_enum_name_, {{{ast.id(), last_enum_val_++}}});

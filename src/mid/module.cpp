@@ -1,6 +1,6 @@
 #include "mid/module.h"
 
-#include <stdexcept>
+#include "define/panic.h"
 
 namespace yulang::mid {
 
@@ -104,7 +104,7 @@ BlockPtr Module::CreateBlock(const UserPtr &parent, const std::string &name) {
 SSAPtr Module::CreateArgRef(const SSAPtr &func, std::size_t index) {
   // assertion for type checking
   const auto maybe_args = func->type()->GetArgsType();
-  if (!maybe_args) throw std::logic_error("expected function argument types");
+  if (!maybe_args) PANIC("expected function argument types");
   const auto &args_type = *maybe_args;
   assert(index < args_type.size());
   // create argument reference
@@ -166,7 +166,7 @@ SSAPtr Module::CreateReturn(const SSAPtr &value) {
   // get proper return value
   const auto &func_type = insert_block_->parent()->org_type();
   const auto args = func_type->GetArgsType();
-  if (!args) throw std::logic_error("expected function argument types");
+  if (!args) PANIC("expected function argument types");
   const auto ret_type = func_type->GetReturnType(*args);
   auto val = value;
   if (ret_type->IsReference()) {
@@ -232,7 +232,7 @@ SSAPtr Module::CreateCall(const SSAPtr &callee, const SSAPtrList &args) {
   // assertion for type checking
   assert(callee->type()->IsFunction());
   const auto maybe_args = callee->org_type()->GetArgsType();
-  if (!maybe_args) throw std::logic_error("expected function argument types");
+  if (!maybe_args) PANIC("expected function argument types");
   const auto &args_type = *maybe_args;
   assert(args_type.size() == args.size());
   // get argument list
