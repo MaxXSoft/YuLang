@@ -97,6 +97,7 @@ void Lexer::SkipSpaces() {
 }
 
 Token Lexer::HandleId() {
+  const auto location = logger_;
   // read string
   std::string id;
   do {
@@ -106,6 +107,21 @@ Token Lexer::HandleId() {
   // check if string is keyword
   int const index = GetIndex(id.c_str(), kKeywords);
   if (index < 0) {
+    if (!expanding_) {
+      // handle macro expansion
+      const auto it = defines_.find(id);
+      if (it != defines_.end()) {
+        saved_last_char_ = last_char_;
+        saved_logger_ = logger_;
+        logger_ = location;
+        expansion_.str(it->second);
+        expansion_.clear();
+        expansion_ >> std::noskipws;
+        expanding_ = true;
+        last_char_ = ' ';
+        return NextToken();
+      }
+    }
     id_val_ = id;
     return Token::Id;
   }
@@ -212,6 +228,7 @@ Token Lexer::HandleString() {
 Token Lexer::HandleChar() {
   // start with quotes
   NextChar();
+  if (IsEOL()) return LogError("expected character literal");
   if (last_char_ == '\\') {
     // read escape char
     int const ret = ReadEscape();
@@ -222,7 +239,7 @@ Token Lexer::HandleChar() {
   }
   NextChar();
   // check & eat right quotation mark
-  if (last_char_ != '\'') return LogError("expected \"'\"");
+  if (IsEOL() || last_char_ != '\'') return LogError("expected \"'\"");
   NextChar();
   return Token::Char;
 }
@@ -272,13 +289,13 @@ Token Lexer::HandleBlockComment() {
   NextChar();
   // read until there is '*/' in stream
   bool star = false;
-  while (!in_.eof() && (!star || last_char_ != '/')) {
+  while (!input().eof() && (!star || last_char_ != '/')) {
     star = last_char_ == '*';
-    if (IsEOL() && !in_.eof()) logger_.IncreaseLinePos();
+    if (IsEOL() && !input().eof() && !expanding_) logger_.IncreaseLinePos();
     NextChar();
   }
   // check unclosed block comment
-  if (in_.eof()) return LogError("comment unclosed at EOF");
+  if (input().eof()) return LogError("comment unclosed at EOF");
   // eat '/'
   NextChar();
   return NextToken();
@@ -286,13 +303,16 @@ Token Lexer::HandleBlockComment() {
 
 Token Lexer::HandleEOL() {
   do {
-    logger_.IncreaseLinePos();
+    if (!expanding_) logger_.IncreaseLinePos();
     NextChar();
-  } while (IsEOL() && !in_.eof());
+  } while (IsEOL() && !input().eof());
   return Token::EOL;
 }
 
 void Lexer::Reset() {
+  expanding_ = false;
+  expansion_.str("");
+  expansion_.clear();
   logger_.Reset();
   last_char_ = ' ';
   // check if file was opened
@@ -307,10 +327,16 @@ void Lexer::Reset() {
 }
 
 Token Lexer::NextToken() {
-  // end of file
-  if (in_.eof()) return Token::End;
-  // skip spaces
-  SkipSpaces();
+  // A replacement ends at a token boundary, never in NextChar(). Restore
+  // the already-read source character without joining tokens across streams.
+  for (;;) {
+    SkipSpaces();
+    if (!input().eof()) break;
+    if (!expanding_) return Token::End;
+    expanding_ = false;
+    last_char_ = saved_last_char_;
+    logger_ = saved_logger_;
+  }
   // id or keyword
   if (std::isalpha(last_char_) || last_char_ == '_') return HandleId();
   // number

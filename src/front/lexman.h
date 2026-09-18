@@ -5,6 +5,7 @@
 #include <map>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 #include <vector>
 
@@ -26,6 +27,8 @@ class LexerManager {
 
   // add a path as a new import path, returns true if success
   bool AddImportPath(int priority, const std::filesystem::path &path);
+  // Add NAME=TEXT before loading source files; the last definition wins.
+  bool AddDefine(std::string_view definition);
   // load source file, returns true if success
   bool LoadSource(const std::filesystem::path &file);
   // get module path by module name, returns empty path if not found
@@ -47,6 +50,7 @@ class LexerManager {
   }
 
  private:
+  MacroDefinitions defines_;
   // import path records
   std::multimap<int, std::filesystem::path, std::greater<>> imp_paths_;
   // all loaded lexers

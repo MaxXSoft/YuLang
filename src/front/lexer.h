@@ -5,8 +5,10 @@
 #include <cstdint>
 #include <fstream>
 #include <memory>
+#include <sstream>
 #include <string>
 #include <string_view>
+#include <unordered_map>
 #include <utility>
 
 #include "define/token.h"
@@ -14,10 +16,12 @@
 
 namespace yulang::front {
 
+using MacroDefinitions = std::unordered_map<std::string, std::string>;
+
 class Lexer {
  public:
-  explicit Lexer(std::string_view file)
-      : in_(std::string(file)), logger_(file) {
+  Lexer(std::string_view file, const MacroDefinitions &defines)
+      : in_(std::string(file)), defines_(defines), logger_(file) {
     Reset();
   }
 
@@ -46,11 +50,18 @@ class Lexer {
   char other_val() const { return other_val_; }
 
  private:
-  void NextChar() {
-    in_ >> last_char_;
-    logger_.IncreaseColPos();
+  // Returns the current input stream.
+  std::istream &input() {
+    if (expanding_) return expansion_;
+    return in_;
   }
-  bool IsEOL() { return in_.eof() || last_char_ == '\n' || last_char_ == '\r'; }
+  void NextChar() {
+    input() >> last_char_;
+    if (!expanding_) logger_.IncreaseColPos();
+  }
+  bool IsEOL() {
+    return input().eof() || last_char_ == '\n' || last_char_ == '\r';
+  }
 
   // print error message and return Token::Error
   define::Token LogError(std::string_view message);
@@ -70,6 +81,13 @@ class Lexer {
   define::Token HandleEOL();
 
   std::ifstream in_;
+  // This service is bound to its owner for its entire lifetime.
+  // NOLINTNEXTLINE(cppcoreguidelines-avoid-const-or-ref-data-members)
+  const MacroDefinitions &defines_;
+  std::istringstream expansion_;
+  bool expanding_ = false;
+  char saved_last_char_{};
+  Logger saved_logger_;
   Logger logger_;
   char last_char_{};
   // value of token

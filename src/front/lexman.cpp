@@ -1,5 +1,6 @@
 #include "front/lexman.h"
 
+#include <cctype>
 #include <utility>
 
 namespace yulang::front {
@@ -13,6 +14,19 @@ inline Path GetFullPath(const Path &p) {
 }
 
 }  // namespace
+
+bool LexerManager::AddDefine(std::string_view definition) {
+  const auto equal = definition.find('=');
+  if (equal == std::string_view::npos || equal == 0) return false;
+  const auto name = definition.substr(0, equal);
+  // Check if the name is a valid identifier.
+  for (std::size_t i = 0; i < name.size(); ++i) {
+    const auto c = static_cast<unsigned char>(name[i]);
+    if (c != '_' && !(i ? std::isalnum(c) : std::isalpha(c))) return false;
+  }
+  defines_[std::string(name)] = std::string(definition.substr(equal + 1));
+  return true;
+}
 
 bool LexerManager::AddImportPath(int priority, const Path &path) {
   // return false if is invalid path
@@ -68,7 +82,7 @@ std::optional<LexerPtr> LexerManager::SetLexer(const Path &file) {
     if (!std::filesystem::exists(file)) return {};
     // not found, create lexer
     auto [it, _] = lexers_.insert({file_str, nullptr});
-    lexer_ = std::make_shared<Lexer>(it->first);
+    lexer_ = std::make_shared<Lexer>(it->first, defines_);
     it->second = lexer_;
     dependencies_.push_back(std::filesystem::absolute(file).lexically_normal());
   } else {

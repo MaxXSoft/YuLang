@@ -62,6 +62,8 @@ xstl::ArgParser GetArgp() {
                        "write dependencies to <output>.d (requires -o)", false);
   argp.AddOption<vector<string>>("import-path", "I",
                                  "add directory to import search path", {});
+  argp.AddOption<vector<string>>("define", "D",
+                                 "define a single-level macro (NAME=TEXT)", {});
   argp.AddOption<int>("opt-level", "O", "set optimization level (0-3)", 0);
   argp.AddOption<bool>("verbose", "V", "use verbose output", false);
   argp.AddOption<bool>("warn-error", "Werror", "treat warnings as errors",
@@ -98,7 +100,7 @@ void ParseArgument(xstl::ArgParser &argp, int argc, const char **argv) {
   }
 }
 
-OutputType GetOutputType(xstl::ArgParser const &argp) {
+OutputType GetOutputType(const xstl::ArgParser &argp) {
   const auto out_type = argp.GetValue<string>("out-type");
   int type_index = 0;
   for (const auto &i : {"ast", "yuir", "llvm", "asm", "obj"}) {
@@ -110,7 +112,7 @@ OutputType GetOutputType(xstl::ArgParser const &argp) {
   return OutputType::AST;
 }
 
-int GetOptLevel(xstl::ArgParser const &argp) {
+int GetOptLevel(const xstl::ArgParser &argp) {
   const auto opt_level = argp.GetValue<int>("opt-level");
   if (opt_level < 0 || opt_level > 3) {
     Logger::LogRawError("invalid optimization level");
@@ -119,7 +121,16 @@ int GetOptLevel(xstl::ArgParser const &argp) {
   return opt_level;
 }
 
-void InitializeTarget(xstl::ArgParser const &argp, ObjectGen &obj_gen,
+void AddDefines(const xstl::ArgParser &argp, LexerManager &lex_man) {
+  for (const auto &definition : argp.GetValue<vector<string>>("define")) {
+    if (!lex_man.AddDefine(definition)) {
+      Logger::LogRawError("invalid macro definition (expected NAME=TEXT)");
+      std::exit(1);
+    }
+  }
+}
+
+void InitializeTarget(const xstl::ArgParser &argp, ObjectGen &obj_gen,
                       int opt) {
   obj_gen.set_opt_level(opt);
   obj_gen.set_cpu(argp.GetValue<string>("cpu"));
@@ -240,6 +251,7 @@ int main(int argc, const char *argv[]) try {
 
   // initialize compilation system
   LexerManager lex_man;
+  AddDefines(argp, lex_man);
   IRBuilder irb;
   LLVMGen gen(argp.GetValue<string>("input"));
 

@@ -198,6 +198,14 @@ build/yuc -I lib -O 2 -ot obj examples/reduce.yu -o build/reduce.o
 clang build/reduce.o -Lbuild -lyu -o build/reduce
 ```
 
+Use `-D NAME=TEXT` (or `--define NAME=TEXT`) to replace ordinary identifiers in the main source and imported files:
+
+```sh
+build/yuc main.yu -D SIZE=16 -D VALUE='1 + 2' -o main.o
+```
+
+Definitions require `=`; an empty replacement is allowed, and the last definition of a name wins. Names must use identifier syntax. Keywords, strings, and comments are not replaced. Replacement text is lexed normally but is not expanded again, so `-D A=B -D B=1` replaces `A` with `B`. Replacement tokens stay separate from surrounding source tokens; no parentheses are added. Use a separate argument after `-D`, not `-DNAME=TEXT`.
+
 Use clang-format for C/C++ formatting. CI checks all tracked project source and header files against `.clang-format`; submodules and build artifacts are excluded. To run the same check locally (use `clang-format-23` if your system installs the tool under a versioned name):
 
 ```sh
