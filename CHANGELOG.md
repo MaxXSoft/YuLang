@@ -7,7 +7,12 @@ All notable changes to the YuLang compiler will be documented in this file.
 ### Added
 
 * C/C++ static analysis checks with clang-tidy 23.
-* Support `-MD` command line option for generating Makefile dependencies.
+* Supported `-MD` command line option for generating Makefile dependencies.
+* Supported `-D` command line option for definiting simple macros.
+
+### Changed
+
+* Updated submodule XSTL.
 
 ## 0.0.8 - 2026-09-12
 
