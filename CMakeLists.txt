@@ -101,6 +101,9 @@ if(BUILD_TESTING)
   add_test(NAME front.dependencies
     COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/front/test_dependencies.py
             --yuc $<TARGET_FILE:yuc> --work-dir ${CMAKE_BINARY_DIR}/test)
+  add_test(NAME front.macros
+    COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/front/test_macros.py
+            --yuc $<TARGET_FILE:yuc> --work-dir ${CMAKE_BINARY_DIR}/test)
   foreach(level RANGE 0 3)
     add_test(NAME llvm_backend.O${level}
       COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/backend/test_backend.py
