@@ -35,3 +35,12 @@ extern def runtime_unsigned_lt(a: u64, b: u64): bool { a < b }
 extern def runtime_signed_float(a: i32): f64 { a as f64 }
 extern def runtime_signed_div(a: i32): i32 { a / 2 }
 extern def runtime_unsigned_wrap(a: u32): u64 { (a + (1 as u32)) as u64 }
+
+// Initializers are evaluated during both semantic analysis and AST folding.
+let global_float32 = 1.5 as f32
+extern def repeated_float32(): f32 { global_float32 }
+extern def local_float32(): f32 { let value = 2.5 as f32; value }
+extern def arithmetic_float32(): f32 {
+  let value = (1.5 as f32) + (2.0 as f32)
+  value
+}

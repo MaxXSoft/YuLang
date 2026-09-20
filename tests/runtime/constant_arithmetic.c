@@ -8,6 +8,7 @@ extern bool unsigned_lt(void), unsigned_le(void), unsigned_gt(void),
     unsigned_ge(void);
 extern double signed_float64(void), unsigned_float64(void);
 extern float signed_float32(void);
+extern float repeated_float32(void), local_float32(void), arithmetic_float32(void);
 extern int32_t narrow_signed_div(void), narrow_signed_mod(void),
     narrow_signed_shift(void);
 extern bool narrow_signed_less(void), unsigned8_wrap(void);
@@ -71,5 +72,8 @@ int main(void) {
   CHECK(signed_float64() == runtime_signed_float(-1));
   CHECK(narrow_signed_div() == runtime_signed_div(-1));
   CHECK(unsigned32_wrap() == runtime_unsigned_wrap(UINT32_MAX));
+  CHECK(repeated_float32() == 1.5F);
+  CHECK(local_float32() == 2.5F);
+  CHECK(arithmetic_float32() == 3.5F);
   return failures ? 1 : 0;
 }

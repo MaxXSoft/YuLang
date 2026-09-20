@@ -667,7 +667,10 @@ std::optional<EvalNum> Evaluator::EvalOn(IntAST &ast) {
   return ast.value();
 }
 
-std::optional<EvalNum> Evaluator::EvalOn(FloatAST &ast) { return ast.value(); }
+std::optional<EvalNum> Evaluator::EvalOn(FloatAST &ast) {
+  if (ast.ast_type()->GetSize() == 4) return static_cast<float>(ast.value());
+  return ast.value();
+}
 
 std::optional<EvalNum> Evaluator::EvalOn(CharAST &ast) {
   return static_cast<std::uint64_t>(ast.c());
