@@ -106,6 +106,12 @@ if(BUILD_TESTING)
   endfunction()
   add_runtime_regression(bool_casts)
   add_runtime_regression(constant_arithmetic)
+  add_runtime_regression(struct_layout)
+  add_test(NAME runtime.layout_targets
+    COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/runtime/test_layout_targets.py
+            --yuc $<TARGET_FILE:yuc> --llvm-bin ${LLVM_TOOLS_BINARY_DIR}
+            --work-dir ${CMAKE_BINARY_DIR}/test)
+  set_tests_properties(runtime.layout_targets PROPERTIES TIMEOUT 120 LABELS runtime)
   add_executable(test_usedef tests/mid/test_usedef.cpp src/mid/usedef.cpp)
   target_compile_features(test_usedef PRIVATE cxx_std_17)
   target_include_directories(test_usedef PRIVATE src 3rdparty/xstl)

@@ -26,7 +26,6 @@ using std::cerr;
 using std::cout;
 using std::string;
 using std::vector;
-using yulang::define::BaseType;
 using yulang::front::Analyzer;
 using yulang::front::Evaluator;
 using yulang::front::LexerManager;
@@ -258,7 +257,7 @@ int main(int argc, const char *argv[]) try {
   // initialize target
   ObjectGen obj_gen(gen.module());
   InitializeTarget(argp, obj_gen, opt_level);
-  BaseType::set_ptr_size(obj_gen.GetPointerSize());
+  obj_gen.ConfigureTypeLayout();
 
   // compile source to target code
   if (!CompileToIR(argp, os, lex_man, irb, out_type)) {

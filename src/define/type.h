@@ -1,6 +1,7 @@
 #ifndef YULANG_DEFINE_TYPE_H_
 #define YULANG_DEFINE_TYPE_H_
 
+#include <array>
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
@@ -109,13 +110,16 @@ class BaseType {
 
   // setters
   static void set_ptr_size(std::size_t ptr_size) { ptr_size_ = ptr_size; }
+  static void set_ptr_align(std::size_t ptr_align) { ptr_align_ = ptr_align; }
 
   // getters
   static std::size_t ptr_size() { return ptr_size_; }
+  static std::size_t ptr_align() { return ptr_align_; }
 
  private:
   // size of pointer
   static std::size_t ptr_size_;
+  static std::size_t ptr_align_;
 };
 
 class PrimType : public BaseType {
@@ -139,6 +143,10 @@ class PrimType : public BaseType {
   };
 
   PrimType(Type type, bool is_right) : type_(type), is_right_(is_right) {}
+
+  static void SetAlignment(Type type, std::size_t alignment) {
+    alignments_[static_cast<std::size_t>(type)] = alignment;
+  }
 
   [[nodiscard]] bool IsRightValue() const override { return is_right_; }
   [[nodiscard]] bool IsVoid() const override { return type_ == Type::Void; }
@@ -168,7 +176,11 @@ class PrimType : public BaseType {
   [[nodiscard]] bool IsArray() const override { return false; }
   [[nodiscard]] bool IsPointer() const override { return false; }
   [[nodiscard]] bool IsReference() const override { return false; }
-  [[nodiscard]] std::size_t GetAlignSize() const override { return GetSize(); }
+  [[nodiscard]] std::size_t GetAlignSize() const override {
+    if (IsNull()) return ptr_align();
+    const auto alignment = alignments_[static_cast<std::size_t>(type_)];
+    return alignment ? alignment : GetSize();
+  }
   [[nodiscard]] std::optional<TypePtrList> GetArgsType() const override {
     return {};
   }
@@ -201,6 +213,8 @@ class PrimType : public BaseType {
   [[nodiscard]] TypePtr GetValueType(bool is_right) const override;
 
  private:
+  static std::array<std::size_t, static_cast<std::size_t>(Type::Float64) + 1>
+      alignments_;
   Type type_;
   bool is_right_;
 };
@@ -433,7 +447,9 @@ class FuncType : public BaseType {
   [[nodiscard]] bool IsArray() const override { return false; }
   [[nodiscard]] bool IsPointer() const override { return false; }
   [[nodiscard]] bool IsReference() const override { return false; }
-  [[nodiscard]] std::size_t GetAlignSize() const override { return GetSize(); }
+  [[nodiscard]] std::size_t GetAlignSize() const override {
+    return ptr_align();
+  }
   [[nodiscard]] std::optional<TypePtrList> GetArgsType() const override {
     return args_;
   }
@@ -621,7 +637,9 @@ class PointerType : public BaseType {
   [[nodiscard]] bool IsArray() const override { return false; }
   [[nodiscard]] bool IsPointer() const override { return true; }
   [[nodiscard]] bool IsReference() const override { return false; }
-  [[nodiscard]] std::size_t GetAlignSize() const override { return GetSize(); }
+  [[nodiscard]] std::size_t GetAlignSize() const override {
+    return ptr_align();
+  }
   [[nodiscard]] std::optional<TypePtrList> GetArgsType() const override {
     return {};
   }

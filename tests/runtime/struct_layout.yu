@@ -1,0 +1,21 @@
+struct Padded { first: u8, wide: u64, last: u8 }
+struct Nested { first: u8, value: Padded, last: u16 }
+struct Arrays { first: u8, values: Padded[2], last: u8 }
+struct Empty {}
+
+extern def padded_size(): usize { sizeof Padded }
+extern def nested_size(): usize { sizeof Nested }
+extern def arrays_size(): usize { sizeof Arrays }
+extern def empty_size(): usize { sizeof Empty }
+extern def padded_stride(): usize {
+  var values: Padded[2]
+  (&values[1] as usize) - (&values[0] as usize)
+}
+extern def nested_stride(): usize {
+  var values: Nested[2]
+  (&values[1] as usize) - (&values[0] as usize)
+}
+extern def arrays_stride(): usize {
+  var values: Arrays[2]
+  (&values[1] as usize) - (&values[0] as usize)
+}

@@ -27,6 +27,8 @@ class ObjectGen {
   bool GenerateObject(const std::string &file);
   // get pointer size of current target
   [[nodiscard]] std::size_t GetPointerSize() const;
+  // Configure language type alignment from the selected target's ABI.
+  void ConfigureTypeLayout() const;
 
   // setters
   void set_opt_level(std::size_t opt_level) { opt_level_ = opt_level; }

@@ -6,6 +6,7 @@
 #include <optional>
 #include <system_error>
 
+#include "define/type.h"
 #include "front/logger.h"
 #include "llvm/IR/LegacyPassManager.h"
 #include "llvm/MC/TargetRegistry.h"
@@ -128,6 +129,30 @@ bool ObjectGen::GenerateObject(const std::string &file) {
 
 std::size_t ObjectGen::GetPointerSize() const {
   return module_->getDataLayout().getPointerSize();
+}
+
+void ObjectGen::ConfigureTypeLayout() const {
+  using define::BaseType;
+  using define::PrimType;
+  using Type = PrimType::Type;
+  const auto &layout = module_->getDataLayout();
+  auto &context = module_->getContext();
+  BaseType::set_ptr_size(GetPointerSize());
+  BaseType::set_ptr_align(layout.getPointerABIAlignment(0).value());
+  for (const auto type : {Type::Int8, Type::Int16, Type::Int32, Type::Int64,
+                          Type::UInt8, Type::UInt16, Type::UInt32, Type::UInt64,
+                          Type::ISize, Type::USize, Type::Bool}) {
+    const PrimType primitive(type, false);
+    const auto bits = type == Type::Bool ? 1 : primitive.GetSize() * 8;
+    auto *llvm_type = llvm::IntegerType::get(context, bits);
+    PrimType::SetAlignment(type, layout.getABITypeAlign(llvm_type).value());
+  }
+  PrimType::SetAlignment(
+      Type::Float32,
+      layout.getABITypeAlign(llvm::Type::getFloatTy(context)).value());
+  PrimType::SetAlignment(
+      Type::Float64,
+      layout.getABITypeAlign(llvm::Type::getDoubleTy(context)).value());
 }
 
 }  // namespace yulang::back::ll

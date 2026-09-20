@@ -25,6 +25,9 @@ std::stack<std::pair<const void *, TypePtr>> trivial_types;
 
 // definition of static member variables in 'BaseType'
 std::size_t BaseType::ptr_size_ = sizeof(void *);
+std::size_t BaseType::ptr_align_ = alignof(void *);
+std::array<std::size_t, static_cast<std::size_t>(PrimType::Type::Float64) + 1>
+    PrimType::alignments_{};
 
 bool PrimType::CanAccept(const TypePtr &type) const {
   if (is_right_ || IsVoid() || IsNull()) return false;
@@ -125,12 +128,13 @@ void StructType::CalcSize() {
   std::size_t sum = 0;
   std::size_t max_base_size = 1;
   for (const auto &[_, t] : elems_) {
-    sum += t->GetSize();
-    // update 'max_base_size'
     const auto base_size = t->GetAlignSize();
+    // Each field starts at its own alignment, including nested aggregates.
+    sum += (base_size - sum % base_size) % base_size;
+    sum += t->GetSize();
     max_base_size = std::max(base_size, max_base_size);
   }
-  size_ = (((sum - 1) / max_base_size) + 1) * max_base_size;
+  size_ = sum + (max_base_size - sum % max_base_size) % max_base_size;
   base_size_ = max_base_size;
 }
 
