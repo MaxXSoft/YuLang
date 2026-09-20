@@ -18,7 +18,7 @@ extern bool pointer_to_bool(const uint8_t *);
 extern int32_t literal_true(void);
 extern bool literal_two(void);
 
-int main(void) {
+static void check_boolean_source(void) {
   assert(bool_to_i32(true) == literal_true());
   for (int value = 0; value <= 1; ++value) {
     assert(bool_to_i8(value) == value);
@@ -28,6 +28,9 @@ int main(void) {
     assert(bool_to_f32(value) == value);
     assert(bool_to_f64(value) == value);
   }
+}
+
+static void check_boolean_destination(void) {
   for (int value = -128; value <= 127; ++value) {
     assert(i8_to_bool(value) == (value != 0));
   }
@@ -46,5 +49,10 @@ int main(void) {
   assert(!pointer_to_bool(0));
   assert(pointer_to_bool(bytes));
   assert(pointer_to_bool(bytes + 1));
+}
+
+int main(void) {
+  check_boolean_source();
+  check_boolean_destination();
   return 0;
 }

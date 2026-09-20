@@ -139,9 +139,19 @@ void ObjectGen::ConfigureTypeLayout() const {
   auto &context = module_->getContext();
   BaseType::set_ptr_size(GetPointerSize());
   BaseType::set_ptr_align(layout.getPointerABIAlignment(0).value());
-  for (const auto type : {Type::Int8, Type::Int16, Type::Int32, Type::Int64,
-                          Type::UInt8, Type::UInt16, Type::UInt32, Type::UInt64,
-                          Type::ISize, Type::USize, Type::Bool}) {
+  for (const auto type : {
+           Type::Int8,
+           Type::Int16,
+           Type::Int32,
+           Type::Int64,
+           Type::UInt8,
+           Type::UInt16,
+           Type::UInt32,
+           Type::UInt64,
+           Type::ISize,
+           Type::USize,
+           Type::Bool,
+       }) {
     const PrimType primitive(type, false);
     const auto bits = type == Type::Bool ? 1 : primitive.GetSize() * 8;
     auto *llvm_type = llvm::IntegerType::get(context, bits);

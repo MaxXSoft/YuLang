@@ -198,6 +198,10 @@ the native C headers and runtime.
 
 Use `ctest --test-dir build -L examples` to run only examples, `-L backend` for backend tests, or `-R example.io_test` to select one test.
 
+Use `-L runtime` for the compiler and standard-library regressions. These
+compare native Yu results with C checks at O0 and O2, check volatile access
+counts, and compare structure sizes with LLVM layouts on available targets.
+
 For example, to compile and link a Yu program:
 
 ```sh
@@ -226,16 +230,16 @@ For static analysis, use clang-tidy 23 and a CMake compilation database:
 cmake -S . -B build -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 clang-tidy --verify-config
 run-clang-tidy -p build -j 4
-clang-tidy tests/backend/check_zeros.c -- -std=c11
+clang-tidy tests/backend/check_zeros.c tests/runtime/*.c -- -std=c11
 ```
 
-The last command checks the C helper that the backend tests compile separately. With Homebrew LLVM on macOS, put its `bin` directory on `PATH` and pass the SDK explicitly when the compilation database does not specify one:
+The last command checks the C helpers that the Python tests compile separately. With Homebrew LLVM on macOS, put its `bin` directory on `PATH` and pass the SDK explicitly when the compilation database does not specify one:
 
 ```sh
 export PATH="$(brew --prefix llvm)/bin:$PATH"
 run-clang-tidy -p build -j 4 \
   -extra-arg=-isysroot -extra-arg="$(xcrun --show-sdk-path)"
-clang-tidy tests/backend/check_zeros.c -- -std=c11 \
+clang-tidy tests/backend/check_zeros.c tests/runtime/*.c -- -std=c11 \
   -isysroot "$(xcrun --show-sdk-path)"
 ```
 

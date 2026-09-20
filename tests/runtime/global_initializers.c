@@ -3,6 +3,8 @@
 
 static int trace;
 
+// Called by the separately compiled Yu fixture through its C ABI.
+// NOLINTNEXTLINE(misc-use-internal-linkage)
 int tick(int value) {
   trace = trace * 10 + value;
   return value;

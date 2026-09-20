@@ -8,7 +8,8 @@ extern bool unsigned_lt(void), unsigned_le(void), unsigned_gt(void),
     unsigned_ge(void);
 extern double signed_float64(void), unsigned_float64(void);
 extern float signed_float32(void);
-extern float repeated_float32(void), local_float32(void), arithmetic_float32(void);
+extern float repeated_float32(void), local_float32(void),
+    arithmetic_float32(void);
 extern int32_t narrow_signed_div(void), narrow_signed_mod(void),
     narrow_signed_shift(void);
 extern bool narrow_signed_less(void), unsigned8_wrap(void);
@@ -27,13 +28,13 @@ extern int32_t runtime_signed_div(int32_t);
 extern uint64_t runtime_unsigned_wrap(uint32_t);
 
 static int failures;
-#define CHECK(expr)                           \
-  do {                                        \
-    if (!(expr)) {                            \
-      fprintf(stderr, "failed: %s\n", #expr); \
-      ++failures;                             \
-    }                                         \
-  } while (0)
+static void check(int condition, const char *expression) {
+  if (!condition) {
+    fprintf(stderr, "failed: %s\n", expression);
+    ++failures;
+  }
+}
+#define CHECK(expr) check((expr), #expr)
 
 int main(void) {
   CHECK(float_lt());
@@ -47,7 +48,7 @@ int main(void) {
   CHECK(unsigned_gt());
   CHECK(unsigned_ge());
   CHECK(signed_float64() == -1.0);
-  CHECK(signed_float32() == -7.0f);
+  CHECK(signed_float32() == -7.0F);
   CHECK(unsigned_float64() == 0x1p63);
   CHECK(narrow_signed_div() == 0);
   CHECK(narrow_signed_mod() == -1);

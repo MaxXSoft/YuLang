@@ -7,6 +7,7 @@ extern int32_t when_match_before_unknown(void), when_first_match(void);
 extern int32_t when_unselected_effect(void), when_nested(void);
 extern void when_empty_match(void);
 static int effects, conditions, condition_value, failures;
+extern int32_t when_effect(void), when_condition(void);
 int32_t when_effect(void) {
   ++effects;
   return 8;
@@ -15,13 +16,14 @@ int32_t when_condition(void) {
   ++conditions;
   return condition_value;
 }
-#define CHECK(expr)                           \
-  do {                                        \
-    if (!(expr)) {                            \
-      fprintf(stderr, "failed: %s\n", #expr); \
-      ++failures;                             \
-    }                                         \
-  } while (0)
+static void check(int condition, const char *expression) {
+  if (!condition) {
+    fprintf(stderr, "failed: %s\n", expression);
+    ++failures;
+  }
+}
+#define CHECK(expr) check((expr), #expr)
+
 int main(void) {
   CHECK(when_selected() == 8);
   CHECK(effects == 1);

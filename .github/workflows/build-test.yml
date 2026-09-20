@@ -64,8 +64,8 @@ jobs:
         clang-tidy-23 --verify-config
         run-clang-tidy-23 -clang-tidy-binary clang-tidy-23 \
           -p "${{runner.workspace}}/build" -j 2
-        # This helper is compiled by the Python backend test, outside CMake.
-        clang-tidy-23 tests/backend/check_zeros.c -- -std=c11
+        # Native regression helpers are compiled by Python, outside CMake.
+        clang-tidy-23 tests/backend/check_zeros.c tests/runtime/*.c -- -std=c11
 
     - name: Build
       working-directory: ${{runner.workspace}}/build

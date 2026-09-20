@@ -7,15 +7,17 @@ extern int32_t shadow_reference(void), shadow_initializer(void),
     nested_constant(void);
 extern int32_t nested_then_outer(void), outer_constant(void), shadow_loop(void);
 extern uintptr_t local_array_size(void), outer_array_size(void);
+extern int32_t scope_input(void);
 int32_t scope_input(void) { return 9; }
 static int failures;
-#define CHECK(expr)                           \
-  do {                                        \
-    if (!(expr)) {                            \
-      fprintf(stderr, "failed: %s\n", #expr); \
-      ++failures;                             \
-    }                                         \
-  } while (0)
+static void check(int condition, const char *expression) {
+  if (!condition) {
+    fprintf(stderr, "failed: %s\n", expression);
+    ++failures;
+  }
+}
+#define CHECK(expr) check((expr), #expr)
+
 int main(void) {
   CHECK(shadow_parameter(42) == 42);
   CHECK(shadow_parameter_init(42) == 43);

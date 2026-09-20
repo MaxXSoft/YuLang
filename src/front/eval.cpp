@@ -168,6 +168,22 @@ inline std::uint64_t CastToType(std::uint64_t num, const TypePtr &type) {
   return num;
 }
 
+// Floating payloads have at most double precision; power-of-two bounds are
+// exact.
+inline std::optional<std::uint64_t> FloatToInteger(double value,
+                                                   const TypePtr &type) {
+  const auto truncated = std::trunc(value);
+  const auto bits = static_cast<int>(type->GetSize() * 8);
+  const auto upper = std::ldexp(1.0, bits - !type->IsUnsigned());
+  const auto lower = type->IsUnsigned() ? 0.0 : -upper;
+  // Do not execute an undefined host float-to-integer conversion.
+  if (!std::isfinite(truncated) || truncated < lower || truncated >= upper) {
+    return {};
+  }
+  if (type->IsUnsigned()) return static_cast<std::uint64_t>(truncated);
+  return static_cast<std::uint64_t>(static_cast<std::int64_t>(truncated));
+}
+
 // Source signedness is needed because integer EvalNum payloads are unsigned.
 inline std::optional<EvalNum> CastToType(const EvalNum &num,
                                          const TypePtr &source,
@@ -178,25 +194,13 @@ inline std::optional<EvalNum> CastToType(const EvalNum &num,
         using T = decltype(arg);
         if (type->IsBool()) return static_cast<std::uint64_t>(!!arg);
         if (type->IsInteger()) {
-          std::uint64_t value;
           if constexpr (std::is_same_v<T, std::uint64_t>) {
-            value = arg;
+            return CastToType(arg, type);
           } else {
-            // Do not execute an undefined host float-to-integer conversion.
-            const auto truncated = std::trunc(static_cast<long double>(arg));
-            const auto bits = type->GetSize() * 8;
-            const auto upper = std::ldexp(1.0L, bits - !type->IsUnsigned());
-            const auto lower = type->IsUnsigned() ? 0.0L : -upper;
-            if (!std::isfinite(truncated) || truncated < lower ||
-                truncated >= upper) {
-              return {};
-            }
-            value = type->IsUnsigned()
-                        ? static_cast<std::uint64_t>(truncated)
-                        : static_cast<std::uint64_t>(
-                              static_cast<std::int64_t>(truncated));
+            const auto value = FloatToInteger(arg, type);
+            if (!value) return {};
+            return CastToType(*value, type);
           }
-          return CastToType(value, type);
         }
         if constexpr (std::is_same_v<T, std::uint64_t>) {
           if (!source->IsUnsigned()) {
