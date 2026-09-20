@@ -182,10 +182,10 @@ def hash(this: HashMap var&, key: u32): usize {
   (this.__hash_func)(this, key) % this.__table.size
 }
 
-// rehash when table is full, otherwise do nothing
+// rehash when the number of pairs reaches the bucket count
 // returns true if rehash is performed
 def rehash(this: HashMap var&): bool {
-  if this.__table.occupied == this.__table.size {
+  if this.__size >= this.__table.size {
     // allocate new table
     let size = this.__table.size * 2 as usize
     var table = newTable(size)
