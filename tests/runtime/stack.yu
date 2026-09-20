@@ -1,0 +1,28 @@
+import stack
+
+extern def check_stack(): i32 {
+  var stack = newStack()
+  var count = 1
+  while count <= 100 {
+    stack.push(count as usize as u8 var*)
+    if stack.top() as usize != count as usize { return 1 }
+    count += 1
+  }
+  while count > 1 {
+    count -= 1
+    if stack.top() as usize != count as usize { return 2 }
+    if stack.pop() as usize != count as usize { return 3 }
+  }
+  if !stack.empty() { return 4 }
+  count = 1
+  while count <= 65 {
+    stack.push(count as usize as u8 var*)
+    count += 1
+  }
+  stack.clear()
+  if !stack.empty() { return 5 }
+  stack.push(7 as usize as u8 var*)
+  if stack.pop() as usize != 7 as usize || !stack.empty() { return 6 }
+  stack.del()
+  0
+}

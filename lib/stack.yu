@@ -28,9 +28,7 @@ def empty(this: __StackFrame var*): bool {
 }
 
 def push(this: __StackFrame var*): __StackFrame var* {
-  let frame = newStackFrame((*this).next)
-  (*this).next = frame
-  frame
+  newStackFrame(this)
 }
 
 def pop(this: __StackFrame var*): __StackFrame var* {
@@ -80,7 +78,7 @@ public def push(this: Stack var&, data: u8 var*) {
   this.__sp += 1 as usize
   if this.__sp == STACK_FRAME_LEN {
     this.__frames = this.__frames.push()
-    this.__sp == 0 as usize
+    this.__sp = 0 as usize
   }
 }
 
