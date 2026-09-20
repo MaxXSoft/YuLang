@@ -61,7 +61,8 @@ extern declare truncf: (f32): f32
 extern declare trunc: (f64): f64
 extern declare roundf: (f32): f32
 extern declare round: (f64): f64
-extern declare lroundf: (f32): i32
-extern declare lround: (f64): i32
+// C long follows the pointer-sized Unix ABI used by these bindings.
+extern declare lroundf: (f32): isize
+extern declare lround: (f64): isize
 extern declare llroundf: (f32): i64
 extern declare llround: (f64): i64

@@ -1,0 +1,8 @@
+import sys.stdlib
+import sys.math
+
+extern def store_time(destination: isize var*): isize { time(destination) }
+extern def parse_long(text: u8*): isize { strtol(text, null as u8* var*, 10) }
+extern def parse_ulong(text: u8*): usize { strtoul(text, null as u8* var*, 10) }
+extern def round_long(value: f64): isize { lround(value) }
+extern def round_float_long(value: f32): isize { lroundf(value) }

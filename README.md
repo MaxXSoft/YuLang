@@ -189,6 +189,13 @@ ctest --test-dir build --output-on-failure -j
 
 ## Test and Check
 
+The `lib/sys` C bindings require a Unix ABI where `long`, `unsigned long`,
+and `time_t` have pointer width, as on 64-bit Linux and macOS. Targets with
+LLP64 or 32-bit time64 ABIs need matching target-specific declarations;
+`-tt` selects the machine target, but does not infer libc typedefs or time64
+symbol redirection. The `runtime.libc_abi` test checks the bindings against
+the native C headers and runtime.
+
 Use `ctest --test-dir build -L examples` to run only examples, `-L backend` for backend tests, or `-R example.io_test` to select one test.
 
 For example, to compile and link a Yu program:
