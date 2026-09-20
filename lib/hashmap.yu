@@ -127,16 +127,16 @@ def insert(this: __KvPairTable var&, index: usize,
   this.insert(index, pair)
 }
 
-// get value by key
-def get(this: __KvPairTable&, index: usize, key: u32): u8 var* {
+// Find the node independently of its value, which may be null.
+def find(this: __KvPairTable&, index: usize, key: u32): __KeyValue* {
   var cur = this.table[index]
   while cur != null as __KeyValue var* {
     if (*cur).key == key {
-      return (*cur).value
+      return cur
     }
     cur = (*cur).next
   }
-  null as u8 var*
+  null as __KeyValue*
 }
 
 // remove value by key
@@ -229,10 +229,10 @@ inline def empty(this: HashMap&): bool {
   this.__size == 0 as usize
 }
 
-// insert key value pair to hash map
+// Insert a new key, including null values; never replace an existing key.
 public def insert(this: HashMap var&, key: u32, value: u8 var*): bool {
   var hash_val = this.hash(key)
-  if this.__table.get(hash_val, key) == null as u8 var* {
+  if this.__table.find(hash_val, key) == null as __KeyValue* {
     if this.rehash() {
       hash_val = this.hash(key)
     }
@@ -245,10 +245,12 @@ public def insert(this: HashMap var&, key: u32, value: u8 var*): bool {
   }
 }
 
-// get value by key
+// Return the value, or null if the key is absent or stores a null value.
 public def get(this: HashMap var&, key: u32): u8 var* {
   let hash_val = this.hash(key)
-  this.__table.get(hash_val, key)
+  let pair = this.__table.find(hash_val, key)
+  if pair == null as __KeyValue* { null as u8 var* }
+  else { pair.value() }
 }
 
 // remove value by key

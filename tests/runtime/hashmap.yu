@@ -1,6 +1,86 @@
 import hashmap
 
+// Keep every key in one chain even after rehashing.
+def collisionHasher(map: HashMap var&, key: u32): usize {
+  0 as usize
+}
+
+def expectedValue(key: u32): u8 var* {
+  if key % 2 as u32 == 0 as u32 { null as u8 var* }
+  else { (key + 1 as u32) as usize as u8 var* }
+}
+
+def checkNullValues(): i32 {
+  var map = newHashMap(collisionHasher)
+  var i = 0 as u32
+  while i < 32 as u32 {
+    if !map.insert(i, expectedValue(i)) { return 10 }
+    i += 1 as u32
+  }
+  let capacity = map.__table.size
+  i = 0 as u32
+  while i < 32 as u32 {
+    // Reject replacement with either a null or a non-null value, including
+    // null-valued keys in the middle and at the end of the collision chain.
+    if map.insert(i, 999 as usize as u8 var*) { return 11 }
+    if map.insert(i, null as u8 var*) { return 12 }
+    if map.get(i) != expectedValue(i) { return 13 }
+    i += 1 as u32
+  }
+  if map.size() != 32 as usize || map.__table.size != capacity { return 14 }
+  // Force rehashes while preserving null and non-null values in the chain.
+  while i < 97 as u32 {
+    if !map.insert(i, expectedValue(i)) { return 15 }
+    i += 1 as u32
+  }
+  if map.__table.size <= capacity { return 16 }
+  let grown_capacity = map.__table.size
+  i = 0 as u32
+  while i < 97 as u32 {
+    if map.get(i) != expectedValue(i) { return 17 }
+    if map.insert(i, 999 as usize as u8 var*) { return 18 }
+    i += 1 as u32
+  }
+  if map.size() != 97 as usize || map.__table.size != grown_capacity { return 19 }
+  var seen = 0
+  for pair in map.iter() {
+    if pair.key() >= 97 as u32 || pair.value() != expectedValue(pair.key()) {
+      return 20
+    }
+    seen += 1
+  }
+  if seen != 97 { return 21 }
+  // Remove null-valued keys at different positions after rehashing.
+  let removed = [u32[3]] {96 as u32, 48 as u32, 0 as u32}
+  var index = 0
+  while index < 3 {
+    let key = removed[index]
+    if !map.remove(key) || map.remove(key) { return 22 }
+    if map.get(key) != null as u8 var* { return 23 }
+    index += 1
+  }
+  if map.size() != 94 as usize { return 24 }
+  if !map.insert(0 as u32, null as u8 var*) { return 25 }
+  if map.insert(0 as u32, 999 as usize as u8 var*) { return 26 }
+  if !map.remove(0 as u32) || !map.insert(0 as u32, 999 as usize as u8 var*) {
+    return 27
+  }
+  if map.get(0 as u32) != 999 as usize as u8 var* { return 28 }
+  map.clear()
+  let empty_iter = map.iter()
+  if !map.empty() || !empty_iter.last() { return 29 }
+  if map.remove(0 as u32) { return 30 }
+  if !map.insert(0 as u32, null as u8 var*) || !map.remove(0 as u32) {
+    return 31
+  }
+  if !map.empty() || map.__table.occupied != 0 as usize { return 32 }
+  map.del()
+  0
+}
+
 extern def check_hashmap(): i32 {
+  let null_result = checkNullValues()
+  if null_result != 0 { return null_result }
   var map = newHashMap(), i = 0
   while i < 1000 {
     if !map.insert((i * 32) as u32, (i + 1) as usize as u8 var*) {
