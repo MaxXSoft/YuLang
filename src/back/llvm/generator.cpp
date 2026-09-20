@@ -392,27 +392,21 @@ void LLVMGen::GenerateOn(CastSSA &ssa) {
   auto *type = GenerateType(dst);
   const auto src_kind = GetTypeKind(src);
   const auto dst_kind = GetTypeKind(dst);
-  if (src_kind == TypeKind::Int && dst_kind == TypeKind::Int) {
+  if (dst->IsBool()) {
+    // A boolean conversion tests the value, not its low bit. This also
+    // handles i8 (the same storage size as bool), pointers and NaNs.
+    auto *zero = llvm::Constant::getNullValue(val->getType());
+    ret = src_kind == TypeKind::Float ? builder_.CreateFCmpUNE(val, zero)
+                                      : builder_.CreateICmpNE(val, zero);
+  } else if (src_kind == TypeKind::Int && dst_kind == TypeKind::Int) {
     // int -> int
-    if (src->GetSize() < dst->GetSize()) {
-      ret = src->IsUnsigned() ? builder_.CreateZExt(val, type)
-                              : builder_.CreateSExt(val, type);
-    } else if (src->GetSize() > dst->GetSize()) {
-      // the value should not be truncated if casted to a boolean
-      if (dst->IsBool()) {
-        auto *zero = builder_.getIntN(src->GetSize() * 8, 0);
-        ret = builder_.CreateICmpNE(val, zero);
-      } else {
-        ret = builder_.CreateTrunc(val, type);
-      }
-    } else {
-      // do nothing
-      ret = val;
-    }
+    // LLVM bool is i1 even though its storage occupies one byte.
+    ret =
+        builder_.CreateIntCast(val, type, !src->IsUnsigned() && !src->IsBool());
   } else if (src_kind == TypeKind::Int && dst_kind == TypeKind::Float) {
     // int -> float
-    ret = src->IsUnsigned() ? builder_.CreateUIToFP(val, type)
-                            : builder_.CreateSIToFP(val, type);
+    ret = src->IsUnsigned() || src->IsBool() ? builder_.CreateUIToFP(val, type)
+                                             : builder_.CreateSIToFP(val, type);
   } else if (src_kind == TypeKind::Float && dst_kind == TypeKind::Int) {
     // float -> int
     ret = dst->IsUnsigned() ? builder_.CreateFPToUI(val, type)

@@ -1,0 +1,14 @@
+extern def bool_to_i8(value: bool): i8 { value as i8 }
+extern def bool_to_u8(value: bool): u8 { value as u8 }
+extern def bool_to_i32(value: bool): i32 { value as i32 }
+extern def bool_to_u64(value: bool): u64 { value as u64 }
+extern def bool_to_f32(value: bool): f32 { value as f32 }
+extern def bool_to_f64(value: bool): f64 { value as f64 }
+extern def i8_to_bool(value: i8): bool { value as bool }
+extern def u8_to_bool(value: u8): bool { value as bool }
+extern def i32_to_bool(value: i32): bool { value as bool }
+extern def f32_to_bool(value: f32): bool { value as bool }
+extern def f64_to_bool(value: f64): bool { value as bool }
+extern def pointer_to_bool(value: u8*): bool { value as bool }
+extern def literal_true(): i32 { true as i32 }
+extern def literal_two(): bool { (2 as u8) as bool }

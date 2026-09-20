@@ -90,6 +90,21 @@ endforeach()
 include(CTest)
 if(BUILD_TESTING)
   find_package(Python3 REQUIRED COMPONENTS Interpreter)
+  function(add_runtime_regression name)
+    set(module_args)
+    foreach(module IN LISTS ARGN)
+      list(APPEND module_args --module "${CMAKE_SOURCE_DIR}/lib/${module}.yu")
+    endforeach()
+    add_test(NAME runtime.${name}
+      COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/runtime/run.py
+              --yuc $<TARGET_FILE:yuc> --cc ${CMAKE_C_COMPILER}
+              "--sdk=${CMAKE_OSX_SYSROOT}"
+              --source ${CMAKE_SOURCE_DIR}/tests/runtime/${name}.yu
+              --helper ${CMAKE_SOURCE_DIR}/tests/runtime/${name}.c
+              --work-dir ${CMAKE_BINARY_DIR}/test ${module_args})
+    set_tests_properties(runtime.${name} PROPERTIES TIMEOUT 120 LABELS runtime)
+  endfunction()
+  add_runtime_regression(bool_casts)
   add_executable(test_usedef tests/mid/test_usedef.cpp src/mid/usedef.cpp)
   target_compile_features(test_usedef PRIVATE cxx_std_17)
   target_include_directories(test_usedef PRIVATE src 3rdparty/xstl)
