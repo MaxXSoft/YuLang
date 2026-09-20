@@ -233,6 +233,8 @@ std::optional<EvalNum> Evaluator::EvalOn(VarLetDefAST &ast) {
 }
 
 std::optional<EvalNum> Evaluator::EvalOn(FunDefAST &ast) {
+  const auto env = NewEnv();
+  for (const auto &arg : ast.args()) arg->Eval(*this);
   if (ast.body()) ast.body()->Eval(*this);
   return {};
 }
@@ -260,19 +262,24 @@ std::optional<EvalNum> Evaluator::EvalOn(ImportAST & /*ast*/) {
 
 std::optional<EvalNum> Evaluator::EvalOn(VarLetElemAST &ast) {
   // do not evaluate reference
-  if (ast.ast_type()->IsReference()) return {};
+  if (ast.ast_type()->IsReference()) {
+    Mask(ast.id());
+    return {};
+  }
   // evaluate initial value
-  if (!ast.init()) return {};
-  auto val = ast.init()->Eval(*this);
+  auto val = ast.init() ? ast.init()->Eval(*this) : std::nullopt;
+  // Initializers still see the outer binding; the new binding then masks it.
+  values_->AccessItem(ast.id()) = ast.is_var() ? std::nullopt : val;
   if (!val) return {};
-  // add to environment
-  if (!ast.is_var()) values_->AddItem(ast.id(), val);
   // update AST
   ast.set_init(MakeAST(*val, ast.init()));
   return {};
 }
 
-std::optional<EvalNum> Evaluator::EvalOn(ArgElemAST & /*ast*/) { return {}; }
+std::optional<EvalNum> Evaluator::EvalOn(ArgElemAST &ast) {
+  Mask(ast.id());
+  return {};
+}
 
 std::optional<EvalNum> Evaluator::EvalOn(StructElemAST & /*ast*/) { return {}; }
 
@@ -382,9 +389,11 @@ std::optional<EvalNum> Evaluator::EvalOn(WhileAST &ast) {
 }
 
 std::optional<EvalNum> Evaluator::EvalOn(ForInAST &ast) {
+  const auto env = NewEnv();
   // evaluate expression
   auto expr = ast.expr()->Eval(*this);
   if (expr) ast.set_expr(MakeAST(*expr, ast.expr()));
+  Mask(ast.id());
   // evaluate body
   auto body = ast.body()->Eval(*this);
   if (body) ast.set_body(MakeAST(*body, ast.body()));

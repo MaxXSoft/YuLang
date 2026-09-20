@@ -106,6 +106,7 @@ if(BUILD_TESTING)
   endfunction()
   add_runtime_regression(bool_casts)
   add_runtime_regression(constant_arithmetic)
+  add_runtime_regression(constant_scopes)
   add_runtime_regression(struct_layout)
   add_runtime_regression(global_initializers)
   add_test(NAME runtime.layout_targets

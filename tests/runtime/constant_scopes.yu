@@ -1,0 +1,45 @@
+let scope_x = 7
+extern declare scope_input: (): i32
+
+extern def shadow_parameter(scope_x: i32): i32 { scope_x }
+extern def shadow_parameter_init(scope_x: i32): i32 { let y = scope_x + 1; y }
+extern def shadow_var(): i32 { var scope_x = 9; scope_x }
+extern def shadow_uninitialized(): i32 { var scope_x: i32; scope_x = 9; scope_x }
+extern def shadow_nonconstant(): i32 { let scope_x = scope_input(); scope_x }
+extern def shadow_reference(): i32 {
+  var value = 9
+  let scope_x: i32 var& = value
+  scope_x
+}
+extern def shadow_initializer(): i32 { let scope_x = scope_x + 1; scope_x }
+extern def nested_constant(): i32 {
+  let scope_x = 11
+  { let scope_x = 13; scope_x }
+  scope_x
+}
+extern def nested_then_outer(): i32 {
+  { let scope_x = 17; scope_x }
+  scope_x
+}
+extern def outer_constant(): i32 { scope_x }
+
+let array_length = 2
+extern def local_array_size(): usize {
+  let array_length = 3
+  var a: i32[array_length]
+  sizeof i32[array_length]
+}
+extern def outer_array_size(): usize { sizeof i32[array_length] }
+
+struct ScopeCounter { value: i32 }
+def next(counter: ScopeCounter var&): i32 {
+  let value = counter.value
+  counter.value += 1
+  value
+}
+def last(counter: ScopeCounter&): bool { counter.value >= 3 }
+extern def shadow_loop(): i32 {
+  var sum = 0
+  for scope_x in [ScopeCounter] {0} { sum += scope_x }
+  sum
+}

@@ -20,6 +20,10 @@ class Evaluator {
     enum_values_ = define::MakeEnumEnv();
   }
 
+  // Semantic analysis also evaluates initializers and array dimensions.
+  xstl::Guard NewEnv();
+  void Mask(const std::string &id) { values_->AccessItem(id) = std::nullopt; }
+
   std::optional<define::EvalNum> EvalOn(define::VarLetDefAST &ast);
   std::optional<define::EvalNum> EvalOn(define::FunDefAST &ast);
   static std::optional<define::EvalNum> EvalOn(define::DeclareAST &ast);
@@ -28,7 +32,7 @@ class Evaluator {
   std::optional<define::EvalNum> EvalOn(define::EnumAST &ast);
   static std::optional<define::EvalNum> EvalOn(define::ImportAST &ast);
   std::optional<define::EvalNum> EvalOn(define::VarLetElemAST &ast);
-  static std::optional<define::EvalNum> EvalOn(define::ArgElemAST &ast);
+  std::optional<define::EvalNum> EvalOn(define::ArgElemAST &ast);
   static std::optional<define::EvalNum> EvalOn(define::StructElemAST &ast);
   std::optional<define::EvalNum> EvalOn(define::EnumElemAST &ast);
   std::optional<define::EvalNum> EvalOn(define::BlockAST &ast);
@@ -62,9 +66,6 @@ class Evaluator {
   static std::optional<define::EvalNum> EvalOn(define::RefTypeAST &ast);
 
  private:
-  // switch to new environment
-  xstl::Guard NewEnv();
-
   // evaluated values
   define::EvalEnvPtr values_;
   // evaluated enumerations

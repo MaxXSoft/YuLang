@@ -147,8 +147,8 @@ std::optional<EvalNum> VarLetElemAST::Eval(Evaluator &eval) {
   return eval.EvalOn(*this);
 }
 
-std::optional<EvalNum> ArgElemAST::Eval(Evaluator & /*eval*/) {
-  return yulang::front::Evaluator::EvalOn(*this);
+std::optional<EvalNum> ArgElemAST::Eval(Evaluator &eval) {
+  return eval.EvalOn(*this);
 }
 
 std::optional<EvalNum> StructElemAST::Eval(Evaluator & /*eval*/) {

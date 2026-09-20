@@ -220,6 +220,7 @@ TypePtr Analyzer::AnalyzeOn(VarLetDefAST &ast) {
 TypePtr Analyzer::AnalyzeOn(FunDefAST &ast) {
   // get types of arguments
   const auto args_env = NewEnv();
+  const auto eval_env = eval_.NewEnv();
   TypePtrList args;
   for (const auto &i : ast.args()) {
     auto type = i->SemaAnalyze(*this);
@@ -478,6 +479,7 @@ TypePtr Analyzer::AnalyzeOn(ArgElemAST &ast) {
     type = std::make_shared<ConstType>(std::move(type));
   }
   symbols_->AddItem(ast.id(), type);
+  eval_.Mask(ast.id());
   return ast.set_ast_type(type);
 }
 
@@ -511,6 +513,7 @@ TypePtr Analyzer::AnalyzeOn(EnumElemAST &ast) {
 
 TypePtr Analyzer::AnalyzeOn(BlockAST &ast) {
   const auto env = NewEnv();
+  const auto eval_env = eval_.NewEnv();
   auto ret = MakeVoid();
   for (std::size_t i = 0; i < ast.stmts().size(); ++i) {
     auto type = ast.stmts()[i]->SemaAnalyze(*this);
@@ -593,6 +596,7 @@ TypePtr Analyzer::AnalyzeOn(WhileAST &ast) {
 
 TypePtr Analyzer::AnalyzeOn(ForInAST &ast) {
   const auto env = NewEnv();
+  const auto eval_env = eval_.NewEnv();
   // get type of expression
   auto expr = ast.expr()->SemaAnalyze(*this);
   if (!expr) return nullptr;
@@ -617,6 +621,7 @@ TypePtr Analyzer::AnalyzeOn(ForInAST &ast) {
     type = std::make_shared<ConstType>(std::move(type));
   }
   symbols_->AddItem(ast.id(), type);
+  eval_.Mask(ast.id());
   ast.set_id_type(type);
   // check body
   ++in_loop_;
