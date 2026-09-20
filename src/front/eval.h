@@ -75,6 +75,8 @@ class Evaluator {
   std::uint64_t last_enum_val_{};
   // used when evaluating 'when' statements
   std::optional<define::EvalNum> last_when_expr_;
+  // nullopt means an earlier condition may match or have side effects.
+  std::optional<bool> last_when_match_;
   // used when evaluating identifiers
   std::optional<std::string> last_id_;
 };

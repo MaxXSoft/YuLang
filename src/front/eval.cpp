@@ -356,7 +356,11 @@ std::optional<EvalNum> Evaluator::EvalOn(IfAST &ast) {
 
 std::optional<EvalNum> Evaluator::EvalOn(WhenAST &ast) {
   auto last = last_when_expr_;
-  const auto guard = xstl::Guard([this, &last] { last_when_expr_ = last; });
+  auto last_match = last_when_match_;
+  const auto guard = xstl::Guard([this, &last, &last_match] {
+    last_when_expr_ = last;
+    last_when_match_ = last_match;
+  });
   // evaluate expression
   last_when_expr_ = ast.expr()->Eval(*this);
   if (last_when_expr_) {
@@ -364,9 +368,18 @@ std::optional<EvalNum> Evaluator::EvalOn(WhenAST &ast) {
   }
   // evaluate elements
   std::optional<EvalNum> ret;
+  bool selection_known = true;
+  bool selected = false;
   for (const auto &i : ast.elems()) {
     const auto val = i->Eval(*this);
-    if (val) ret = val;
+    if (selection_known && !selected) {
+      if (!last_when_match_) {
+        selection_known = false;
+      } else if (*last_when_match_) {
+        selected = true;
+        ret = val;
+      }
+    }
   }
   // evaluate 'else' block
   auto else_val = ast.else_then() ? ast.else_then()->Eval(*this) : std::nullopt;
@@ -374,8 +387,10 @@ std::optional<EvalNum> Evaluator::EvalOn(WhenAST &ast) {
     ast.set_else_then(MakeAST(*else_val, ast.else_then()));
   }
   // return expression's value
-  if (!last_when_expr_) return {};
-  return ret ? ret : else_val;
+  if (!last_when_expr_ || !selection_known || ast.ast_type()->IsVoid()) {
+    return {};
+  }
+  return selected ? ret : else_val;
 }
 
 std::optional<EvalNum> Evaluator::EvalOn(WhileAST &ast) {
@@ -412,23 +427,27 @@ std::optional<EvalNum> Evaluator::EvalOn(ControlAST &ast) {
 }
 
 std::optional<EvalNum> Evaluator::EvalOn(WhenElemAST &ast) {
-  bool valid = false;
+  std::optional<bool> matched = false;
   // evaluate conditions
   for (std::size_t i = 0; i < ast.conds().size(); ++i) {
     auto val = ast.conds()[i]->Eval(*this);
     if (val) {
       // update condition
       ast.set_cond(i, MakeAST(*val, ast.conds()[i]));
-      // check if valid
-      if (last_when_expr_ && CheckEqual(*val, *last_when_expr_)) {
-        valid = true;
-      }
+    }
+    // Conditions are tested in order. An unknown condition before a match
+    // must remain in the program, even if a later condition matches.
+    if (matched && !*matched) {
+      matched = val && last_when_expr_
+                    ? std::optional<bool>(CheckEqual(*val, *last_when_expr_))
+                    : std::nullopt;
     }
   }
   // evaluate body
   auto body = ast.body()->Eval(*this);
   if (body) ast.set_body(MakeAST(*body, ast.body()));
-  return valid ? body : std::nullopt;
+  last_when_match_ = matched;
+  return matched && *matched ? body : std::nullopt;
 }
 
 // Keep the exhaustive type/operator dispatch together for semantic review.

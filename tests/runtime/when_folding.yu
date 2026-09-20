@@ -1,0 +1,33 @@
+extern declare when_effect: (): i32
+extern declare when_condition: (): i32
+
+extern def when_selected(): i32 {
+  when 1 { 1 { when_effect() } else { 2 } }
+}
+extern def when_runtime(n: i32): i32 {
+  when n { 1 { when_effect() } else { 2 } }
+}
+extern def when_unknown(n: i32): i32 {
+  when 1 { n { 3 } else { 2 } }
+}
+extern def when_unknown_before_match(): i32 {
+  when 1 { when_condition() { 3 } 1 { 4 } else { 2 } }
+}
+extern def when_unknown_in_list(): i32 {
+  when 1 { when_condition(), 1 { 3 } else { 2 } }
+}
+extern def when_match_before_unknown(): i32 {
+  when 1 { 1, when_condition() { 3 } else { 2 } }
+}
+extern def when_first_match(): i32 {
+  when 1 { 1 { 3 } 1 { 4 } else { 2 } }
+}
+extern def when_unselected_effect(): i32 {
+  when 1 { 0 { when_effect() } else { 2 } }
+}
+extern def when_nested(): i32 {
+  when 1 { 1 { when 2 { 2 { 5 } else { 6 } } } else { 7 } }
+}
+extern def when_empty_match() {
+  when 1 { 1 { when_effect(); } else {} }
+}
