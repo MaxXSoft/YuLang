@@ -1,0 +1,14 @@
+extern declare tick: (i32): i32
+
+var first: i32 = if tick(1) == 1 { tick(2) } else { tick(9) }
+var second: i32 = if tick(3) == 0 { tick(9) } else { tick(4) }
+var logical: bool = tick(5) == 5 && tick(6) == 6 || tick(9) == 9
+var later: i32 = tick(7)
+var block: i32 = {
+  let value = tick(8)
+  value + 1
+}
+
+extern def check_initializers(): bool {
+  first == 2 && second == 4 && logical && later == 7 && block == 9
+}

@@ -52,7 +52,7 @@ using UnaryOp = UnarySSA::Operator;
 
 void Module::SealGlobalCtor() {
   if (global_ctor_ && !is_ctor_sealed_) {
-    SetInsertPoint(ctor_entry_);
+    SetInsertPoint(ctor_tail_);
     CreateJump(ctor_exit_);
     is_ctor_sealed_ = true;
   }
@@ -62,7 +62,7 @@ void Module::Reset() {
   vars_.clear();
   funcs_.clear();
   global_ctor_ = nullptr;
-  ctor_entry_ = nullptr;
+  ctor_tail_ = nullptr;
   ctor_exit_ = nullptr;
   is_ctor_sealed_ = false;
   insert_block_ = nullptr;
@@ -544,6 +544,7 @@ xstl::Guard Module::SetContext(const Logger &logger) {
 xstl::Guard Module::EnterGlobalCtor() {
   // get current insert point
   const auto cur_block = insert_block_;
+  const auto cur_pos = insert_pos_;
   // initialize global function if it does not exist
   if (!global_ctor_) {
     // create function
@@ -551,16 +552,19 @@ xstl::Guard Module::EnterGlobalCtor() {
     const auto ty = std::make_shared<FuncType>(TypePtrList(), MakeVoid(), true);
     global_ctor_ = CreateFunction(link, "_$ctor", ty);
     // create basic blocks
-    ctor_entry_ = CreateBlock(global_ctor_, "entry");
+    ctor_tail_ = CreateBlock(global_ctor_, "entry");
     ctor_exit_ = CreateBlock(global_ctor_, "exit");
     SetInsertPoint(ctor_exit_);
     CreateReturn(nullptr);
     // mark as not sealed
     is_ctor_sealed_ = false;
   }
-  // switch to global function's body block
-  SetInsertPoint(ctor_entry_);
-  return xstl::Guard([this, cur_block] { SetInsertPoint(cur_block); });
+  // Continue after the previous initializer, which may have created a CFG.
+  SetInsertPoint(ctor_tail_);
+  return xstl::Guard([this, cur_block, cur_pos] {
+    ctor_tail_ = insert_block_;
+    SetInsertPoint(cur_block, cur_pos);
+  });
 }
 
 void Module::Dump(std::ostream &os) {

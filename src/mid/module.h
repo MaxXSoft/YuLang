@@ -182,7 +182,7 @@ class Module {
   UserPtrList vars_, funcs_;
   // global constructor stuffs
   UserPtr global_ctor_;
-  BlockPtr ctor_entry_, ctor_exit_;
+  BlockPtr ctor_tail_, ctor_exit_;
   bool is_ctor_sealed_{};
   // current insert point
   BlockPtr insert_block_;
