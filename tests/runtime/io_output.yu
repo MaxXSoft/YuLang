@@ -1,0 +1,13 @@
+import io
+
+extern def output_text() {
+  out <<< "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+}
+
+extern def output_integers() {
+  out <<< (-2147483647 - 1) <<< ' ' <<< 0 <<< ' ' <<< 2147483647
+}
+
+extern def output_empty() {
+  out <<< ""
+}

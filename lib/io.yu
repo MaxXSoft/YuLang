@@ -1,5 +1,6 @@
 import sys.unistd
 import sys.ctype
+import sys.string
 
 
 // definition of IO structure
@@ -14,9 +15,22 @@ public let err: IO = [IO] {FD_STDERR}
 /*
  * methods
  */
+// finish positive short writes, and stop if the descriptor cannot make progress
+def writeAll(this: IO&, data: u8*, size: usize) {
+  var cur = data, remaining = size
+  while remaining != 0 as usize {
+    let written = write(this.__fd, cur, remaining)
+    if written <= 0 as isize {
+      return
+    }
+    cur += written as usize
+    remaining -= written as usize
+  }
+}
+
 // put character to IO
 public def put(this: IO&, char: u8) {
-  write(this.__fd, &char, 1 as usize)
+  this.writeAll(&char, 1 as usize)
 }
 
 // get character from IO
@@ -32,11 +46,7 @@ public def get(this: IO&): u8 {
  */
 // write string to IO
 public def <<<(this: IO&, str: u8*): IO& {
-  var i = 0
-  while str[i] != '\0' {
-    this.put(str[i])
-    i += 1
-  }
+  this.writeAll(str, strlen(str))
   this
 }
 
@@ -60,7 +70,7 @@ public def <<<(this: IO&, uint: usize): IO& {
       n /= 10 as usize
     }
   }
-  write(this.__fd, digits as u8* + i, (20 - i) as usize)
+  this.writeAll(digits as u8* + i, (20 - i) as usize)
   this
 }
 
@@ -72,12 +82,12 @@ public def <<<(this: IO&, uint: u32): IO& {
 
 // write 32-bit signed integer to IO
 public def <<<(this: IO&, int: i32): IO& {
-  var n = int
-  if n < 0 {
+  var n = int as usize
+  if int < 0 {
     this.put('-')
-    n = -n
+    n = 0 as usize - n
   }
-  this <<< n as usize
+  this <<< n
   this
 }
 
