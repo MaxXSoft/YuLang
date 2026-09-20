@@ -37,7 +37,13 @@ class LoadSSA : public User {
   }
 
   void Dump(std::ostream &os, IdManager &idm) const override;
-  [[nodiscard]] SSAPtr GetAddr() const override { return addr_; }
+  [[nodiscard]] SSAPtr GetAddr() const override {
+    // Loads also represent lvalues during lowering. Selecting their address
+    // does not read the object; retain the load only if its value is used too.
+    address_only_ = true;
+    return addr_;
+  }
+  [[nodiscard]] bool address_only() const { return address_only_; }
   [[nodiscard]] bool IsConst() const override { return false; }
 
   void RunPass(PassBase &pass) override;
@@ -45,6 +51,7 @@ class LoadSSA : public User {
 
  private:
   SSAPtr addr_;
+  mutable bool address_only_{};
 };
 
 // store to allocation

@@ -52,8 +52,9 @@ class DeadCodeEliminationPass : public FunctionPass {
   }
 
   void RunOn(LoadSSA &ssa) override {
-    // NOTE: must remove all redundant loads, including volatile loads
-    if (/* !ssa.type()->IsVola() && */ ssa.uses().empty()) {
+    // A discarded volatile value is still an observable read. Address-only
+    // lvalues, such as assignment destinations, have no such side effect.
+    if (ssa.uses().empty() && (!ssa.type()->IsVola() || ssa.address_only())) {
       remove_flag_ = true;
     }
   }

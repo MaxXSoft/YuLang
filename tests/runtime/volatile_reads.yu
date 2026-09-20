@@ -1,0 +1,37 @@
+extern declare reference_sink: (u32 volatile&)
+
+extern def read_discard(p: u32 volatile*) {
+  *p
+}
+extern def read_twice(p: u32 volatile*) {
+  *p
+  *p
+}
+extern def read_unused_sum(p: u32 volatile*) {
+  *p + (1 as u32)
+}
+extern def read_value(p: u32 volatile*): u32 {
+  *p
+}
+extern def write_value(p: u32 volatile var*, value: u32) {
+  *p = value
+}
+extern def add_value(p: u32 volatile var*, value: u32) {
+  *p += value
+}
+extern def address_of(p: u32 volatile*): u32 volatile* {
+  &(*p)
+}
+extern def pass_reference(p: u32 volatile*) {
+  reference_sink(*p)
+}
+struct Register { status: u32 volatile }
+extern def read_field(p: Register*) {
+  (*p).status
+}
+extern def write_field(p: Register var*, value: u32) {
+  (*p).status = value
+}
+extern def read_indirect(p: u32 volatile* volatile*) {
+  *(*p)
+}

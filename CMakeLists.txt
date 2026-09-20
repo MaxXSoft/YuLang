@@ -109,6 +109,11 @@ if(BUILD_TESTING)
   add_runtime_regression(constant_scopes)
   add_runtime_regression(struct_layout)
   add_runtime_regression(global_initializers)
+  add_runtime_regression(volatile_reads)
+  add_test(NAME runtime.volatile_ir
+    COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/runtime/test_volatile_reads.py
+            --yuc $<TARGET_FILE:yuc> --work-dir ${CMAKE_BINARY_DIR}/test)
+  set_tests_properties(runtime.volatile_ir PROPERTIES TIMEOUT 120 LABELS runtime)
   add_test(NAME runtime.layout_targets
     COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/runtime/test_layout_targets.py
             --yuc $<TARGET_FILE:yuc> --llvm-bin ${LLVM_TOOLS_BINARY_DIR}
