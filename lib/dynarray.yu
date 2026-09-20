@@ -22,7 +22,8 @@ let INIT_CAPACITY = 32 as usize
 // perform array memory reallocation if is necessary
 def reallocArrayMem(this: DynArray var&) {
   if this.__size > this.__capacity {
-    this.__capacity *= 2 as usize
+    let doubled = this.__capacity * 2 as usize
+    this.__capacity = if doubled < this.__size { this.__size } else { doubled }
     let new_cap = (this.__capacity as usize) * sizeof i32
     this.__arr = realloc(this.__arr as u8*, new_cap) as i32 var*
   }
@@ -71,8 +72,13 @@ public def clone(this: DynArray&): DynArray {
 
 // copy operator
 public def =(this: DynArray var&, that: DynArray&) {
+  if &this as DynArray* == &that {
+    return
+  }
+  let arr = malloc(that.__capacity * sizeof i32) as i32 var*
+  memcpy(arr as u8 var*, that.__arr as u8*, that.__size * sizeof i32)
   free(this.__arr as u8*)
-  this.__arr = malloc((that.__capacity as usize) * sizeof i32) as i32 var*
+  this.__arr = arr
   this.__size = that.__size
   this.__capacity = that.__capacity
 }

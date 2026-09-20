@@ -111,6 +111,7 @@ if(BUILD_TESTING)
   add_runtime_regression(struct_layout)
   add_runtime_regression(global_initializers)
   add_runtime_regression(volatile_reads)
+  add_runtime_regression(dynarray dynarray)
   add_test(NAME runtime.volatile_ir
     COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/runtime/test_volatile_reads.py
             --yuc $<TARGET_FILE:yuc> --work-dir ${CMAKE_BINARY_DIR}/test)

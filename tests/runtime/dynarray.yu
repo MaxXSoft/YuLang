@@ -1,0 +1,48 @@
+import dynarray
+
+extern def check_dynarray_copy(): i32 {
+  var source = newDynArray(4 as usize, 42)
+  var dest = newDynArray(2 as usize, 7)
+  dest = source
+  var valid = dest.size() == source.size()
+  var i = 0
+  while i < 4 {
+    valid = valid && dest.get(i) == 42
+    i += 1
+  }
+  dest.set(0, 99)
+  valid = valid && source.front() == 42
+  source = source
+  valid = valid && source.front() == 42 && source.back() == 42
+  dest.del()
+  source.del()
+  if valid { 0 } else { 1 }
+}
+
+extern def check_dynarray_growth(): i32 {
+  var arr = newDynArray(2 as usize, 7)
+  arr.resize(100 as usize, 42)
+  var valid = arr.size() == 100 as usize && arr.capacity() >= arr.size()
+  var i = 0
+  while i < 100 {
+    valid = valid && arr.get(i) == if i < 2 { 7 } else { 42 }
+    i += 1
+  }
+  arr.resize(1 as usize)
+  arr.push(99)
+  valid = valid && arr.size() == 2 as usize && arr.back() == 99
+  arr.del()
+  if valid { 0 } else { 1 }
+}
+
+extern def check_dynarray_zero_capacity(): i32 {
+  var arr = newDynArray(0 as usize, 0)
+  arr.push(17)
+  var valid = arr.size() == 1 as usize && arr.capacity() >= arr.size() &&
+              arr.front() == 17
+  arr.resize(70 as usize)
+  valid = valid && arr.capacity() >= arr.size() && arr.front() == 17 &&
+              arr.back() == 0
+  arr.del()
+  if valid { 0 } else { 1 }
+}
