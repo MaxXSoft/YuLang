@@ -1,0 +1,37 @@
+// Each constant result must agree with the same operation at runtime.
+extern def float_lt(): bool { 1.0 < 2.0 }
+extern def float_le(): bool { 2.0 <= 2.0 }
+extern def float_gt(): bool { 2.0 > 1.0 }
+extern def float_ge(): bool { 2.0 >= 2.0 }
+extern def float_false(): bool { 2.0 < 1.0 }
+extern def float32_lt(): bool { (1.0 as f32) < (2.0 as f32) }
+extern def unsigned_lt(): bool { (0xffffffffffffffff as u64) < (0 as u64) }
+extern def unsigned_le(): bool { (0x8000000000000000 as u64) <= (0x7fffffffffffffff as u64) }
+extern def unsigned_gt(): bool { (0xffffffffffffffff as u64) > (0 as u64) }
+extern def unsigned_ge(): bool { (0xffffffffffffffff as u64) >= (0xffffffffffffffff as u64) }
+extern def signed_float64(): f64 { (-1) as f64 }
+extern def signed_float32(): f32 { ((-7) as i64) as f32 }
+extern def unsigned_float64(): f64 { (0x8000000000000000 as u64) as f64 }
+extern def narrow_signed_div(): i32 { ((-1) as i32) / 2 }
+extern def narrow_signed_mod(): i32 { ((-7) as i32) % 3 }
+extern def narrow_signed_shift(): i32 { ((-8) as i32) >> 2 }
+extern def narrow_signed_less(): bool { ((-1) as i32) < 0 }
+extern def signed8_widen(): i64 { ((255 as u8) as i8) as i64 }
+extern def signed16_widen(): i64 { ((65535 as u16) as i16) as i64 }
+extern def signed32_widen(): i64 { ((0xffffffff as u32) as i32) as i64 }
+extern def unsigned8_wrap(): bool { ((255 as u8) + (1 as u8)) == (0 as u8) }
+extern def unsigned16_wrap(): u64 { ((65535 as u16) + (1 as u16)) as u64 }
+extern def unsigned32_wrap(): u64 { ((0xffffffff as u32) + (1 as u32)) as u64 }
+extern def unsigned8_sub(): u64 { ((0 as u8) - (1 as u8)) as u64 }
+extern def unsigned8_mul(): u64 { ((128 as u8) * (2 as u8)) as u64 }
+extern def unsigned8_shl(): u64 { ((128 as u8) << (1 as u8)) as u64 }
+extern def unsigned8_not(): u64 { (~(0 as u8)) as u64 }
+extern def unsigned8_neg(): u64 { (-(1 as u8)) as u64 }
+extern def signed64_mul(): i64 { (0x7fffffffffffffff as i64) * (2 as i64) }
+extern def float_signed_int(): i64 { ((-7.5) as i32) as i64 }
+extern def float_unsigned_int(): u64 { (255.5 as u8) as u64 }
+extern def runtime_float_lt(a: f64, b: f64): bool { a < b }
+extern def runtime_unsigned_lt(a: u64, b: u64): bool { a < b }
+extern def runtime_signed_float(a: i32): f64 { a as f64 }
+extern def runtime_signed_div(a: i32): i32 { a / 2 }
+extern def runtime_unsigned_wrap(a: u32): u64 { (a + (1 as u32)) as u64 }

@@ -2,6 +2,7 @@
 
 #include <cassert>
 #include <cmath>
+#include <limits>
 #include <type_traits>
 
 #include "define/panic.h"
@@ -62,7 +63,7 @@ using yulang::define::WhileAST;
   do {                                                                       \
     if constexpr (std::is_same_v<Lhs, std::uint64_t> &&                      \
                   std::is_same_v<Rhs, std::uint64_t>) {                      \
-      if (ast.ast_type()->IsUnsigned()) {                                    \
+      if (ast.lhs()->ast_type()->IsUnsigned()) {                             \
         return static_cast<std::uint64_t>(lhs)                               \
             op static_cast<std::uint64_t>(rhs);                              \
       }                                                                      \
@@ -75,7 +76,7 @@ using yulang::define::WhileAST;
   do {                                                                       \
     if constexpr (std::is_same_v<Lhs, std::uint64_t> &&                      \
                   std::is_same_v<Rhs, std::uint64_t>) {                      \
-      if (ast.ast_type()->IsUnsigned()) {                                    \
+      if (ast.lhs()->ast_type()->IsUnsigned()) {                             \
         return static_cast<std::uint64_t>(lhs)                               \
             op static_cast<std::uint64_t>(rhs);                              \
       }                                                                      \
@@ -84,6 +85,17 @@ using yulang::define::WhileAST;
     }                                                                        \
     assert(false && "integer-only operator requires integer operands");      \
     return {};                                                               \
+  } while (0)
+#define DO_COMPARE(op)                                                         \
+  do {                                                                         \
+    if constexpr (std::is_same_v<Lhs, std::uint64_t> &&                        \
+                  std::is_same_v<Rhs, std::uint64_t>) {                        \
+      if (!ast.lhs()->ast_type()->IsUnsigned()) {                              \
+        return static_cast<std::uint64_t>(                                     \
+            static_cast<std::int64_t>(lhs) op static_cast<std::int64_t>(rhs)); \
+      }                                                                        \
+    }                                                                          \
+    return static_cast<std::uint64_t>(lhs op rhs);                             \
   } while (0)
 // NOLINTEND(bugprone-macro-parentheses)
 
@@ -142,68 +154,61 @@ inline bool CastToBool(const EvalNum &num) {
   return std::visit([](auto &&args) { return args != 0; }, num);
 }
 
-// cast 'EvalNum' to specific type
-// Keep the exhaustive type/operator dispatch together for semantic review.
-// NOLINTNEXTLINE(readability-function-cognitive-complexity)
-inline EvalNum CastToType(const EvalNum &num, const TypePtr &type) {
-  assert(type->IsInteger() || type->IsBool() || type->IsFloat());
-  return std::visit(
-      [&type](auto &&arg) -> EvalNum {
-        if (type->IsBool()) {
-          return static_cast<std::uint64_t>(!!arg);
-        }
-        if (type->GetSize() == 1) {
-          auto ans = type->IsUnsigned() ? static_cast<std::uint8_t>(arg)
-                                        : static_cast<std::int8_t>(arg);
-          return static_cast<std::uint64_t>(ans);
-        }
-        if (type->GetSize() == 2) {
-          auto ans = type->IsUnsigned() ? static_cast<std::uint16_t>(arg)
-                                        : static_cast<std::int16_t>(arg);
-          return static_cast<std::uint64_t>(ans);
-        }
-        if (type->GetSize() == 4) {
-          if (type->IsInteger()) {
-            auto ans = type->IsUnsigned() ? static_cast<std::uint32_t>(arg)
-                                          : static_cast<std::int32_t>(arg);
-            return static_cast<std::uint64_t>(ans);
-          }
-          return static_cast<float>(arg);
-        }
-        if (type->GetSize() == 8) {
-          if (type->IsInteger()) {
-            auto ans = type->IsUnsigned() ? static_cast<std::uint64_t>(arg)
-                                          : static_cast<std::int64_t>(arg);
-            return ans;
-          }
-          return static_cast<double>(arg);
-        }
-        assert(false);
-        return static_cast<std::uint64_t>(0);
-      },
-      num);
-}
-
-// cast value to specific type
+// Keep integer payloads truncated to their type and sign-extended to 64 bits.
 inline std::uint64_t CastToType(std::uint64_t num, const TypePtr &type) {
   assert(type->IsInteger());
-  if (type->GetSize() == 1) {
-    return type->IsUnsigned() ? static_cast<std::uint8_t>(num)
-                              : static_cast<std::int8_t>(num);
+  const auto bits = type->GetSize() * 8;
+  if (bits < 64) {
+    const auto mask = (std::uint64_t{1} << bits) - 1;
+    num &= mask;
+    if (!type->IsUnsigned() && (num & (std::uint64_t{1} << (bits - 1)))) {
+      num |= ~mask;
+    }
   }
-  if (type->GetSize() == 2) {
-    return type->IsUnsigned() ? static_cast<std::uint16_t>(num)
-                              : static_cast<std::int16_t>(num);
-  }
-  if (type->GetSize() == 4) {
-    return type->IsUnsigned() ? static_cast<std::uint32_t>(num)
-                              : static_cast<std::int32_t>(num);
-  }
-  if (type->GetSize() == 8) {
-    return type->IsUnsigned() ? num : static_cast<std::int64_t>(num);
-  }
-  assert(false);
-  return 0;
+  return num;
+}
+
+// Source signedness is needed because integer EvalNum payloads are unsigned.
+inline std::optional<EvalNum> CastToType(const EvalNum &num,
+                                         const TypePtr &source,
+                                         const TypePtr &type) {
+  assert(type->IsInteger() || type->IsBool() || type->IsFloat());
+  return std::visit(
+      [&source, &type](auto arg) -> std::optional<EvalNum> {
+        using T = decltype(arg);
+        if (type->IsBool()) return static_cast<std::uint64_t>(!!arg);
+        if (type->IsInteger()) {
+          std::uint64_t value;
+          if constexpr (std::is_same_v<T, std::uint64_t>) {
+            value = arg;
+          } else {
+            // Do not execute an undefined host float-to-integer conversion.
+            const auto truncated = std::trunc(static_cast<long double>(arg));
+            const auto bits = type->GetSize() * 8;
+            const auto upper = std::ldexp(1.0L, bits - !type->IsUnsigned());
+            const auto lower = type->IsUnsigned() ? 0.0L : -upper;
+            if (!std::isfinite(truncated) || truncated < lower ||
+                truncated >= upper) {
+              return {};
+            }
+            value = type->IsUnsigned()
+                        ? static_cast<std::uint64_t>(truncated)
+                        : static_cast<std::uint64_t>(
+                              static_cast<std::int64_t>(truncated));
+          }
+          return CastToType(value, type);
+        }
+        if constexpr (std::is_same_v<T, std::uint64_t>) {
+          if (!source->IsUnsigned()) {
+            const auto value = static_cast<std::int64_t>(arg);
+            if (type->GetSize() == 4) return static_cast<float>(value);
+            return static_cast<double>(value);
+          }
+        }
+        if (type->GetSize() == 4) return static_cast<float>(arg);
+        return static_cast<double>(arg);
+      },
+      num);
 }
 
 // check if two 'EvalNum' are equal
@@ -436,19 +441,35 @@ std::optional<EvalNum> Evaluator::EvalOn(BinaryAST &ast) {
   if (lhs) ast.set_lhs(MakeAST(*lhs, ast.lhs()));
   // calculate result
   if (lhs && rhs) {
-    return std::visit(
+    auto result = std::visit(
         // Keep the exhaustive type/operator dispatch together for semantic
         // review. NOLINTNEXTLINE(readability-function-cognitive-complexity)
-        [&ast](auto &&lhs, auto &&rhs) -> EvalNum {
+        [&ast](auto &&lhs, auto &&rhs) -> std::optional<EvalNum> {
           using Lhs = std::decay_t<decltype(lhs)>;
           using Rhs = std::decay_t<decltype(rhs)>;
+          if constexpr (std::is_same_v<Lhs, std::uint64_t> &&
+                        std::is_same_v<Rhs, std::uint64_t>) {
+            if (ast.op() == Operator::Div || ast.op() == Operator::Mod) {
+              if (!rhs) return {};
+              if (!ast.lhs()->ast_type()->IsUnsigned() &&
+                  static_cast<std::int64_t>(lhs) ==
+                      std::numeric_limits<std::int64_t>::min() &&
+                  static_cast<std::int64_t>(rhs) == -1) {
+                return {};
+              }
+            }
+            if ((ast.op() == Operator::Shl || ast.op() == Operator::Shr) &&
+                rhs >= ast.lhs()->ast_type()->GetSize() * 8) {
+              return {};
+            }
+          }
           switch (ast.op()) {
             case Operator::Add:
               return lhs + rhs;
             case Operator::Sub:
               return lhs - rhs;
             case Operator::Mul:
-              DO_CALC(*);
+              return lhs * rhs;
             case Operator::Div:
               DO_CALC(/);
             case Operator::Mod: {
@@ -474,13 +495,13 @@ std::optional<EvalNum> Evaluator::EvalOn(BinaryAST &ast) {
               return static_cast<std::uint64_t>(lhs != rhs);
             }
             case Operator::Less:
-              DO_INT_CALC(<);
+              DO_COMPARE(<);
             case Operator::LessEqual:
-              DO_INT_CALC(<=);
+              DO_COMPARE(<=);
             case Operator::Great:
-              DO_INT_CALC(>);
+              DO_COMPARE(>);
             case Operator::GreatEqual:
-              DO_INT_CALC(>=);
+              DO_COMPARE(>=);
             case Operator::LogicAnd: {
               return static_cast<std::uint64_t>(lhs && rhs);
             }
@@ -513,6 +534,10 @@ std::optional<EvalNum> Evaluator::EvalOn(BinaryAST &ast) {
           }
         },
         *lhs, *rhs);
+    if (result && ast.ast_type()->IsInteger()) {
+      return CastToType(std::get<std::uint64_t>(*result), ast.ast_type());
+    }
+    return result;
   }
   return {};
 }
@@ -542,7 +567,7 @@ std::optional<EvalNum> Evaluator::EvalOn(CastAST &ast) {
       !ast.ast_type()->IsFloat()) {
     return {};
   }
-  return CastToType(*val, ast.ast_type());
+  return CastToType(*val, ast.expr()->ast_type(), ast.ast_type());
 }
 
 std::optional<EvalNum> Evaluator::EvalOn(UnaryAST &ast) {
@@ -557,7 +582,7 @@ std::optional<EvalNum> Evaluator::EvalOn(UnaryAST &ast) {
     return static_cast<std::uint64_t>(ast.opr()->ast_type()->GetSize());
   }
   if (val && ast.op() != UnaryOp::DeRef && ast.op() != UnaryOp::AddrOf) {
-    return std::visit(
+    auto result = std::visit(
         [&ast](auto &&opr) -> EvalNum {
           using T = std::decay_t<decltype(opr)>;
           switch (ast.op()) {
@@ -581,6 +606,10 @@ std::optional<EvalNum> Evaluator::EvalOn(UnaryAST &ast) {
           }
         },
         *val);
+    if (ast.ast_type()->IsInteger()) {
+      return CastToType(std::get<std::uint64_t>(result), ast.ast_type());
+    }
+    return result;
   }
   return {};
 }
