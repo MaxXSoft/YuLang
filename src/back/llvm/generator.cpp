@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "define/panic.h"
+#include "llvm/ADT/APInt.h"
 #include "llvm/IR/Constant.h"
 #include "llvm/IR/DerivedTypes.h"
 #include "llvm/IR/GlobalValue.h"
@@ -569,7 +570,11 @@ void LLVMGen::GenerateOn(ConstIntSSA &ssa) {
   if (ssa.type()->IsBool()) {
     val = builder_.getInt1(!!ssa.value());
   } else {
-    val = builder_.getIntN(ssa.type()->GetSize() * 8, ssa.value());
+    // The evaluator sign-extends negative integers into uint64_t. Construct a
+    // valid APInt before narrowing; LLVM does not implicitly truncate it.
+    const auto width = static_cast<unsigned>(ssa.type()->GetSize() * 8);
+    const auto value = llvm::APInt(64, ssa.value()).zextOrTrunc(width);
+    val = builder_.getInt(value);
   }
   SetVal(ssa, val);
 }

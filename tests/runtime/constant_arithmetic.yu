@@ -44,3 +44,17 @@ extern def arithmetic_float32(): f32 {
   let value = (1.5 as f32) + (2.0 as f32)
   value
 }
+
+// Calculated negative i32 values are sign-extended in the constant evaluator.
+// Their LLVM constants must still contain only 32 bits, including when cast
+// to pointers and compared by the optimizer (as in an RV32 memory allocator).
+let memory_end = (0x80000000 + 128 * 1024 * 1024) - 128 * 1024
+extern def past_memory_end(address: usize): bool {
+  address as u8* >= memory_end as u8*
+}
+extern def folded_pointer_order(): bool {
+  past_memory_end(0x90000000 as usize)
+}
+extern def folded_pointer_equal(): bool {
+  memory_end as u8* == 0x87fe0000 as u8*
+}

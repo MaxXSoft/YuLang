@@ -26,6 +26,8 @@ extern bool runtime_float_lt(double, double),
 extern double runtime_signed_float(int32_t);
 extern int32_t runtime_signed_div(int32_t);
 extern uint64_t runtime_unsigned_wrap(uint32_t);
+extern bool past_memory_end(uintptr_t);
+extern bool folded_pointer_order(void), folded_pointer_equal(void);
 
 static int failures;
 static void check(int condition, const char *expression) {
@@ -76,5 +78,10 @@ int main(void) {
   CHECK(repeated_float32() == 1.5F);
   CHECK(local_float32() == 2.5F);
   CHECK(arithmetic_float32() == 3.5F);
+  CHECK(!past_memory_end(UINT32_C(0x87fdffff)));
+  CHECK(past_memory_end(UINT32_C(0x87fe0000)));
+  CHECK(past_memory_end(UINT32_C(0x90000000)));
+  CHECK(folded_pointer_order());
+  CHECK(folded_pointer_equal());
   return failures ? 1 : 0;
 }
