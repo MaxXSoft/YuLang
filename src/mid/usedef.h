@@ -85,8 +85,8 @@ class Value {
   virtual void Dump(std::ostream &os, IdManager &idm) const = 0;
   // return true if current value is a constant
   [[nodiscard]] virtual bool IsConst() const = 0;
-  // get address value of current value
-  [[nodiscard]] virtual SSAPtr GetAddr() const { return nullptr; }
+  // get address value of current value, marking its use as an lvalue
+  [[nodiscard]] virtual SSAPtr GetAddr() { return nullptr; }
 
   // run pass on current SSA value
   virtual void RunPass(PassBase &pass) = 0;
