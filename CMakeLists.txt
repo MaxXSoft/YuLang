@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.28)
-project(YuLang VERSION "0.0.8")
+project(YuLang VERSION "0.0.9")
 
 # find LLVM
 # LLVM's package version file only accepts matching major.minor versions, so

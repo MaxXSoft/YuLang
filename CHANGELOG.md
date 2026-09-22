@@ -2,7 +2,7 @@
 
 All notable changes to the YuLang compiler will be documented in this file.
 
-## Unreleased
+## 0.0.9 - 2026-09-22
 
 ### Added
 
