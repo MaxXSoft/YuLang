@@ -9,10 +9,29 @@ All notable changes to the YuLang compiler will be documented in this file.
 * C/C++ static analysis checks with clang-tidy 23.
 * Supported `-MD` command line option for generating Makefile dependencies.
 * Supported `-D` command line option for definiting simple macros.
+* Native runtime regression suite (`ctest -L runtime`).
 
 ### Changed
 
 * Updated submodule XSTL.
+* Matched `lib/sys` `long`, `unsigned long` and `time_t` bindings (e.g. `time`, `strtol`, `strtoul`, `lround`) to pointer-width types for the 64-bit Unix ABI.
+* Batched `IO` string output using `strlen` and completed short/partial writes instead of writing one byte at a time.
+* Extended clang-tidy static analysis to the runtime test helpers.
+
+### Fixed
+
+* Constant numeric evaluation now preserves operand types and widths, truncates results to the target type, and bails out on `INT_MIN / -1`, division or modulo by zero, and out-of-range shifts.
+* Integer constants are truncated to their LLVM type width.
+* Preserved `f32` precision when re-evaluating folded literals.
+* Constant evaluation now respects lexical shadowing, including `for-in` loop variables.
+* `when` expression folding preserves branch selection and side effects, keeping unknown conditions that precede a match.
+* Volatile reads are preserved during evaluation without adding extra lvalue reads.
+* Structure layouts now respect target ABI alignment.
+* Global initialization continues from the current control-flow tail.
+* Runtime boolean conversions to `bool` and from `bool` to other numeric types.
+* `DynArray` growth (no longer under-sizes on large requests), copying and self-assignment.
+* `Stack` correctly resets the frame cursor at frame boundaries and preserves stack frames.
+* `HashMap` grows by element load instead of occupied bucket count, and rejects duplicate keys whose stored value is null.
 
 ## 0.0.8 - 2026-09-12
 
