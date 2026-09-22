@@ -249,8 +249,12 @@ public def insert(this: HashMap var&, key: u32, value: u8 var*): bool {
 public def get(this: HashMap var&, key: u32): u8 var* {
   let hash_val = this.hash(key)
   let pair = this.__table.find(hash_val, key)
-  if pair == null as __KeyValue* { null as u8 var* }
-  else { pair.value() }
+  if pair == null as __KeyValue* {
+    null as u8 var*
+  }
+  else {
+    pair.value()
+  }
 }
 
 // remove value by key
