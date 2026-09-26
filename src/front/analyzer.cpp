@@ -153,7 +153,8 @@ std::vector<BaseAST *> LiteralChildren(BaseAST &ast) {
       return {unary->opr().get()};
     }
   } else if (auto *binary = dynamic_cast<BinaryAST *>(&ast)) {
-    if (!binary->op_func_id() && IsIntegerOperation(binary->op())) {
+    if (!binary->op_func_id() && IsIntegerOperation(binary->op()) &&
+        !binary->ast_type()->IsPointer()) {
       return {binary->lhs().get(), binary->rhs().get()};
     }
   } else if (auto *block = dynamic_cast<BlockAST *>(&ast)) {
@@ -200,10 +201,11 @@ bool MatchLiteral(BaseAST &ast, const TypePtr &type, bool apply) {
   } else if (dynamic_cast<NullAST *>(&ast)) {
     if (!value_type->IsPointer()) return false;
   } else {
-    if (ast.ast_type()->IsIdentical(type)) return true;
-    if (!value_type->IsInteger() && !value_type->IsPointer()) return false;
+    if (!value_type->IsInteger() && !value_type->IsPointer()) {
+      return ast.ast_type()->IsIdentical(type);
+    }
     const auto children = LiteralChildren(ast);
-    if (children.empty()) return false;
+    if (children.empty()) return ast.ast_type()->IsIdentical(type);
     if (!std::all_of(children.begin(), children.end(), [&](BaseAST *child) {
           return MatchLiteral(*child, value_type, apply);
         }))
@@ -237,9 +239,10 @@ bool MatchArguments(const TypePtr &function, TypePtrList &args,
   if (!params || params->size() != args.size()) return false;
   auto projected = args;
   for (std::size_t i = 0; i < args.size(); ++i) {
-    if ((*params)[i]->IsIdentical(args[i])) continue;
     if (!MatchLiteral(*exprs[i], (*params)[i], false)) return false;
-    projected[i] = LiteralType((*params)[i]);
+    if (!(*params)[i]->IsIdentical(args[i])) {
+      projected[i] = LiteralType((*params)[i]);
+    }
   }
   if (!function->GetReturnType(projected)) return false;
   if (apply) {
@@ -268,13 +271,13 @@ TypePtr Analyzer::ResolveCall(const Logger &log, const std::string &id,
   // Preserve the established meaning of calls such as f(1) with f(i32).
   const auto mangled = MangleFuncName(id, args);
   auto exact = symbols_->GetItem(mangled);
-  if (exact && exact->GetReturnType(args)) {
+  if (exact && MatchArguments(exact, args, exprs, true)) {
     id_setter(mangled);
     return exact;
   }
   // A function value or an extern declaration already determines the signature.
-  if (auto direct = symbols_->GetItem(id)) {
-    if (!direct->IsFunction() || !MatchArguments(direct, args, exprs, true)) {
+  if (auto direct = symbols_->GetItem(id); direct && direct->IsFunction()) {
+    if (!MatchArguments(direct, args, exprs, true)) {
       return LogError(log, "invalid function call", id);
     }
     id_setter(id);
