@@ -2,6 +2,7 @@
 
 #include <array>
 #include <cctype>
+#include <cerrno>
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
@@ -176,6 +177,7 @@ Token Lexer::HandleNum() {
   // convert to number
   char *end_pos = nullptr;
   Token ret{Token::Error};
+  errno = 0;
   switch (num_type) {
     case NumberType::Hex: {
       int_val_ = std::strtoull(num.c_str(), &end_pos, 16);
@@ -200,6 +202,9 @@ Token Lexer::HandleNum() {
     default:;
   }
   // check if conversion is valid
+  if (ret == Token::Int && errno == ERANGE) {
+    return LogError("integer literal exceeds 64 bits");
+  }
   return *end_pos ? LogError("invalid number literal") : ret;
 }
 
