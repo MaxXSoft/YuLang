@@ -1,10 +1,13 @@
 #include "front/analyzer.h"
 
+#include <algorithm>
 #include <array>
 #include <cassert>
 #include <cmath>
+#include <limits>
 #include <sstream>
 #include <unordered_set>
+#include <utility>
 
 namespace yulang::front {
 
@@ -13,6 +16,7 @@ using yulang::define::ArgElemAST;
 using yulang::define::ArrayType;
 using yulang::define::ArrayTypeAST;
 using yulang::define::AsmAST;
+using yulang::define::BaseAST;
 using yulang::define::BinaryAST;
 using yulang::define::BlockAST;
 using yulang::define::BoolAST;
@@ -99,7 +103,204 @@ inline bool LogErrorBool(const Logger &log, std::string_view message,
   return false;
 }
 
+// Strip only the value's qualifiers; pointer target qualifiers must survive.
+TypePtr LiteralType(TypePtr type) {
+  if (type->IsReference()) type = type->GetDerefedType();
+  if (type->IsConst()) type = type->GetDeconstedType();
+  return type->GetValueType(true);
+}
+
+bool FitsInteger(std::uint64_t value, const TypePtr &type,
+                 bool negative = false) {
+  if (!type->IsInteger()) return false;
+  const auto bits = type->GetSize() * 8;
+  if (negative) {
+    return !type->IsUnsigned() && value <= (std::uint64_t{1} << (bits - 1));
+  }
+  const auto maximum =
+      type->IsUnsigned()
+          ? (std::numeric_limits<std::uint64_t>::max() >> (64 - bits))
+          : ((std::uint64_t{1} << (bits - 1)) - 1);
+  return value <= maximum;
+}
+
+bool IsIntegerOperation(Operator op) {
+  switch (op) {
+    case Operator::Add:
+    case Operator::Sub:
+    case Operator::Mul:
+    case Operator::Div:
+    case Operator::Mod:
+    case Operator::And:
+    case Operator::Or:
+    case Operator::Xor:
+    case Operator::Shl:
+    case Operator::Shr:
+      return true;
+    default:
+      return false;
+  }
+}
+
+// Only these result positions can carry an unresolved literal type. In
+// particular, identifiers, casts, calls, conditions and indices are barriers.
+std::vector<BaseAST *> LiteralChildren(BaseAST &ast) {
+  if (auto *unary = dynamic_cast<UnaryAST *>(&ast)) {
+    using Op = UnaryAST::UnaryOp;
+    if (!unary->op_func_id() &&
+        (unary->op() == Op::Pos || unary->op() == Op::Neg ||
+         unary->op() == Op::Not)) {
+      return {unary->opr().get()};
+    }
+  } else if (auto *binary = dynamic_cast<BinaryAST *>(&ast)) {
+    if (!binary->op_func_id() && IsIntegerOperation(binary->op())) {
+      return {binary->lhs().get(), binary->rhs().get()};
+    }
+  } else if (auto *block = dynamic_cast<BlockAST *>(&ast)) {
+    if (!block->stmts().empty()) return {block->stmts().back().get()};
+  } else if (auto *branch = dynamic_cast<IfAST *>(&ast)) {
+    if (branch->else_then())
+      return {branch->then().get(), branch->else_then().get()};
+  } else if (auto *when = dynamic_cast<WhenAST *>(&ast)) {
+    if (when->else_then()) {
+      std::vector<BaseAST *> children;
+      for (const auto &elem : when->elems()) children.push_back(elem.get());
+      children.push_back(when->else_then().get());
+      return children;
+    }
+  } else if (auto *arm = dynamic_cast<WhenElemAST *>(&ast)) {
+    return {arm->body().get()};
+  }
+  return {};
+}
+
+IntAST *NegatedInteger(BaseAST &ast) {
+  auto *unary = dynamic_cast<UnaryAST *>(&ast);
+  if (!unary || unary->op() != UnaryAST::UnaryOp::Neg || unary->op_func_id()) {
+    return nullptr;
+  }
+  return dynamic_cast<IntAST *>(unary->opr().get());
+}
+
+TypePtr IntegerUnaryContext(UnaryAST::UnaryOp op, const TypePtr &expected) {
+  using Op = UnaryAST::UnaryOp;
+  if (!expected || !expected->IsInteger()) return nullptr;
+  return op == Op::Pos || op == Op::Neg || op == Op::Not ? expected : nullptr;
+}
+
+// Probe first, then commit: never partially rewrite a rejected candidate.
+bool MatchLiteral(BaseAST &ast, const TypePtr &type, bool apply) {
+  const auto value_type = LiteralType(type);
+  auto *integer = dynamic_cast<IntAST *>(&ast);
+  auto *negative = NegatedInteger(ast);
+  if (integer || negative) {
+    const auto magnitude = integer ? integer->value() : negative->value();
+    if (!FitsInteger(magnitude, value_type, negative != nullptr)) return false;
+    if (apply && negative) negative->set_ast_type(value_type);
+  } else if (dynamic_cast<NullAST *>(&ast)) {
+    if (!value_type->IsPointer()) return false;
+  } else {
+    if (ast.ast_type()->IsIdentical(type)) return true;
+    if (!value_type->IsInteger() && !value_type->IsPointer()) return false;
+    const auto children = LiteralChildren(ast);
+    if (children.empty()) return false;
+    if (!std::all_of(children.begin(), children.end(), [&](BaseAST *child) {
+          return MatchLiteral(*child, value_type, apply);
+        }))
+      return false;
+  }
+  if (apply) ast.set_ast_type(value_type);
+  return true;
+}
+
+bool AdaptLiteral(BaseAST &ast, const TypePtr &type) {
+  return MatchLiteral(ast, type, false) && MatchLiteral(ast, type, true);
+}
+
+std::optional<TypePtr> AnalyzeNegativeLiteral(BaseAST &ast,
+                                              const TypePtr &context) {
+  if (!context || !NegatedInteger(ast)) return {};
+  if (!AdaptLiteral(ast, context)) {
+    return LogError(ast.logger(), "integer literal out of range");
+  }
+  return ast.ast_type();
+}
+
+void UnifyLiterals(BaseAST &lhs, BaseAST &rhs) {
+  if (lhs.ast_type()->IsIdentical(rhs.ast_type())) return;
+  if (!AdaptLiteral(rhs, lhs.ast_type())) AdaptLiteral(lhs, rhs.ast_type());
+}
+
+bool MatchArguments(const TypePtr &function, TypePtrList &args,
+                    const std::vector<BaseAST *> &exprs, bool apply) {
+  const auto params = function->GetArgsType();
+  if (!params || params->size() != args.size()) return false;
+  auto projected = args;
+  for (std::size_t i = 0; i < args.size(); ++i) {
+    if ((*params)[i]->IsIdentical(args[i])) continue;
+    if (!MatchLiteral(*exprs[i], (*params)[i], false)) return false;
+    projected[i] = LiteralType((*params)[i]);
+  }
+  if (!function->GetReturnType(projected)) return false;
+  if (apply) {
+    for (std::size_t i = 0; i < args.size(); ++i) {
+      if (!(*params)[i]->IsIdentical(args[i])) {
+        AdaptLiteral(*exprs[i], (*params)[i]);
+      }
+    }
+    args = std::move(projected);
+  }
+  return true;
+}
+
 }  // namespace
+
+TypePtr Analyzer::AnalyzeExpr(BaseAST &ast, TypePtr expected) {
+  const auto previous = std::exchange(expected_, std::move(expected));
+  const xstl::Guard context([this, previous] { expected_ = previous; });
+  return ast.SemaAnalyze(*this);
+}
+
+TypePtr Analyzer::ResolveCall(const Logger &log, const std::string &id,
+                              TypePtrList &args,
+                              const std::vector<BaseAST *> &exprs,
+                              const IdSetter &id_setter) {
+  // Preserve the established meaning of calls such as f(1) with f(i32).
+  const auto mangled = MangleFuncName(id, args);
+  auto exact = symbols_->GetItem(mangled);
+  if (exact && exact->GetReturnType(args)) {
+    id_setter(mangled);
+    return exact;
+  }
+  // A function value or an extern declaration already determines the signature.
+  if (auto direct = symbols_->GetItem(id)) {
+    if (!direct->IsFunction() || !MatchArguments(direct, args, exprs, true)) {
+      return LogError(log, "invalid function call", id);
+    }
+    id_setter(id);
+    return direct;
+  }
+  TypePtr selected;
+  std::string selected_id;
+  std::unordered_set<std::string> seen;
+  for (auto env = funcs_; env; env = env->outer()) {
+    const auto names = env->GetItem(id, false);
+    if (!names) continue;
+    for (const auto &name : *names) {
+      if (!seen.insert(name).second) continue;
+      auto candidate = symbols_->GetItem(name);
+      if (!candidate || !MatchArguments(candidate, args, exprs, false))
+        continue;
+      if (selected) return LogError(log, "ambiguous function call", id);
+      selected = std::move(candidate);
+      selected_id = name;
+    }
+  }
+  if (!selected) return LogError(log, "no matching function", id);
+  MatchArguments(selected, args, exprs, true);
+  id_setter(selected_id);
+  return selected;
+}
 
 xstl::Guard Analyzer::NewEnv() {
   symbols_ = MakeEnv(symbols_);
@@ -179,38 +380,31 @@ bool Analyzer::CheckInit(const Logger &log, const TypePtr &type,
   return true;
 }
 
-std::optional<TypePtr> Analyzer::CheckOpOverload(const Logger &log,
-                                                 const std::string &op_name,
-                                                 const TypePtrList &args,
-                                                 const IdSetter &id_setter) {
-  const auto mangled = MangleFuncName(op_name, args);
-  auto func_type = symbols_->GetItem(mangled);
-  if (!func_type) {
-    func_type = symbols_->GetItem(op_name);
-    if (func_type && func_type->IsFunction()) {
-      id_setter(op_name);
-    } else {
-      // no overloaded operator found
-      return {};
+std::optional<TypePtr> Analyzer::CheckOpOverload(
+    const Logger &log, const std::string &op_name, TypePtrList &args,
+    const IdSetter &id_setter, const std::vector<BaseAST *> &exprs) {
+  bool found = false;
+  for (auto env = funcs_; env && !found; env = env->outer()) {
+    const auto names = env->GetItem(op_name, false);
+    if (!names) continue;
+    for (const auto &name : *names) {
+      const auto candidate = symbols_->GetItem(name);
+      if (candidate && MatchArguments(candidate, args, exprs, false)) {
+        found = true;
+        break;
+      }
     }
-  } else {
-    id_setter(mangled);
   }
-  // check if is valid operator overloading
-  if (func_type) {
-    auto func_ret = func_type->GetReturnType(args);
-    if (!func_ret) {
-      return LogError(log, "invalid operator overloading");
-    }
-    return std::move(func_ret);
-  }
-  return {};
+  if (!found) return {};
+  auto type = ResolveCall(log, op_name, args, exprs, id_setter);
+  if (!type) return nullptr;
+  return type->GetReturnType(args);
 }
 
 TypePtr Analyzer::AnalyzeOn(VarLetDefAST &ast) {
   last_prop_ = ast.prop();
   for (const auto &i : ast.defs()) {
-    if (!i->SemaAnalyze(*this)) return nullptr;
+    if (!AnalyzeExpr(*i)) return nullptr;
     // run evaluation on var/let definitions for constant definitions
     i->Eval(eval_);
   }
@@ -223,12 +417,12 @@ TypePtr Analyzer::AnalyzeOn(FunDefAST &ast) {
   const auto eval_env = eval_.NewEnv();
   TypePtrList args;
   for (const auto &i : ast.args()) {
-    auto type = i->SemaAnalyze(*this);
+    auto type = AnalyzeExpr(*i);
     if (!type) return nullptr;
     args.push_back(std::move(type));
   }
   // get return type
-  auto ret = ast.type() ? ast.type()->SemaAnalyze(*this) : MakeVoid();
+  auto ret = ast.type() ? AnalyzeExpr(*ast.type()) : MakeVoid();
   if (!ret) return nullptr;
   cur_ret_ = ret;
   if (!ret->IsReference() && !ret->IsRightValue()) {
@@ -253,14 +447,12 @@ TypePtr Analyzer::AnalyzeOn(FunDefAST &ast) {
   auto type = std::make_shared<FuncType>(std::move(args), std::move(ret), true);
   symbols_->outer()->AddItem(id, type);
   // add function type info to function mapping table
-  if (!funcs_->outer()->GetItem(org_id)) {
-    funcs_->outer()->AddItem(org_id, id);
-  } else {
-    funcs_->outer()->RemoveItem(org_id);
-  }
+  auto &overloads = funcs_->outer()->AccessItem(org_id);
+  if (!overloads) overloads.emplace();
+  overloads->push_back(id);
   // analyze function's body
   if (ast.body()) {
-    const auto body_ret = ast.body()->SemaAnalyze(*this);
+    const auto body_ret = AnalyzeExpr(*ast.body(), cur_ret_);
     if (!body_ret) return nullptr;
     if (!cur_ret_->IsVoid() &&
         !CheckInit(ast.body()->logger(), cur_ret_, body_ret)) {
@@ -272,7 +464,7 @@ TypePtr Analyzer::AnalyzeOn(FunDefAST &ast) {
 }
 
 TypePtr Analyzer::AnalyzeOn(DeclareAST &ast) {
-  auto type = ast.type()->SemaAnalyze(*this);
+  auto type = AnalyzeExpr(*ast.type());
   if (!type) return nullptr;
   // preprocess type
   if (type->IsFunction()) {
@@ -285,6 +477,7 @@ TypePtr Analyzer::AnalyzeOn(DeclareAST &ast) {
   }
   // check if needs to perform name mangling
   auto id = ast.id();
+  const auto org_id = id;
   if (type->IsFunction() && ast.prop() != Property::Extern) {
     const auto args = type->GetArgsType();
     if (!args) {
@@ -304,11 +497,16 @@ TypePtr Analyzer::AnalyzeOn(DeclareAST &ast) {
     return LogError(ast.logger(), "symbol has already been defined", id);
   }
   symbols_->AddItem(id, type);
+  if (type->IsFunction()) {
+    auto &overloads = funcs_->AccessItem(org_id);
+    if (!overloads) overloads.emplace();
+    overloads->push_back(id);
+  }
   return ast.set_ast_type(MakeVoid());
 }
 
 TypePtr Analyzer::AnalyzeOn(TypeAliasAST &ast) {
-  const auto type = ast.type()->SemaAnalyze(*this);
+  const auto type = AnalyzeExpr(*ast.type());
   if (!type) return nullptr;
   // add type alias to environment
   if (!AddUserType(ast.logger(), ast.id(), type)) {
@@ -325,7 +523,7 @@ TypePtr Analyzer::AnalyzeOn(StructAST &ast) {
   // analyze elements
   std::unordered_set<std::string_view> names;
   for (const auto &i : ast.defs()) {
-    auto elem = i->SemaAnalyze(*this);
+    auto elem = AnalyzeExpr(*i);
     if (!elem) return nullptr;
     // check if name conflicted
     auto [_, succ] = names.insert(last_struct_elem_name_);
@@ -351,7 +549,7 @@ TypePtr Analyzer::AnalyzeOn(StructAST &ast) {
 
 TypePtr Analyzer::AnalyzeOn(EnumAST &ast) {
   // get type
-  auto type = ast.type() ? ast.type()->SemaAnalyze(*this)
+  auto type = ast.type() ? AnalyzeExpr(*ast.type())
                          : MakePrimType(Keyword::Int32, false);
   if (!type) return nullptr;
   if (!type->IsInteger() || type->IsReference()) {
@@ -361,7 +559,7 @@ TypePtr Analyzer::AnalyzeOn(EnumAST &ast) {
   // get all elements
   EnumType::ElemSet elems;
   for (const auto &i : ast.defs()) {
-    if (!i->SemaAnalyze(*this)) return nullptr;
+    if (!AnalyzeExpr(*i)) return nullptr;
     auto [_, succ] = elems.insert(last_enum_elem_name_);
     if (!succ) {
       return LogError(i->logger(), "conflicted enumeration element name",
@@ -385,7 +583,7 @@ TypePtr Analyzer::AnalyzeOn(EnumAST &ast) {
 
 TypePtr Analyzer::AnalyzeOn(ImportAST &ast) {
   for (const auto &i : ast.defs()) {
-    if (!i->SemaAnalyze(*this)) return nullptr;
+    if (!AnalyzeExpr(*i)) return nullptr;
     // run evaluation on imported ASTs for constant definitions
     i->Eval(eval_);
   }
@@ -401,11 +599,11 @@ TypePtr Analyzer::AnalyzeOn(VarLetElemAST &ast) {
   TypePtr type;
   TypePtr init;
   if (ast.type()) {
-    type = ast.type()->SemaAnalyze(*this);
+    type = AnalyzeExpr(*ast.type());
     if (!type) return nullptr;
   }
   if (ast.init()) {
-    init = ast.init()->SemaAnalyze(*this);
+    init = AnalyzeExpr(*ast.init(), type);
     if (!init) return nullptr;
   }
   // check if is ill-formed
@@ -466,7 +664,7 @@ TypePtr Analyzer::AnalyzeOn(VarLetElemAST &ast) {
 
 TypePtr Analyzer::AnalyzeOn(ArgElemAST &ast) {
   // get type
-  auto type = ast.type()->SemaAnalyze(*this);
+  auto type = AnalyzeExpr(*ast.type());
   if (!type) return nullptr;
   // check if is conflicted
   if (symbols_->GetItem(ast.id(), false)) {
@@ -485,7 +683,7 @@ TypePtr Analyzer::AnalyzeOn(ArgElemAST &ast) {
 
 TypePtr Analyzer::AnalyzeOn(StructElemAST &ast) {
   // get type
-  const auto type = ast.type()->SemaAnalyze(*this);
+  const auto type = AnalyzeExpr(*ast.type());
   if (!type) return nullptr;
   // set last argument info (for structures)
   assert(!type->IsRightValue());
@@ -500,7 +698,7 @@ TypePtr Analyzer::AnalyzeOn(StructElemAST &ast) {
 TypePtr Analyzer::AnalyzeOn(EnumElemAST &ast) {
   // check type of initialization expression
   if (ast.expr()) {
-    const auto type = ast.expr()->SemaAnalyze(*this);
+    const auto type = AnalyzeExpr(*ast.expr(), last_enum_type_);
     if (!type) return nullptr;
     if (!last_enum_type_->CanAccept(type)) {
       return LogError(ast.logger(), "invalid initialization expression");
@@ -516,7 +714,8 @@ TypePtr Analyzer::AnalyzeOn(BlockAST &ast) {
   const auto eval_env = eval_.NewEnv();
   auto ret = MakeVoid();
   for (std::size_t i = 0; i < ast.stmts().size(); ++i) {
-    auto type = ast.stmts()[i]->SemaAnalyze(*this);
+    auto type = AnalyzeExpr(*ast.stmts()[i],
+                            i + 1 == ast.stmts().size() ? expected_ : nullptr);
     if (!type) return nullptr;
     if (i == ast.stmts().size() - 1) ret = std::move(type);
   }
@@ -525,18 +724,23 @@ TypePtr Analyzer::AnalyzeOn(BlockAST &ast) {
 
 TypePtr Analyzer::AnalyzeOn(IfAST &ast) {
   // check condition
-  const auto cond = ast.cond()->SemaAnalyze(*this);
+  const auto cond = AnalyzeExpr(*ast.cond());
   if (!cond) return nullptr;
   if (!cond->IsBool()) {
     return LogError(ast.cond()->logger(), "condition must be a boolean");
   }
   // check then block
-  auto then = ast.then()->SemaAnalyze(*this);
+  auto then = AnalyzeExpr(*ast.then(), expected_);
   if (!then) return nullptr;
   // check else then block
   auto else_then =
-      ast.else_then() ? ast.else_then()->SemaAnalyze(*this) : MakeVoid();
+      ast.else_then() ? AnalyzeExpr(*ast.else_then(), expected_) : MakeVoid();
   if (!else_then) return nullptr;
+  if (ast.else_then()) {
+    UnifyLiterals(*ast.then(), *ast.else_then());
+    then = ast.then()->ast_type();
+    else_then = ast.else_then()->ast_type();
+  }
   // create return type
   auto ret = MakeVoid();
   if (then->IsIdentical(else_then)) {
@@ -548,48 +752,38 @@ TypePtr Analyzer::AnalyzeOn(IfAST &ast) {
 
 TypePtr Analyzer::AnalyzeOn(WhenAST &ast) {
   // get type of expression
-  last_when_expr_type_ = ast.expr()->SemaAnalyze(*this);
+  last_when_expr_type_ = AnalyzeExpr(*ast.expr());
   if (!last_when_expr_type_) return nullptr;
-  // check all elements
-  TypePtr elems;
+  const auto condition_type = last_when_expr_type_;
+  std::vector<BaseAST *> branches;
   for (const auto &i : ast.elems()) {
-    auto elem = i->SemaAnalyze(*this);
-    if (!elem) return nullptr;
-    // try to determine return type
-    if (!elems) {
-      elems = std::move(elem);
-    } else if (!elems->IsVoid()) {
-      if (!elems->IsIdentical(elem)) {
-        elems = MakeVoid();
-      } else if (!elems->IsRightValue() && elem->IsRightValue()) {
-        // handle right value, same as if-statement
-        elems = std::move(elem);
-      }
-    }
+    last_when_expr_type_ = condition_type;
+    if (!AnalyzeExpr(*i, expected_)) return nullptr;
+    branches.push_back(i.get());
   }
-  // check else then block
-  auto else_then =
-      ast.else_then() ? ast.else_then()->SemaAnalyze(*this) : MakeVoid();
-  if (!else_then) return nullptr;
-  // create return type
-  auto ret = MakeVoid();
-  if (elems->IsIdentical(else_then)) {
-    // handle right value, same as if-statement
-    ret = elems->IsRightValue() ? std::move(elems) : std::move(else_then);
+  if (!ast.else_then()) return ast.set_ast_type(MakeVoid());
+  if (!AnalyzeExpr(*ast.else_then(), expected_)) return nullptr;
+  branches.push_back(ast.else_then().get());
+  for (auto *branch : branches) UnifyLiterals(*branches.front(), *branch);
+  auto ret = branches.front()->ast_type();
+  for (auto *branch : branches) {
+    if (!branch->ast_type()->IsIdentical(ret) && !AdaptLiteral(*branch, ret))
+      return ast.set_ast_type(MakeVoid());
+    if (branch->ast_type()->IsRightValue()) ret = branch->ast_type();
   }
   return ast.set_ast_type(ret);
 }
 
 TypePtr Analyzer::AnalyzeOn(WhileAST &ast) {
   // check condition
-  const auto cond = ast.cond()->SemaAnalyze(*this);
+  const auto cond = AnalyzeExpr(*ast.cond());
   if (!cond) return nullptr;
   if (!cond->IsBool()) {
     return LogError(ast.cond()->logger(), "condition must be a boolean");
   }
   // check body
   ++in_loop_;
-  if (!ast.body()->SemaAnalyze(*this)) return nullptr;
+  if (!AnalyzeExpr(*ast.body())) return nullptr;
   --in_loop_;
   return ast.set_ast_type(MakeVoid());
 }
@@ -598,7 +792,7 @@ TypePtr Analyzer::AnalyzeOn(ForInAST &ast) {
   const auto env = NewEnv();
   const auto eval_env = eval_.NewEnv();
   // get type of expression
-  auto expr = ast.expr()->SemaAnalyze(*this);
+  auto expr = AnalyzeExpr(*ast.expr());
   if (!expr) return nullptr;
   if (expr->IsRightValue()) expr = expr->GetValueType(false);
   // find iterator
@@ -625,7 +819,7 @@ TypePtr Analyzer::AnalyzeOn(ForInAST &ast) {
   ast.set_id_type(type);
   // check body
   ++in_loop_;
-  if (!ast.body()->SemaAnalyze(*this)) return nullptr;
+  if (!AnalyzeExpr(*ast.body())) return nullptr;
   --in_loop_;
   return ast.set_ast_type(MakeVoid());
 }
@@ -646,10 +840,10 @@ TypePtr Analyzer::AnalyzeOn(ControlAST &ast) {
     }
     case Keyword::Return: {
       const auto type =
-          ast.expr() ? ast.expr()->SemaAnalyze(*this) : MakeVoid();
+          ast.expr() ? AnalyzeExpr(*ast.expr(), cur_ret_) : MakeVoid();
       // check if is compatible
       assert(cur_ret_->IsVoid() || !cur_ret_->IsRightValue());
-      if (!CheckInit(ast.logger(), cur_ret_, type)) return nullptr;
+      if (!type || !CheckInit(ast.logger(), cur_ret_, type)) return nullptr;
       break;
     }
     default:
@@ -660,15 +854,16 @@ TypePtr Analyzer::AnalyzeOn(ControlAST &ast) {
 
 TypePtr Analyzer::AnalyzeOn(WhenElemAST &ast) {
   // check conditions
+  const auto condition_type = last_when_expr_type_;
   for (const auto &i : ast.conds()) {
-    const auto cond = i->SemaAnalyze(*this);
+    const auto cond = AnalyzeExpr(*i, condition_type);
     if (!cond) return nullptr;
-    if (!cond->IsIdentical(last_when_expr_type_)) {
+    if (!cond->IsIdentical(condition_type)) {
       return LogError(i->logger(), "condition type mismatch");
     }
   }
   // check body
-  const auto body = ast.body()->SemaAnalyze(*this);
+  const auto body = AnalyzeExpr(*ast.body(), expected_);
   if (!body) return nullptr;
   return ast.set_ast_type(body);
 }
@@ -677,8 +872,14 @@ TypePtr Analyzer::AnalyzeOn(WhenElemAST &ast) {
 // NOLINTNEXTLINE(readability-function-cognitive-complexity)
 TypePtr Analyzer::AnalyzeOn(BinaryAST &ast) {
   // get lhs and rhs type
-  const auto lhs = ast.lhs()->SemaAnalyze(*this);
-  const auto rhs = ast.rhs()->SemaAnalyze(*this);
+  auto context = IsIntegerOperation(ast.op()) ? expected_ : nullptr;
+  if (context && !context->IsInteger()) context.reset();
+  auto lhs = AnalyzeExpr(*ast.lhs(), context);
+  if (define::IsOperatorAssign(ast.op()) && lhs) {
+    context = lhs;
+    if (lhs->IsPointer() && ast.op() != Operator::Assign) context.reset();
+  }
+  auto rhs = AnalyzeExpr(*ast.rhs(), context);
   if (!lhs) {
     return LogError(ast.lhs()->logger(), "invalid lhs expression");
   }
@@ -689,13 +890,22 @@ TypePtr Analyzer::AnalyzeOn(BinaryAST &ast) {
   if (lhs->IsVoid() || rhs->IsVoid()) {
     return LogError(ast.logger(), "invalid operation between void types");
   }
+  // Reconcile unresolved literal trees without reanalyzing scopes or calls.
+  if (!define::IsOperatorAssign(ast.op()) &&
+      !(IsIntegerOperation(ast.op()) &&
+        (lhs->IsPointer() || rhs->IsPointer()))) {
+    UnifyLiterals(*ast.lhs(), *ast.rhs());
+    lhs = ast.lhs()->ast_type();
+    rhs = ast.rhs()->ast_type();
+  }
   // check if operator was overloaded
   if (!lhs->IsBasic() || !rhs->IsBasic()) {
-    const TypePtrList args = {lhs, rhs};
+    TypePtrList args = {lhs, rhs};
     const auto *op_name = kOperators[static_cast<int>(ast.op())];
     auto ret = CheckOpOverload(
         ast.logger(), op_name, args,
-        [&ast](const std::string &id) { ast.set_op_func_id(id); });
+        [&ast](const std::string &id) { ast.set_op_func_id(id); },
+        {ast.lhs().get(), ast.rhs().get()});
     if (ret) return ast.set_ast_type(*ret);
   }
   // normal binary operation
@@ -806,7 +1016,7 @@ TypePtr Analyzer::AnalyzeOn(BinaryAST &ast) {
 
 TypePtr Analyzer::AnalyzeOn(AccessAST &ast) {
   // get expression type & id
-  auto expr = ast.expr()->SemaAnalyze(*this);
+  auto expr = AnalyzeExpr(*ast.expr());
   // handle access
   TypePtr ret;
   if (expr) {
@@ -829,8 +1039,8 @@ TypePtr Analyzer::AnalyzeOn(AccessAST &ast) {
 }
 
 TypePtr Analyzer::AnalyzeOn(CastAST &ast) {
-  const auto expr = ast.expr()->SemaAnalyze(*this);
-  const auto type = ast.type()->SemaAnalyze(*this);
+  const auto expr = AnalyzeExpr(*ast.expr());
+  const auto type = AnalyzeExpr(*ast.type());
   if (!expr || !type) return nullptr;
   // check if cast is valid
   if (type->IsReference() || !expr->CanCastTo(type)) {
@@ -842,7 +1052,9 @@ TypePtr Analyzer::AnalyzeOn(CastAST &ast) {
 TypePtr Analyzer::AnalyzeOn(UnaryAST &ast) {
   using UnaryOp = UnaryAST::UnaryOp;
   // get operand type
-  auto opr = ast.opr()->SemaAnalyze(*this);
+  const auto context = IntegerUnaryContext(ast.op(), expected_);
+  if (auto literal = AnalyzeNegativeLiteral(ast, context)) return *literal;
+  auto opr = AnalyzeExpr(*ast.opr(), context);
   if (!opr || opr->IsVoid()) {
     return LogError(ast.opr()->logger(), "invalid operand");
   }
@@ -850,11 +1062,12 @@ TypePtr Analyzer::AnalyzeOn(UnaryAST &ast) {
   // check if operator was overloaded
   // NOTE: 'sizeof' cannot be overloaded
   if (!opr->IsBasic() && ast.op() != UnaryOp::SizeOf) {
-    const TypePtrList args = {opr};
+    TypePtrList args = {opr};
     const auto *op_name = kUnaOperators[static_cast<int>(ast.op())];
     auto ret = CheckOpOverload(
         ast.logger(), op_name, args,
-        [&ast](const std::string &id) { ast.set_op_func_id(id); });
+        [&ast](const std::string &id) { ast.set_op_func_id(id); },
+        {ast.opr().get()});
     if (ret) return ast.set_ast_type(*ret);
   }
   // normal unary operations
@@ -905,14 +1118,14 @@ TypePtr Analyzer::AnalyzeOn(UnaryAST &ast) {
 
 TypePtr Analyzer::AnalyzeOn(IndexAST &ast) {
   // get type of expression
-  auto expr = ast.expr()->SemaAnalyze(*this);
+  auto expr = AnalyzeExpr(*ast.expr());
   if (!expr ||
       (!expr->IsPointer() && (!expr->IsArray() || expr->IsRightValue()))) {
     return LogError(ast.expr()->logger(), "expression is not subscriptable");
   }
   if (expr->IsReference()) expr = expr->GetDerefedType();
   // get type of index
-  const auto index = ast.index()->SemaAnalyze(*this);
+  const auto index = AnalyzeExpr(*ast.index());
   if (!index || !index->IsInteger()) {
     return LogError(ast.index()->logger(), "invalid index");
   }
@@ -936,7 +1149,7 @@ TypePtr Analyzer::AnalyzeOn(FunCallAST &ast) {
   // get type of arguments
   TypePtrList args;
   for (const auto &i : ast.args()) {
-    auto arg = i->SemaAnalyze(*this);
+    auto arg = AnalyzeExpr(*i);
     if (!arg) return nullptr;
     args.push_back(std::move(arg));
   }
@@ -948,14 +1161,24 @@ TypePtr Analyzer::AnalyzeOn(FunCallAST &ast) {
     // NOLINTNEXTLINE(cppcoreguidelines-pro-type-static-cast-downcast)
     auto *id_ptr = static_cast<IdAST *>(ast.expr().get());
     const auto setter = [id_ptr](const std::string &id) { id_ptr->set_id(id); };
-    type = FindFuncType(ast.expr()->logger(), id_ptr->id(), args, setter);
+    std::vector<BaseAST *> exprs;
+    for (const auto &arg : ast.args()) exprs.push_back(arg.get());
+    type = ResolveCall(ast.expr()->logger(), id_ptr->id(), args, exprs, setter);
     id_ptr->set_ast_type(type);
   } else {
-    type = ast.expr()->SemaAnalyze(*this);
+    type = AnalyzeExpr(*ast.expr());
   }
   // check function type
   if (!type || !type->IsFunction()) {
     return LogError(ast.expr()->logger(), "calling a non-function");
+  }
+  // A function-valued expression also provides parameter contexts.
+  if (!ast.expr()->IsId()) {
+    std::vector<BaseAST *> exprs;
+    for (const auto &arg : ast.args()) exprs.push_back(arg.get());
+    if (!MatchArguments(type, args, exprs, true)) {
+      return LogError(ast.logger(), "invalid function call");
+    }
   }
   // get return type
   const auto ret = type->GetReturnType(args);
@@ -967,6 +1190,12 @@ TypePtr Analyzer::AnalyzeOn(FunCallAST &ast) {
 }
 
 TypePtr Analyzer::AnalyzeOn(IntAST &ast) {
+  if (expected_ && expected_->IsInteger()) {
+    if (!FitsInteger(ast.value(), expected_)) {
+      return LogError(ast.logger(), "integer literal out of range");
+    }
+    return ast.set_ast_type(LiteralType(expected_));
+  }
   return ast.set_ast_type(MakePrimType(Keyword::Int32, true));
 }
 
@@ -984,13 +1213,13 @@ TypePtr Analyzer::AnalyzeOn(IdAST &ast) {
   if (!type) {
     // try to get mangled name from function mapping table
     auto name = funcs_->GetItem(ast.id());
-    if (!name) {
+    if (!name || name->size() != 1) {
       return LogError(ast.logger(), "identifier has not been defined",
                       ast.id());
     }
     if (name) {
-      ast.set_id(*name);
-      type = symbols_->GetItem(*name);
+      ast.set_id(name->front());
+      type = symbols_->GetItem(name->front());
       assert(type);
     }
   }
@@ -1009,11 +1238,14 @@ TypePtr Analyzer::AnalyzeOn(BoolAST &ast) {
 }
 
 TypePtr Analyzer::AnalyzeOn(NullAST &ast) {
+  if (expected_ && expected_->IsPointer()) {
+    return ast.set_ast_type(LiteralType(expected_));
+  }
   return ast.set_ast_type(MakePrimType(Keyword::Null, true));
 }
 
 TypePtr Analyzer::AnalyzeOn(ValInitAST &ast) {
-  const auto type = ast.type()->SemaAnalyze(*this);
+  const auto type = AnalyzeExpr(*ast.type());
   if (!type) return nullptr;
   if (type->IsReference()) {
     return LogError(ast.type()->logger(), "cannot initialize a reference");
@@ -1025,7 +1257,7 @@ TypePtr Analyzer::AnalyzeOn(ValInitAST &ast) {
   }
   for (std::size_t i = 0; i < ast.elems().size(); ++i) {
     // get type of element
-    const auto elem = ast.elems()[i]->SemaAnalyze(*this);
+    const auto elem = AnalyzeExpr(*ast.elems()[i], type->GetElem(i));
     if (!elem) return nullptr;
     // check if can be accepted
     if (!type->GetElem(i)->CanAccept(elem)) {
@@ -1051,12 +1283,12 @@ TypePtr Analyzer::AnalyzeOn(FuncTypeAST &ast) {
   // get type of arguments
   TypePtrList args;
   for (const auto &i : ast.args()) {
-    auto arg = i->SemaAnalyze(*this);
+    auto arg = AnalyzeExpr(*i);
     if (!arg) return nullptr;
     args.push_back(std::move(arg));
   }
   // get return type
-  auto ret = ast.ret() ? ast.ret()->SemaAnalyze(*this) : MakeVoid();
+  auto ret = ast.ret() ? AnalyzeExpr(*ast.ret()) : MakeVoid();
   if (!ret) return nullptr;
   if (!ret->IsReference() && !ret->IsRightValue()) {
     ret = ret->GetValueType(true);
@@ -1068,7 +1300,7 @@ TypePtr Analyzer::AnalyzeOn(FuncTypeAST &ast) {
 }
 
 TypePtr Analyzer::AnalyzeOn(VolaTypeAST &ast) {
-  auto type = ast.type()->SemaAnalyze(*this);
+  auto type = AnalyzeExpr(*ast.type());
   if (!type) return nullptr;
   if (type->IsReference()) {
     ast.type()->logger().LogWarning("volatile reference is meaningless");
@@ -1079,13 +1311,13 @@ TypePtr Analyzer::AnalyzeOn(VolaTypeAST &ast) {
 
 TypePtr Analyzer::AnalyzeOn(ArrayTypeAST &ast) {
   // get base type
-  auto base = ast.base()->SemaAnalyze(*this);
+  auto base = AnalyzeExpr(*ast.base());
   if (!base) return nullptr;
   if (base->IsReference()) {
     return LogError(ast.base()->logger(), "base type cannot be reference");
   }
   // check type of length expression
-  const auto expr = ast.expr()->SemaAnalyze(*this);
+  const auto expr = AnalyzeExpr(*ast.expr());
   if (!expr) return nullptr;
   if (!expr->IsInteger()) {
     return LogError(ast.expr()->logger(), "array length must be an integer");
@@ -1110,7 +1342,7 @@ TypePtr Analyzer::AnalyzeOn(ArrayTypeAST &ast) {
 
 TypePtr Analyzer::AnalyzeOn(PointerTypeAST &ast) {
   // get base type
-  auto base = ast.base()->SemaAnalyze(*this);
+  auto base = AnalyzeExpr(*ast.base());
   if (!base) return nullptr;
   if (base->IsReference()) {
     return LogError(ast.base()->logger(), "base type cannot be reference");
@@ -1123,7 +1355,7 @@ TypePtr Analyzer::AnalyzeOn(PointerTypeAST &ast) {
 
 TypePtr Analyzer::AnalyzeOn(RefTypeAST &ast) {
   // get base type
-  auto base = ast.base()->SemaAnalyze(*this);
+  auto base = AnalyzeExpr(*ast.base());
   if (!base) return nullptr;
   if (base->IsReference()) {
     return LogError(ast.logger(), "cannot reference a reference");

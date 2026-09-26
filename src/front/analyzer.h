@@ -26,7 +26,12 @@ class Analyzer {
     user_types_ = define::MakeEnv();
     funcs_ = define::MakeFuncMap();
     in_loop_ = 0;
+    expected_.reset();
   }
+
+  // Context applies only to this expression and explicitly selected children.
+  define::TypePtr AnalyzeExpr(define::BaseAST &ast,
+                              define::TypePtr expected = {});
 
   define::TypePtr AnalyzeOn(define::VarLetDefAST &ast);
   define::TypePtr AnalyzeOn(define::FunDefAST &ast);
@@ -53,13 +58,13 @@ class Analyzer {
   define::TypePtr AnalyzeOn(define::UnaryAST &ast);
   define::TypePtr AnalyzeOn(define::IndexAST &ast);
   define::TypePtr AnalyzeOn(define::FunCallAST &ast);
-  static define::TypePtr AnalyzeOn(define::IntAST &ast);
+  define::TypePtr AnalyzeOn(define::IntAST &ast);
   static define::TypePtr AnalyzeOn(define::FloatAST &ast);
   static define::TypePtr AnalyzeOn(define::CharAST &ast);
   define::TypePtr AnalyzeOn(define::IdAST &ast);
   static define::TypePtr AnalyzeOn(define::StringAST &ast);
   static define::TypePtr AnalyzeOn(define::BoolAST &ast);
-  static define::TypePtr AnalyzeOn(define::NullAST &ast);
+  define::TypePtr AnalyzeOn(define::NullAST &ast);
   define::TypePtr AnalyzeOn(define::ValInitAST &ast);
   static define::TypePtr AnalyzeOn(define::PrimTypeAST &ast);
   define::TypePtr AnalyzeOn(define::UserTypeAST &ast);
@@ -86,6 +91,11 @@ class Analyzer {
   define::TypePtr FindFuncType(const Logger &log, const std::string &id,
                                const define::TypePtrList &args,
                                const IdSetter &id_setter);
+  // Find a unique literal-compatible signature without modifying candidates.
+  define::TypePtr ResolveCall(const Logger &log, const std::string &id,
+                              define::TypePtrList &args,
+                              const std::vector<define::BaseAST *> &exprs,
+                              const IdSetter &id_setter);
   // check if is valid initialization
   // type: variable type, init: initializer type
   static bool CheckInit(const Logger &log, const define::TypePtr &type,
@@ -96,8 +106,8 @@ class Analyzer {
   // check if is valid operator overloading
   // if so, return function's return type, otherwise log error
   std::optional<define::TypePtr> CheckOpOverload(
-      const Logger &log, const std::string &op_name,
-      const define::TypePtrList &args, const IdSetter &id_setter);
+      const Logger &log, const std::string &op_name, define::TypePtrList &args,
+      const IdSetter &id_setter, const std::vector<define::BaseAST *> &exprs);
 
   // evaluator
   // This service is bound to its owner for its entire lifetime.
@@ -105,12 +115,11 @@ class Analyzer {
   Evaluator &eval_;
   // symbol tables & user defined types (structs, enums, aliases)
   define::EnvPtr symbols_, user_types_;
-  // function mapping table stores mappings of original function name
-  // to mangled function name, if there is multiple overloaded functions,
-  // the specific item with the original function name will be removed
+  // Overload names in each lexical scope, including declared functions.
   define::FuncMapPtr funcs_;
   // used when analyzing functions
   define::TypePtr cur_ret_;
+  define::TypePtr expected_;
   // used when analyzing structures
   std::string_view last_struct_elem_name_;
   // used when analyzing enumerations

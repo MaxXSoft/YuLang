@@ -2,6 +2,14 @@
 
 All notable changes to the YuLang compiler will be documented in this file.
 
+## Unreleased
+
+### Added
+
+* Contextual integer and null literal typing, including expression results,
+  aggregate elements, and unambiguous function/operator arguments.
+* Literal range checks and native O0/O2 and cross-target typing regressions.
+
 ## 0.0.9 - 2026-09-22
 
 ### Added

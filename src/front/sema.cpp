@@ -67,9 +67,7 @@ TypePtr IndexAST::SemaAnalyze(Analyzer &ana) { return ana.AnalyzeOn(*this); }
 
 TypePtr FunCallAST::SemaAnalyze(Analyzer &ana) { return ana.AnalyzeOn(*this); }
 
-TypePtr IntAST::SemaAnalyze(Analyzer & /*ana*/) {
-  return yulang::front::Analyzer::AnalyzeOn(*this);
-}
+TypePtr IntAST::SemaAnalyze(Analyzer &ana) { return ana.AnalyzeOn(*this); }
 
 TypePtr FloatAST::SemaAnalyze(Analyzer & /*ana*/) {
   return yulang::front::Analyzer::AnalyzeOn(*this);
@@ -89,9 +87,7 @@ TypePtr BoolAST::SemaAnalyze(Analyzer & /*ana*/) {
   return yulang::front::Analyzer::AnalyzeOn(*this);
 }
 
-TypePtr NullAST::SemaAnalyze(Analyzer & /*ana*/) {
-  return yulang::front::Analyzer::AnalyzeOn(*this);
-}
+TypePtr NullAST::SemaAnalyze(Analyzer &ana) { return ana.AnalyzeOn(*this); }
 
 TypePtr ValInitAST::SemaAnalyze(Analyzer &ana) { return ana.AnalyzeOn(*this); }
 

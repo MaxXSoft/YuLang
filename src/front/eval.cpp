@@ -690,7 +690,9 @@ std::optional<EvalNum> Evaluator::EvalOn(BoolAST &ast) {
   return static_cast<std::uint64_t>(ast.value());
 }
 
-std::optional<EvalNum> Evaluator::EvalOn(NullAST & /*ast*/) {
+std::optional<EvalNum> Evaluator::EvalOn(NullAST &ast) {
+  // Typed nulls stay pointer expressions, like explicit null casts.
+  if (!ast.ast_type()->IsNull()) return {};
   return static_cast<std::uint64_t>(0);
 }
 

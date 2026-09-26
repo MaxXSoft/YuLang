@@ -23,6 +23,30 @@ Visit [YuLang-doc](https://github.com/MaxXSoft/YuLang-doc) for more details.
 * Operator-formed identifier
 * Dot function and infix function
 * Iterator
+* Contextual integer and null literals
+
+Integer literals take their type from a declaration, assignment, return value,
+parameter, aggregate element, or the other operand of an operation. The context
+also reaches arithmetic expressions and the result of blocks, `if`, and `when`:
+
+```yu
+var count: usize = 1 + 2
+count += 1
+let mask: u64 = 1 << 40
+var ptr: u8* = null
+let empty = ptr == null
+```
+
+Without a context, integers still default to `i32`; `let ptr = null` requires a
+type annotation. Contextually typed literals must fit the target integer type,
+including the target's `usize`/`isize` width. Ordinary variables, named constants,
+explicit `as` conversions, characters, and floating-point values retain their
+types. Explicit casts retain their existing truncation behavior.
+
+Function and operator calls prefer an existing exact parameter match. Otherwise,
+only literal-compatible candidates are considered; exactly one must match.
+Ambiguous calls require an explicit type. Literal typing does not create temporary
+references or remove pointer target qualifiers.
 
 <details>
   <summary>EBNF of Yu</summary>

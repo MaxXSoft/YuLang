@@ -6,6 +6,7 @@
 #include <string>
 #include <unordered_map>
 #include <variant>
+#include <vector>
 
 #include "define/type.h"
 #include "xstl/nested.h"
@@ -16,7 +17,8 @@ namespace yulang::define {
 using EnvPtr = xstl::NestedMapPtr<std::string, TypePtr>;
 
 // function mapping table
-using FuncMapPtr = xstl::NestedMapPtr<std::string, std::optional<std::string>>;
+using FuncMapPtr =
+    xstl::NestedMapPtr<std::string, std::optional<std::vector<std::string>>>;
 
 // evaluated values
 using EvalNum = std::variant<std::uint64_t, float, double>;
@@ -34,12 +36,14 @@ inline EnvPtr MakeEnv(const EnvPtr &outer) {
 
 // make a new function mapping table
 inline FuncMapPtr MakeFuncMap() {
-  return xstl::MakeNestedMap<std::string, std::optional<std::string>>();
+  return xstl::MakeNestedMap<std::string,
+                             std::optional<std::vector<std::string>>>();
 }
 
 // make a new function mapping table (with outer table)
 inline FuncMapPtr MakeFuncMap(const FuncMapPtr &outer) {
-  return xstl::MakeNestedMap<std::string, std::optional<std::string>>(outer);
+  return xstl::MakeNestedMap<std::string,
+                             std::optional<std::vector<std::string>>>(outer);
 }
 
 // make a new evaluation environment

@@ -1,0 +1,41 @@
+struct Pair { count: u16, ptr: u8* }
+var pair = [Pair] {7, null}
+var numbers = [u8[3]] {1, 2, 255}
+let wide: u64 = 1 << 40
+
+def take(n: u64): u64 { n }
+def pick(n: i32): i32 { 11 }
+def pick(n: u32): u32 { 22 }
+def choose(n: u32, c: bool): u32 { n }
+def choose(n: u64, p: u8*): u64 { n }
+struct Counter { value: u32 }
+def +(c: Counter, n: u32): u32 { c.value + n }
+
+extern def literal_arithmetic(x: u64): u64 {
+  var n: u64 = 1 + 2
+  n += 4
+  n = n + (1 + 2) + (3 + x)
+  n + take(1 << 40) + wide
+}
+extern def literal_minimum(): i64 { -9223372036854775808 }
+extern def literal_narrow(): i64 { let n: i8 = -128; n as i64 }
+extern def literal_maximum(): u64 { 18446744073709551615 }
+extern def literal_mask(): u64 { ~(0) }
+extern def literal_branches(c: bool, x: u32): u32 {
+  let n = if c { 1 + 2 } else { x }
+  when n { 3 { 100 } else { 200 } }
+}
+extern def literal_null(c: bool, p: u8*): u8* {
+  var q: u8* = null
+  if c { q = p }
+  let r = if c { q } else { null }
+  r
+}
+extern def literal_checks(): bool {
+  var p: u8* = null
+  p = null
+  let c = [Counter] {5}
+  pair.count == 7 && pair.ptr == null && null == p &&
+    numbers[2] == 255 && pick(1) == 11 && choose(8, true) == 8 &&
+    choose(9, null) == 9 && c + 1 == 6
+}
