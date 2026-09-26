@@ -15,7 +15,7 @@ extern declare srand: (u32)
 // Unix ABI: time_t and long have pointer width; see README for target limits.
 extern declare time: (isize var*): isize
 inline def seed(): u32 {
-  let s = time(null as isize var*) as u32
+  let s = time(null) as u32
   srand(s)
   s
 }

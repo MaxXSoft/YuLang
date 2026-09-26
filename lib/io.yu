@@ -18,9 +18,9 @@ public let err: IO = [IO] {FD_STDERR}
 // finish positive short writes, and stop if the descriptor cannot make progress
 def writeAll(this: IO&, data: u8*, size: usize) {
   var cur = data, remaining = size
-  while remaining != 0 as usize {
+  while remaining != 0 {
     let written = write(this.__fd, cur, remaining)
-    if written <= 0 as isize {
+    if written <= 0 {
       return
     }
     cur += written as usize
@@ -30,13 +30,13 @@ def writeAll(this: IO&, data: u8*, size: usize) {
 
 // put character to IO
 public def put(this: IO&, char: u8) {
-  this.writeAll(&char, 1 as usize)
+  this.writeAll(&char, 1)
 }
 
 // get character from IO
 public def get(this: IO&): u8 {
   var char: u8
-  read(this.__fd, &char, 1 as usize)
+  read(this.__fd, &char, 1)
   char
 }
 
@@ -64,10 +64,10 @@ public def <<<(this: IO&, uint: usize): IO& {
     digits[19] = '0'
   }
   else {
-    while n != 0 as usize {
+    while n != 0 {
       i -= 1
-      digits[i] = (n % 10 as usize) as u8 + '0'
-      n /= 10 as usize
+      digits[i] = (n % 10) as u8 + '0'
+      n /= 10
     }
   }
   this.writeAll(digits as u8* + i, (20 - i) as usize)
@@ -85,7 +85,7 @@ public def <<<(this: IO&, int: i32): IO& {
   var n = int as usize
   if int < 0 {
     this.put('-')
-    n = 0 as usize - n
+    n = 0 - n
   }
   this <<< n
   this
@@ -110,7 +110,7 @@ public def <<<(this: IO&, val: bool): IO& {
 def getUInt(this: IO&, uint: usize var&) {
   var char = this.get()
   while isdigit(char as i32) != 0 {
-    uint = uint * 10 as usize + (char - '0') as usize
+    uint = uint * 10 + (char - '0') as usize
     char = this.get()
   }
 }
@@ -144,7 +144,7 @@ public def >>>(this: IO&, uint: u32 var&): IO& {
 public def >>>(this: IO&, int: i32 var&): IO& {
   let char = this.get(), neg = char == '-'
   if !neg && !isdigit(char as i32) { return this }
-  var num = if !neg { (char - '0') as usize } else { 0 as usize }
+  var num = if !neg { (char - '0') as usize } else { 0 }
   this.getUInt(num)
   int = if !neg { num as i32 } else { -(num as i32) }
   this

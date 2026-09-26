@@ -1,7 +1,7 @@
 import sys.stdlib
 
 // length of stack frame
-inline let STACK_FRAME_LEN = 32 as usize
+inline let STACK_FRAME_LEN: usize = 32
 
 public struct __StackFrame {
   data: u8 var*[STACK_FRAME_LEN],
@@ -24,7 +24,7 @@ def newStackFrame(next: __StackFrame var*): __StackFrame var* {
 }
 
 def empty(this: __StackFrame var*): bool {
-  this == null as __StackFrame var*
+  this == null
 }
 
 def push(this: __StackFrame var*): __StackFrame var* {
@@ -53,7 +53,7 @@ def del(this: __StackFrame var*) {
  * stack related stuffs
  */
 public def newStack(): Stack {
-  [Stack] {newStackFrame(null as __StackFrame var*), 0 as usize}
+  [Stack] {newStackFrame(null), 0}
 }
 
 public def del(this: Stack var&) {
@@ -61,39 +61,39 @@ public def del(this: Stack var&) {
 }
 
 public def empty(this: Stack&): bool {
-  this.__sp == 0 as usize && (*this.__frames).next.empty()
+  this.__sp == 0 && (*this.__frames).next.empty()
 }
 
 public def top(this: Stack var&): u8 var* var& {
-  if this.__sp == 0 as usize {
-    (*this.__frames).next.at(STACK_FRAME_LEN - 1 as usize)
+  if this.__sp == 0 {
+    (*this.__frames).next.at(STACK_FRAME_LEN - 1)
   }
   else {
-    this.__frames.at(this.__sp - 1 as usize)
+    this.__frames.at(this.__sp - 1)
   }
 }
 
 public def push(this: Stack var&, data: u8 var*) {
   this.__frames.at(this.__sp) = data
-  this.__sp += 1 as usize
+  this.__sp += 1
   if this.__sp == STACK_FRAME_LEN {
     this.__frames = this.__frames.push()
-    this.__sp = 0 as usize
+    this.__sp = 0
   }
 }
 
 public def pop(this: Stack var&): u8 var* {
-  if this.__sp == 0 as usize {
+  if this.__sp == 0 {
     this.__frames = this.__frames.pop()
     this.__sp = STACK_FRAME_LEN
   }
-  this.__sp -= 1 as usize
+  this.__sp -= 1
   let top = this.__frames.at(this.__sp)
   top
 }
 
 public def clear(this: Stack var&) {
   (*this.__frames).next.del()
-  (*this.__frames).next = null as __StackFrame var*
-  this.__sp = 0 as usize
+  (*this.__frames).next = null
+  this.__sp = 0
 }

@@ -1,8 +1,8 @@
 import dynarray
 
 extern def check_dynarray_copy(): i32 {
-  var source = newDynArray(4 as usize, 42)
-  var dest = newDynArray(2 as usize, 7)
+  var source = newDynArray(4, 42)
+  var dest = newDynArray(2, 7)
   dest = source
   var valid = dest.size() == source.size()
   var i = 0
@@ -20,27 +20,27 @@ extern def check_dynarray_copy(): i32 {
 }
 
 extern def check_dynarray_growth(): i32 {
-  var arr = newDynArray(2 as usize, 7)
-  arr.resize(100 as usize, 42)
-  var valid = arr.size() == 100 as usize && arr.capacity() >= arr.size()
+  var arr = newDynArray(2, 7)
+  arr.resize(100, 42)
+  var valid = arr.size() == 100 && arr.capacity() >= arr.size()
   var i = 0
   while i < 100 {
     valid = valid && arr.get(i) == if i < 2 { 7 } else { 42 }
     i += 1
   }
-  arr.resize(1 as usize)
+  arr.resize(1)
   arr.push(99)
-  valid = valid && arr.size() == 2 as usize && arr.back() == 99
+  valid = valid && arr.size() == 2 && arr.back() == 99
   arr.del()
   if valid { 0 } else { 1 }
 }
 
 extern def check_dynarray_zero_capacity(): i32 {
-  var arr = newDynArray(0 as usize, 0)
+  var arr = newDynArray(0, 0)
   arr.push(17)
-  var valid = arr.size() == 1 as usize && arr.capacity() >= arr.size() &&
+  var valid = arr.size() == 1 && arr.capacity() >= arr.size() &&
               arr.front() == 17
-  arr.resize(70 as usize)
+  arr.resize(70)
   valid = valid && arr.capacity() >= arr.size() && arr.front() == 17 &&
               arr.back() == 0
   arr.del()

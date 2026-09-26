@@ -8,7 +8,7 @@ extern def read_twice(p: u32 volatile*) {
   *p
 }
 extern def read_unused_sum(p: u32 volatile*) {
-  *p + (1 as u32)
+  *p + (1)
 }
 extern def read_value(p: u32 volatile*): u32 {
   *p

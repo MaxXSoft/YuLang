@@ -148,7 +148,7 @@ struct Output {}
 
 def println(this: Output&, str: u8*) {
   write(FD_STDOUT, str, strlen(str))
-  write(FD_STDOUT, "\n", 1 as u32)
+  write(FD_STDOUT, "\n", 1)
 }
 
 let out = [Output] {}

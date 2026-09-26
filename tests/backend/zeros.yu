@@ -10,7 +10,7 @@ struct Pair { first: i32, second: i32 }
 var pair: Pair
 
 extern def main(): i32 {
-  let literal = check_zeros(null as u8*, 0, single, double, false)
+  let literal = check_zeros(null, 0, single, double, false)
   literal + check_zeros(pointer, integer, single, double, boolean) +
       array[0] + array[1] + pair.first + pair.second
 }

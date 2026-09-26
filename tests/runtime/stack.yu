@@ -21,8 +21,8 @@ extern def check_stack(): i32 {
   }
   stack.clear()
   if !stack.empty() { return 5 }
-  stack.push(7 as usize as u8 var*)
-  if stack.pop() as usize != 7 as usize || !stack.empty() { return 6 }
+  stack.push(7 as u8 var*)
+  if stack.pop() as usize != 7 || !stack.empty() { return 6 }
   stack.del()
   0
 }

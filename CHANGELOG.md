@@ -10,6 +10,11 @@ All notable changes to the YuLang compiler will be documented in this file.
   aggregate elements, and unambiguous function/operator arguments.
 * Literal range checks and native O0/O2 and cross-target typing regressions.
 
+### Changed
+
+* Simplified library, example, and regression sources using contextual literals
+  and explicit annotations for otherwise unconstrained bindings.
+
 ## 0.0.9 - 2026-09-22
 
 ### Added
