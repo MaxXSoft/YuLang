@@ -6,6 +6,10 @@ All notable changes to the YuLang compiler will be documented in this file.
 
 ### Added
 
+* Contextual structure and array initializers with omitted types: `[] {...}`.
+  Nested members and unambiguous function parameters supply their types;
+  missing or ambiguous contexts are diagnosed without guessing by member shape.
+
 * Contextual integer and null literal typing, including expression results,
   aggregate elements, and unambiguous function/operator arguments.
 * Literal range checks and native O0/O2 and cross-target typing regressions.

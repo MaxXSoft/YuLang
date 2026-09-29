@@ -96,6 +96,11 @@ class Analyzer {
                               define::TypePtrList &args,
                               const std::vector<define::BaseAST *> &exprs,
                               const IdSetter &id_setter);
+  [[nodiscard]] define::TypePtrList GetCallCandidates(
+      const std::string &id) const;
+  bool AnalyzeInferredArguments(define::TypePtrList &args,
+                                const std::vector<define::BaseAST *> &exprs,
+                                const define::TypePtrList &candidates);
   // check if is valid initialization
   // type: variable type, init: initializer type
   static bool CheckInit(const Logger &log, const define::TypePtr &type,

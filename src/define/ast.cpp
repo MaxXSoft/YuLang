@@ -463,7 +463,11 @@ void NullAST::Dump(std::ostream &os) const {
 
 void ValInitAST::Dump(std::ostream &os) const {
   const auto inex = InExpr(os);
-  type_->Dump(os);
+  if (type_) {
+    type_->Dump(os);
+  } else {
+    os << "[]";
+  }
   os << " {";
   for (std::size_t i = 0; i < elems_.size(); ++i) {
     if (i) os << ", ";

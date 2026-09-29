@@ -863,9 +863,12 @@ ASTPtr Parser::ParseNull() {
 ASTPtr Parser::ParseValInit() {
   auto log = logger();
   NextToken();
-  // get type
-  auto type = ParseType();
-  if (!type) return nullptr;
+  // An empty pair of brackets takes its type from the expression context.
+  ASTPtr type;
+  if (!IsTokenChar(']')) {
+    type = ParseType();
+    if (!type) return nullptr;
+  }
   // check & eat ']'
   if (!ExpectChar(']')) return nullptr;
   // check & eat '{'

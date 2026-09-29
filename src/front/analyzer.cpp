@@ -233,12 +233,47 @@ void UnifyLiterals(BaseAST &lhs, BaseAST &rhs) {
   if (!AdaptLiteral(rhs, lhs.ast_type())) AdaptLiteral(lhs, rhs.ast_type());
 }
 
+// Only result positions inherit a parameter's type. Locals, calls, casts,
+// member access and other subexpressions still need their own type context.
+bool NeedsInitializerContext(BaseAST &ast) {
+  if (const auto *init = dynamic_cast<ValInitAST *>(&ast)) {
+    return !init->type();
+  }
+  if (const auto *block = dynamic_cast<BlockAST *>(&ast)) {
+    return !block->stmts().empty() &&
+           NeedsInitializerContext(*block->stmts().back());
+  }
+  if (const auto *branch = dynamic_cast<IfAST *>(&ast)) {
+    return NeedsInitializerContext(*branch->then()) ||
+           (branch->else_then() &&
+            NeedsInitializerContext(*branch->else_then()));
+  }
+  if (const auto *when = dynamic_cast<WhenAST *>(&ast)) {
+    return std::any_of(when->elems().begin(), when->elems().end(),
+                       [](const auto &elem) {
+                         return NeedsInitializerContext(*elem);
+                       }) ||
+           (when->else_then() && NeedsInitializerContext(*when->else_then()));
+  }
+  if (const auto *arm = dynamic_cast<WhenElemAST *>(&ast)) {
+    return NeedsInitializerContext(*arm->body());
+  }
+  return false;
+}
+
 bool MatchArguments(const TypePtr &function, TypePtrList &args,
                     const std::vector<BaseAST *> &exprs, bool apply) {
   const auto params = function->GetArgsType();
   if (!params || params->size() != args.size()) return false;
   auto projected = args;
   for (std::size_t i = 0; i < args.size(); ++i) {
+    // An omitted initializer is checked once, after its context is unique.
+    if (!args[i]) {
+      assert(!apply);
+      if (!(*params)[i]->IsStruct() && !(*params)[i]->IsArray()) return false;
+      projected[i] = LiteralType((*params)[i]);
+      continue;
+    }
     if (!MatchLiteral(*exprs[i], (*params)[i], false)) return false;
     if (!(*params)[i]->IsIdentical(args[i])) {
       projected[i] = LiteralType((*params)[i]);
@@ -303,6 +338,54 @@ TypePtr Analyzer::ResolveCall(const Logger &log, const std::string &id,
   MatchArguments(selected, args, exprs, true);
   id_setter(selected_id);
   return selected;
+}
+
+TypePtrList Analyzer::GetCallCandidates(const std::string &id) const {
+  if (const auto direct = symbols_->GetItem(id);
+      direct && direct->IsFunction()) {
+    return {direct};
+  }
+  TypePtrList candidates;
+  std::unordered_set<std::string> seen;
+  for (auto env = funcs_; env; env = env->outer()) {
+    const auto names = env->GetItem(id, false);
+    if (!names) continue;
+    for (const auto &name : *names) {
+      if (seen.insert(name).second) {
+        if (const auto type = symbols_->GetItem(name))
+          candidates.push_back(type);
+      }
+    }
+  }
+  return candidates;
+}
+
+bool Analyzer::AnalyzeInferredArguments(TypePtrList &args,
+                                        const std::vector<BaseAST *> &exprs,
+                                        const TypePtrList &candidates) {
+  std::vector<TypePtrList> viable;
+  for (const auto &candidate : candidates) {
+    if (const auto params = candidate->GetArgsType();
+        params && MatchArguments(candidate, args, exprs, false)) {
+      viable.push_back(*params);
+    }
+  }
+  for (std::size_t i = 0; i < args.size(); ++i) {
+    if (args[i]) continue;
+    if (viable.empty()) {
+      return LogErrorBool(exprs[i]->logger(), "no matching function", "");
+    }
+    const auto &context = viable.front()[i];
+    for (const auto &candidate : viable) {
+      if (context->GetTypeId() != candidate[i]->GetTypeId()) {
+        return LogErrorBool(exprs[i]->logger(),
+                            "ambiguous initializer type; specify [Type]", "");
+      }
+    }
+    args[i] = AnalyzeExpr(*exprs[i], context);
+    if (!args[i]) return false;
+  }
+  return true;
 }
 
 xstl::Guard Analyzer::NewEnv() {
@@ -879,7 +962,7 @@ TypePtr Analyzer::AnalyzeOn(BinaryAST &ast) {
   if (context && !context->IsInteger()) context.reset();
   auto lhs = AnalyzeExpr(*ast.lhs(), context);
   if (define::IsOperatorAssign(ast.op()) && lhs) {
-    context = lhs;
+    context = lhs->IsReference() ? lhs->GetDerefedType() : lhs;
     if (lhs->IsPointer() && ast.op() != Operator::Assign) context.reset();
   }
   auto rhs = AnalyzeExpr(*ast.rhs(), context);
@@ -1149,12 +1232,20 @@ TypePtr Analyzer::AnalyzeOn(IndexAST &ast) {
 }
 
 TypePtr Analyzer::AnalyzeOn(FunCallAST &ast) {
-  // get type of arguments
+  // Analyze known arguments first; omitted aggregate types need a signature.
   TypePtrList args;
+  std::vector<BaseAST *> exprs;
+  bool needs_context = false;
   for (const auto &i : ast.args()) {
-    auto arg = AnalyzeExpr(*i);
-    if (!arg) return nullptr;
-    args.push_back(std::move(arg));
+    exprs.push_back(i.get());
+    if (NeedsInitializerContext(*i)) {
+      needs_context = true;
+      args.push_back(nullptr);
+    } else {
+      auto arg = AnalyzeExpr(*i);
+      if (!arg) return nullptr;
+      args.push_back(std::move(arg));
+    }
   }
   // get function type
   TypePtr type;
@@ -1164,8 +1255,10 @@ TypePtr Analyzer::AnalyzeOn(FunCallAST &ast) {
     // NOLINTNEXTLINE(cppcoreguidelines-pro-type-static-cast-downcast)
     auto *id_ptr = static_cast<IdAST *>(ast.expr().get());
     const auto setter = [id_ptr](const std::string &id) { id_ptr->set_id(id); };
-    std::vector<BaseAST *> exprs;
-    for (const auto &arg : ast.args()) exprs.push_back(arg.get());
+    if (needs_context && !AnalyzeInferredArguments(
+                             args, exprs, GetCallCandidates(id_ptr->id()))) {
+      return nullptr;
+    }
     type = ResolveCall(ast.expr()->logger(), id_ptr->id(), args, exprs, setter);
     id_ptr->set_ast_type(type);
   } else {
@@ -1177,8 +1270,9 @@ TypePtr Analyzer::AnalyzeOn(FunCallAST &ast) {
   }
   // A function-valued expression also provides parameter contexts.
   if (!ast.expr()->IsId()) {
-    std::vector<BaseAST *> exprs;
-    for (const auto &arg : ast.args()) exprs.push_back(arg.get());
+    if (needs_context && !AnalyzeInferredArguments(args, exprs, {type})) {
+      return nullptr;
+    }
     if (!MatchArguments(type, args, exprs, true)) {
       return LogError(ast.logger(), "invalid function call");
     }
@@ -1248,11 +1342,20 @@ TypePtr Analyzer::AnalyzeOn(NullAST &ast) {
 }
 
 TypePtr Analyzer::AnalyzeOn(ValInitAST &ast) {
-  const auto type = AnalyzeExpr(*ast.type());
+  auto type = ast.type() ? AnalyzeExpr(*ast.type()) : expected_;
+  if (!ast.type() && !type) {
+    return LogError(ast.logger(),
+                    "cannot infer initializer type; specify [Type]");
+  }
   if (!type) return nullptr;
   if (type->IsReference()) {
-    return LogError(ast.type()->logger(), "cannot initialize a reference");
+    return LogError(ast.logger(), "cannot initialize a reference");
   }
+  if (!type->IsStruct() && !type->IsArray()) {
+    return LogError(ast.logger(),
+                    "initializer requires a structure or array type");
+  }
+  if (!ast.type()) type = LiteralType(type)->GetValueType(false);
   assert(!type->IsRightValue());
   // check if is a valid initializer list
   if (ast.elems().size() > type->GetLength()) {

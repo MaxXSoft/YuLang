@@ -1,0 +1,41 @@
+struct Cell { n: u32, p: u8* }
+struct Box { cell: Cell, numbers: u16[3] }
+var global: Box = [] {[] {7}, [] {1, 2}}
+var calls = 0
+
+def next(): u32 { calls += 1; calls as u32 }
+def take(s: Cell): u32 { s.n }
+def take(s: Cell, c: bool): u32 { s.n }
+def take(s: Box, p: u8*): u32 { s.cell.n }
+def make(c: bool, n: u32): Cell {
+  if c { return [] {n} }
+  [] {}
+}
+def branch(c: bool): Cell {
+  if c { [] {10} } else { [] {20} }
+}
+def choose(n: i32): Cell {
+  when n { 0 { [] {30} } else { [] {40} } }
+}
+def replace(s: Cell var&) { s = [] {50} }
+
+extern def inferred_initializers(c: bool): bool {
+  calls = 0
+  var local: Box = [] {[] {next()}, [] {2}}
+  var cells: Cell[2] = [] {[] {next()}, [] {}}
+  local.cell = [] {next()}
+  let scoped = take({ let value = next(); [] {value} })
+  let conditional = take(if c { [] {next()} } else { [] {next()} })
+  let selected = take([] {next()}, true)
+  let made = make(c, 9)
+  let b = branch(c)
+  let w = choose(if c { 0 } else { 1 })
+  replace(cells[1])
+  global.cell.n == 7 && global.cell.p == null &&
+    global.numbers[0] == 1 && global.numbers[1] == 2 && global.numbers[2] == 0 &&
+    local.cell.n == 3 && local.cell.p == null && local.numbers[1] == 0 &&
+    cells[0].n == 2 && cells[1].n == 50 && cells[1].p == null &&
+    scoped == 4 && conditional == 5 && selected == 6 && calls == 6 &&
+    made.n == (if c { 9 } else { 0 }) &&
+    b.n == (if c { 10 } else { 20 }) && w.n == (if c { 30 } else { 40 })
+}

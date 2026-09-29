@@ -107,6 +107,7 @@ if(BUILD_TESTING)
   add_runtime_regression(bool_casts)
   add_runtime_regression(constant_arithmetic)
   add_runtime_regression(literal_typing)
+  add_runtime_regression(inferred_initializers)
   add_runtime_regression(constant_scopes)
   add_runtime_regression(when_folding)
   add_runtime_regression(struct_layout)
@@ -136,6 +137,9 @@ if(BUILD_TESTING)
             --yuc $<TARGET_FILE:yuc> --work-dir ${CMAKE_BINARY_DIR}/test)
   add_test(NAME front.literals
     COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/front/test_literals.py
+            --yuc $<TARGET_FILE:yuc> --work-dir ${CMAKE_BINARY_DIR}/test)
+  add_test(NAME front.initializers
+    COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/front/test_initializers.py
             --yuc $<TARGET_FILE:yuc> --work-dir ${CMAKE_BINARY_DIR}/test)
   add_test(NAME front.dependencies
     COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/front/test_dependencies.py

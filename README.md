@@ -48,6 +48,25 @@ only literal-compatible candidates are considered; exactly one must match.
 Ambiguous calls require an explicit type. Literal typing does not create temporary
 references or remove pointer target qualifiers.
 
+Structure and array initializers may omit the type inside brackets when the
+context supplies it:
+
+```yu
+struct Point { x: i32, y: i32 }
+def origin(): Point { [] {} }
+var point: Point = [] {1, 2}
+point = [] {3}  // omitted members are still zero-initialized
+var points: Point[2] = [] {[] {4, 5}, [] {6, 7}}
+```
+
+Declarations, assignments, returns, nested aggregate members, and function
+parameters provide this context, including through block, `if`, and `when`
+results. For overloaded calls, other arguments must narrow the candidates to
+one type for each omitted initializer. Initializer contents do not select a
+structure by its shape. Use `[Type] {...}` when the type is ambiguous or absent,
+such as `let point = [Point] {1, 2}`. This syntax creates values and cannot bind
+temporary references or initialize scalar types.
+
 <details>
   <summary>EBNF of Yu</summary>
 
