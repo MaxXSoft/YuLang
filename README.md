@@ -130,7 +130,7 @@ temporary references or initialize scalar types.
   string    ::= STR_VAL;
   bool      ::= "true"  | "false";
   null_ptr  ::= "null";
-  val_init  ::= "[" type "]" "{" [expr {"," expr} [","]] "}";
+  val_init  ::= "[" [type] "]" "{" [expr {"," expr} [","]] "}";
 
   type      ::= (prim_type | id | pointer | array | ref | func) ["volatile"];
   prim_type ::= "i8"  | "i16" | "i32"   | "i64" | "isize" | "u8"  | "u16"
