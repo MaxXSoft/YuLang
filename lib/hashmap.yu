@@ -89,7 +89,7 @@ def newTable(size: usize): __KvPairTable {
   let mem_size = size * sizeof __KeyValue var*
   let table = malloc(mem_size) as __KeyValue var* var*
   memset(table as u8 var*, 0, mem_size)
-  [__KvPairTable] {table, size, 0}
+  [] {table, size, 0}
 }
 
 // internal destructor
@@ -208,7 +208,7 @@ def rehash(this: HashMap var&): bool {
 
 // constructor (with parameters)
 public def newHashMap(hash_func: HashFunc): HashMap {
-  [HashMap] {newTable(TABLE_SIZE), 0, hash_func}
+  [] {newTable(TABLE_SIZE), 0, hash_func}
 }
 
 // constructor

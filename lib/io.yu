@@ -7,9 +7,9 @@ import sys.string
 public struct IO { __fd: i32 }
 
 // definition of three UNIX standard IO
-public let iin: IO = [IO] {FD_STDIN}
-public let out: IO = [IO] {FD_STDOUT}
-public let err: IO = [IO] {FD_STDERR}
+public let iin: IO = [] {FD_STDIN}
+public let out: IO = [] {FD_STDOUT}
+public let err: IO = [] {FD_STDERR}
 
 
 /*

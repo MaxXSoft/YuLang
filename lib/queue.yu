@@ -16,7 +16,7 @@ public def newQueue(): Queue {
   let head = malloc(sizeof __QueueElem) as __QueueElem var*
   (*head).prev = head
   (*head).next = head
-  [Queue] {head}
+  [] {head}
 }
 
 // check if current queue is empty

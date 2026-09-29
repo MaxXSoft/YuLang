@@ -53,7 +53,7 @@ def del(this: __StackFrame var*) {
  * stack related stuffs
  */
 public def newStack(): Stack {
-  [Stack] {newStackFrame(null), 0}
+  [] {newStackFrame(null), 0}
 }
 
 public def del(this: Stack var&) {

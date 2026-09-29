@@ -7,12 +7,12 @@ public struct StrView {
 
 // create a new string view by a null terminated string
 inline def newStrView(str: u8*): StrView {
-  [StrView] {str, strlen(str)}
+  [] {str, strlen(str)}
 }
 
 // create a new string view by a slice of bytes
 inline def newStrView(buf: u8*, len: usize): StrView {
-  [StrView] {buf, len}
+  [] {buf, len}
 }
 
 // get string data of string view (not guarantee to be null terminated)
@@ -109,7 +109,7 @@ public struct __StrViewSplitIter {
 
 // get split iterator
 inline def split(this: StrView&, delimiter: u8): __StrViewSplitIter {
-  [__StrViewSplitIter] {this.__str, this.__len, delimiter}
+  [] {this.__str, this.__len, delimiter}
 }
 
 // iterator method 'next'

@@ -26,20 +26,20 @@ public def last(this: Range&): bool {
 
 // generate range '[begin, end)'
 public def until(begin: i32, end: i32): Range {
-  [Range] {begin, end, 1, false}
+  [] {begin, end, 1, false}
 }
 
 // generate range '[begin, end]'
 public def to(begin: i32, end: i32): Range {
-  [Range] {begin, end + 1, 1, true}
+  [] {begin, end + 1, 1, true}
 }
 
 // set the step of generated range
 public def step(this: Range, step: i32): Range {
   if step > 0 || !this.__close {
-    [Range] {this.__cur, this.__end, step, this.__close}
+    [] {this.__cur, this.__end, step, this.__close}
   }
   else {
-    [Range] {this.__cur, this.__end - 2, step, this.__close}
+    [] {this.__cur, this.__end - 2, step, this.__close}
   }
 }

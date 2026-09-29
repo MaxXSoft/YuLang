@@ -112,7 +112,7 @@ public def data(this: DynArray&): i32 var* {
 
 // get iterator of current dynamic array
 public def iter(this: DynArray&): __DynArrayIter {
-  [__DynArrayIter] {this.__arr, this.__arr + this.__size}
+  [] {this.__arr, this.__arr + this.__size}
 }
 
 // iterator method

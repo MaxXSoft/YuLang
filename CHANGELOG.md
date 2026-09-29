@@ -16,6 +16,8 @@ All notable changes to the YuLang compiler will be documented in this file.
 
 ### Changed
 
+* Removed redundant aggregate initializer types from standard-library sources.
+
 * Simplified library, example, and regression sources using contextual literals
   and explicit annotations for otherwise unconstrained bindings.
 
