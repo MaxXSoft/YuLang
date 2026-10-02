@@ -9,6 +9,10 @@ All notable changes to the YuLang compiler will be documented in this file.
 * Unicode 17.0.0 XID identifiers in source, module names, and macro definitions,
   with strict UTF-8 decoding and reproducible, bundled character tables.
 * Trailing commas in function parameter, call argument, and function-type lists.
+* Local `let`/`var` shadowing with initializer access to the preceding binding and
+  separate storage for each binding.
+* Frontend error recovery across statements, functions, and imports, including
+  multiple semantic diagnostics and output suppression for invalid input.
 
 * Contextual structure and array initializers with omitted types: `[] {...}`.
   Nested members and unambiguous function parameters supply their types;

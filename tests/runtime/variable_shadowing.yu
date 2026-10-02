@@ -1,0 +1,170 @@
+extern def shadow_chain(input: i32): i32 {
+  let value = input
+  let value = value + 1
+  let value = value * 2
+  value
+}
+
+extern def shadow_type(input: i32): u64 {
+  let value = input
+  let value: u64 = value as u64
+  let value = value + 4294967296
+  value
+}
+
+extern def shadow_saved_pointer(input: i32): i32 {
+  let value = input
+  let old = &value
+  let value = value + 1
+  *old * 100 + value
+}
+
+extern def shadow_saved_reference(input: i32): i32 {
+  var value = input
+  let old: i32 var& = value
+  let value = value + 1
+  old += 10
+  old * 100 + value
+}
+
+extern def shadow_with_reference(input: i32): i32 {
+  var value = input
+  let value: i32 var& = value
+  value += 1
+  value
+}
+
+extern def shadow_parameter(input: i32): i32 {
+  let input = input + 1
+  let input = input * 2
+  input
+}
+
+extern def shadow_nested(input: i32): i32 {
+  let value = input
+  let value = value + 1
+  let inner = {
+    let value = value + 10
+    let value = value + 100
+    value
+  }
+  inner * 1000 + value
+}
+
+extern def shadow_constant_to_runtime(input: i32): i32 {
+  let value = 7
+  let value = input
+  value + 1
+}
+
+extern def shadow_runtime_to_constant(input: i32): i32 {
+  let value = input
+  let value = 9
+  let value = value + 1
+  value
+}
+
+inline let inline_value = 7
+extern def shadow_inline_constant(): i32 {
+  let inline_value = inline_value + 1
+  let inline_value = inline_value + 1
+  inline_value
+}
+
+extern def shadow_array_length(): usize {
+  let length = 2
+  var before: i32[length]
+  let before_size = sizeof i32[length]
+  let length = length + 1
+  var after: i32[length]
+  before_size * 100 + (sizeof i32[length])
+}
+
+extern def shadow_definition_list(input: i32): i32 {
+  let value = input, value = value + 1, value = value * 2
+  value
+}
+
+def shadow_target(input: i32): i32 { input + 10 }
+def shadow_alternate(input: i32): i32 { input + 20 }
+
+extern def shadow_function(input: i32): i32 {
+  let shadow_target = shadow_alternate
+  let shadow_target = shadow_target
+  shadow_target(input)
+}
+
+extern def shadow_saved_function(input: i32): i32 {
+  let shadow_target = shadow_target
+  let old = shadow_target
+  let shadow_target = shadow_alternate
+  old(input) * 100 + shadow_target(input)
+}
+
+extern def shadow_mutability(input: i32): i32 {
+  let value = input
+  var value = value + 1
+  value += 2
+  var value = value + 4
+  value += 8
+  let value = value + 16
+  value
+}
+
+extern def shadow_var_parameter(input: i32): i32 {
+  var input = input + 1
+  input += 2
+  var input = input + 4
+  input
+}
+
+extern def shadow_var_type(input: i32): u64 {
+  let value = input
+  var value: u64 = value as u64
+  value += 4294967296
+  value
+}
+
+extern def shadow_uninitialized_var(input: i32): i32 {
+  let value = input
+  let old = &value
+  var value: i32
+  value = 9
+  *old * 100 + value
+}
+
+extern def shadow_saved_mutable_storage(input: i32): i32 {
+  var value = input
+  let old_pointer = &value
+  let old_reference: i32 var& = value
+  var value = value + 1
+  value += 2
+  old_reference += 10
+  *old_pointer * 100 + value
+}
+
+extern def shadow_var_definition_list(input: i32): i32 {
+  var value = input, value = value + 1, value = value * 2
+  value += 1
+  value
+}
+
+extern def shadow_var_constant_mask(input: i32): i32 {
+  let value = 7
+  var value = 9
+  value = input
+  let value = value + 1
+  value
+}
+
+extern def shadow_var_nested(input: i32): i32 {
+  var value = input
+  var value = value + 1
+  let inner = {
+    var value = value + 10
+    var value = value + 100
+    value += 1
+    value
+  }
+  inner * 1000 + value
+}

@@ -299,10 +299,28 @@ TypePtr Analyzer::AnalyzeExpr(BaseAST &ast, TypePtr expected) {
   return ast.SemaAnalyze(*this);
 }
 
+TypePtr Analyzer::FindLocalFunction(const std::string &id) const {
+  for (auto env = symbols_; env && !env->is_root(); env = env->outer()) {
+    if (const auto local = env->GetItem(id, false)) {
+      return local->IsFunction() ? local : nullptr;
+    }
+  }
+  return nullptr;
+}
+
 TypePtr Analyzer::ResolveCall(const Logger &log, const std::string &id,
                               TypePtrList &args,
                               const std::vector<BaseAST *> &exprs,
                               const IdSetter &id_setter) {
+  // A local callable binding takes precedence over named overloads. Keep the
+  // separate overload namespace for non-callable receiver values such as x.x().
+  if (auto local = FindLocalFunction(id)) {
+    if (!MatchArguments(local, args, exprs, true)) {
+      return LogError(log, "invalid function call", id);
+    }
+    id_setter(id);
+    return local;
+  }
   // Preserve the established meaning of calls such as f(1) with f(i32).
   const auto mangled = MangleFuncName(id, args);
   auto exact = symbols_->GetItem(mangled);
@@ -721,8 +739,9 @@ TypePtr Analyzer::AnalyzeOn(VarLetElemAST &ast) {
   } else if ((ast.is_var() && !type && !init) || (!ast.is_var() && !init)) {
     return LogError(log, "initializer required");
   }
-  // check if is defined
-  if (symbols_->GetItem(id, false)) {
+  // Local definitions introduce a new binding after their initializer is
+  // analyzed. Globals still reject same-scope duplicates.
+  if (!cur_ret_ && symbols_->GetItem(id, false)) {
     return LogError(log, "identifier has already been defined", id);
   }
   // check types
@@ -762,7 +781,7 @@ TypePtr Analyzer::AnalyzeOn(VarLetElemAST &ast) {
       sym_type = std::make_shared<ConstType>(std::move(sym_type));
     }
   }
-  symbols_->AddItem(id, sym_type);
+  symbols_->AccessItem(id) = sym_type;
   ast.set_ast_type(sym_type);
   return MakeVoid();
 }

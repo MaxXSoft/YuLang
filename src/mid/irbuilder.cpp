@@ -268,8 +268,9 @@ SSAPtr IRBuilder::GenerateOn(VarLetElemAST &ast) {
     }
     val = alloca;
   }
-  // add to environment
-  vals_->AddItem(ast.id(), val);
+  // Publish the new storage only after the initializer used the old binding.
+  // Existing pointers and references continue to refer to the old storage.
+  vals_->AccessItem(ast.id()) = std::move(val);
   return nullptr;
 }
 

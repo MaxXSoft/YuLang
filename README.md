@@ -38,6 +38,37 @@ version or require downloading data. To regenerate them, download the versioned
 `DerivedCoreProperties.txt` linked in `tools/generate_unicode_xid.py` and pass
 its path to that script; it verifies the source checksum.
 
+Inside function bodies, `let` and `var` may shadow either kind of earlier
+binding, including a parameter. The initializer sees the previous binding;
+later statements see the new binding, which may have a different type. Each
+binding has its own storage, so existing pointers and references retain their
+original referent. Leaving a nested block restores the enclosing binding.
+Mutability is determined by the new declaration. Global duplicate definitions
+and duplicate parameters remain errors.
+
+```yu
+def positive(value: i32,): bool {
+  var value = value + 1
+  value += 1
+  let value = value > 0
+  value
+}
+let result = positive(2,)
+extern declare callback: (i32,): bool
+```
+
+Function parameters, call arguments (including dot calls), and function-type
+parameter lists allow a trailing comma after the last element. Empty lists
+still use `()`; `(,)` and repeated commas are invalid.
+
+The frontend reports multiple independent errors in one invocation. Parsing
+resumes at statement or enclosing block boundaries, including inside functions
+and imported modules. Semantic analysis continues with independent statements
+and definitions. A malformed function is discarded after checking its syntax;
+dependent errors within one expression or an invalid declaration are not all
+reported. Any frontend error makes compilation fail without emitting AST, IR,
+assembly, object code, or dependency files.
+
 Integer literals take their type from a declaration, assignment, return value,
 parameter, aggregate element, or the other operand of an operation. The context
 also reaches arithmetic expressions and the result of blocks, `if`, and `when`:

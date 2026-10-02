@@ -84,6 +84,8 @@ class Analyzer {
   // perform name mangling
   static std::string MangleFuncName(const std::string &id,
                                     const define::TypePtrList &args);
+  // A callable local binding takes precedence over named overloads.
+  [[nodiscard]] define::TypePtr FindLocalFunction(const std::string &id) const;
   // check and add user type
   bool AddUserType(const Logger &log, const std::string &id,
                    const define::TypePtr &type);

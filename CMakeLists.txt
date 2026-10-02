@@ -109,6 +109,7 @@ if(BUILD_TESTING)
   add_runtime_regression(literal_typing)
   add_runtime_regression(inferred_initializers)
   add_runtime_regression(constant_scopes)
+  add_runtime_regression(variable_shadowing)
   add_runtime_regression(when_folding)
   add_runtime_regression(struct_layout)
   add_runtime_regression(global_initializers)
@@ -147,7 +148,7 @@ if(BUILD_TESTING)
   add_test(NAME front.identifiers
     COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/front/test_identifiers.py
             --yuc $<TARGET_FILE:yuc> --work-dir ${CMAKE_BINARY_DIR}/test)
-  foreach(regression IN ITEMS recovery semantic_recovery)
+  foreach(regression IN ITEMS shadowing recovery semantic_recovery)
     add_test(NAME front.${regression}
       COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/front/test_${regression}.py
               --yuc $<TARGET_FILE:yuc> --work-dir ${CMAKE_BINARY_DIR}/test)
