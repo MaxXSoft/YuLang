@@ -398,6 +398,9 @@ void Lexer::Reset() {
 }
 
 Token Lexer::NextToken() {
+  // Reset already diagnosed an unopened source. It cannot produce tokens,
+  // even when the parser keeps going after errors in other source files.
+  if (!in_.is_open()) return Token::End;
   // A replacement ends at a token boundary, never in NextChar(). Restore
   // the already-read source character without joining tokens across streams.
   for (;;) {

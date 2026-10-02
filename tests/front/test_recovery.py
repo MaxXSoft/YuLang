@@ -1,5 +1,6 @@
 """Check syntax/lexical recovery, source boundaries, and failed output suppression."""
 import argparse
+import os
 from pathlib import Path
 import re
 import subprocess
@@ -76,6 +77,24 @@ def main():
                                       '/*', 'let s = "', 'import', 'public')):
             compile(text, f'truncated_{index}', 1)
         compile(b'let value = "', 'string_eof', 1)
+        # POSIX permission failures must terminate even after removing the old
+        # global error gate. Elevated users may still read mode-000 files.
+        if os.name == 'posix':
+            unreadable = work / 'unreadable.yu'
+            unreadable.write_text('public declare value: i32\n')
+            unreadable.chmod(0)
+            try:
+                if not os.access(unreadable, os.R_OK):
+                    result = subprocess.run([str(args.yuc), str(unreadable), '-ot', 'llvm'],
+                                            capture_output=True, text=True, timeout=10)
+                    assert result.returncode == 1, result.stderr
+                    assert 'failed to open file' in result.stderr, result.stderr
+                    assert not result.stdout, result.stdout
+                    errors = compile('import unreadable\ndef f() { missing_name }',
+                                     'unreadable_import', 2)
+                    assert 'failed to open file' in errors and 'missing_name' in errors, errors
+            finally:
+                unreadable.chmod(0o600)
     print(f'PASS: {len(cases)} recovery cases, imports, -Werror, output modes, and EOF')
 
 
