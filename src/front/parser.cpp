@@ -136,6 +136,7 @@ ASTPtr Parser::ParseFunDef(Property prop) {
       // eat ','
       if (!IsTokenChar(',')) break;
       NextToken();
+      if (IsTokenChar(')')) break;
     }
   }
   // check & eat ')'
@@ -981,6 +982,7 @@ ASTPtr Parser::ParseFunc() {
       // check ','
       if (!IsTokenChar(',')) break;
       NextToken();
+      if (IsTokenChar(')')) break;
     }
   }
   // check & eat ')'
@@ -1093,6 +1095,7 @@ bool Parser::GetExprList(ASTPtrList &args) {
       // eat ','
       if (!IsTokenChar(',')) break;
       NextToken();
+      if (IsTokenChar(')')) break;
     }
   }
   // check & eat ')'

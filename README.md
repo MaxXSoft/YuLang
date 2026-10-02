@@ -79,7 +79,7 @@ temporary references or initialize scalar types.
   var_def   ::= property "var" var_elem {"," var_elem};
   let_def   ::= property "let" let_elem {"," let_elem};
   fun_def   ::= property "def" [id | bin_op | unary_op]
-                "(" [arg_list] ")" [":" type] block;
+                "(" [arg_list [","]] ")" [":" type] block;
   declare   ::= property "declare" ["var"] id ":" type;
   ty_alias  ::= property "type" id "=" type;
   struct    ::= property "struct" id "{" arg_list [","] "}";
@@ -121,8 +121,8 @@ temporary references or initialize scalar types.
               | "&="  | "|="  | "^="  | "<<=" | ">>=" | ".";
   unary_op  ::= "+"   | "-"   | "!"   | "~"   | "*"   | "&";
   index     ::= factor "[" expr "]";
-  fun_call  ::= factor "(" [expr {"," expr}] ")";
-  access    ::= factor "." id ["(" [expr {"," expr}] ")"];
+  fun_call  ::= factor "(" [expr {"," expr} [","]] ")";
+  access    ::= factor "." id ["(" [expr {"," expr} [","]] ")"];
 
   value     ::= INT_VAL | FLOAT_VAL | CHAR_VAL | id
               | string  | bool      | null_ptr | val_init;
@@ -138,7 +138,7 @@ temporary references or initialize scalar types.
   pointer   ::= type ["var"] "*";
   array     ::= type "[" expr "]";
   ref       ::= type ["var"] "&";
-  func      ::= "(" [type {"," type}] ")" [":" type];
+  func      ::= "(" [type {"," type} [","]] ")" [":" type];
   ```
 </details>
 
