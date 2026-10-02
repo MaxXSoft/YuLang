@@ -70,6 +70,8 @@ class Lexer {
   int ReadEscape();
   // skip spaces in stream
   void SkipSpaces();
+  // recover after a bad literal, preserving the next line for the parser
+  void SkipQuotedLiteral(char quote);
 
   define::Token HandleId();
   define::Token HandleNum();

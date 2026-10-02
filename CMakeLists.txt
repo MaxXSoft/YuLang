@@ -144,6 +144,9 @@ if(BUILD_TESTING)
   add_test(NAME front.parameters
     COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/front/test_parameters.py
             --yuc $<TARGET_FILE:yuc> --work-dir ${CMAKE_BINARY_DIR}/test)
+  add_test(NAME front.identifiers
+    COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/front/test_identifiers.py
+            --yuc $<TARGET_FILE:yuc> --work-dir ${CMAKE_BINARY_DIR}/test)
   add_test(NAME front.dependencies
     COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/front/test_dependencies.py
             --yuc $<TARGET_FILE:yuc> --work-dir ${CMAKE_BINARY_DIR}/test)

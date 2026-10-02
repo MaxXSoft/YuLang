@@ -24,6 +24,19 @@ Visit [YuLang-doc](https://github.com/MaxXSoft/YuLang-doc) for more details.
 * Dot function and infix function
 * Iterator
 * Contextual integer and null literals
+* Unicode XID identifiers
+
+Ordinary identifiers use Unicode 17.0.0 `XID_Start` (or `_`) followed by zero or
+more `XID_Continue` characters, encoded as valid UTF-8. This also applies to
+module names and `-D` macro names. Identifier spelling is preserved without
+normalization or case folding: `é` and `e` followed by a combining acute accent
+are distinct names. Operator-formed identifiers retain their existing syntax.
+Diagnostic columns count source bytes.
+
+The Unicode tables are checked in, so builds do not depend on the host's Unicode
+version or require downloading data. To regenerate them, download the versioned
+`DerivedCoreProperties.txt` linked in `tools/generate_unicode_xid.py` and pass
+its path to that script; it verifies the source checksum.
 
 Integer literals take their type from a declaration, assignment, return value,
 parameter, aggregate element, or the other operand of an operation. The context

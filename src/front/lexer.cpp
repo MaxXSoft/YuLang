@@ -12,6 +12,7 @@
 #include <string_view>
 
 #include "define/token.h"
+#include "front/unicode.h"
 
 namespace yulang::front {
 
@@ -39,6 +40,14 @@ int GetIndex(const char *str, const std::array<T, N> &str_array) {
 bool IsOperatorChar(char c) {
   constexpr std::string_view op_chars = "`~!@#$%^&*-=+\\|:<.>/?";
   return op_chars.find(c) != std::string_view::npos;
+}
+
+bool IsASCIIIdentifierStart(char c) {
+  return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_';
+}
+
+bool IsASCIIIdentifierContinue(char c) {
+  return IsASCIIIdentifierStart(c) || (c >= '0' && c <= '9');
 }
 
 }  // namespace
@@ -94,7 +103,9 @@ int Lexer::ReadEscape() {
 }
 
 void Lexer::SkipSpaces() {
-  while (!IsEOL() && std::isspace(last_char_)) NextChar();
+  while (!IsEOL() && std::isspace(static_cast<unsigned char>(last_char_))) {
+    NextChar();
+  }
 }
 
 Token Lexer::HandleId() {
@@ -102,9 +113,36 @@ Token Lexer::HandleId() {
   // read string
   std::string id;
   do {
-    id += last_char_;
-    NextChar();
-  } while (!IsEOL() && (std::isalnum(last_char_) || last_char_ == '_'));
+    if (static_cast<unsigned char>(last_char_) < 0x80) {
+      id += last_char_;
+      NextChar();
+    } else {
+      const auto char_location = logger_;
+      const auto length =
+          unicode::UTF8SequenceLength(static_cast<unsigned char>(last_char_));
+      std::string bytes(1, last_char_);
+      // Consume at least the leading byte, even if the sequence is invalid.
+      // Leave ASCII delimiters/newlines untouched on an incomplete sequence.
+      NextChar();
+      for (std::size_t i = 1; i < length && !IsEOL(); ++i) {
+        if ((static_cast<unsigned char>(last_char_) & 0xc0) != 0x80) break;
+        bytes += last_char_;
+        NextChar();
+      }
+      const auto value = unicode::DecodeUTF8(bytes);
+      if (!value) {
+        char_location.LogError("invalid UTF-8 sequence in identifier");
+        return Token::Error;
+      }
+      if (!(id.empty() ? unicode::IsIdentifierStart(*value)
+                       : unicode::IsIdentifierContinue(*value))) {
+        char_location.LogError("invalid Unicode identifier character");
+        return Token::Error;
+      }
+      id += bytes;
+    }
+  } while (!IsEOL() && (IsASCIIIdentifierContinue(last_char_) ||
+                        static_cast<unsigned char>(last_char_) >= 0x80));
   // check if string is keyword
   int const index = GetIndex(id.c_str(), kKeywords);
   if (index < 0) {
@@ -153,7 +191,7 @@ Token Lexer::HandleNum() {
         num_type = NumberType::Float;
         break;
       default: {
-        if (IsEOL() || !std::isdigit(last_char_)) {
+        if (IsEOL() || !std::isdigit(static_cast<unsigned char>(last_char_))) {
           // just zero
           int_val_ = 0;
           return Token::Int;
@@ -166,8 +204,8 @@ Token Lexer::HandleNum() {
     NextChar();
   }
   // read number string
-  while (!IsEOL() && (std::isxdigit(last_char_) || last_char_ == '.' ||
-                      last_char_ == '_')) {
+  while (!IsEOL() && (std::isxdigit(static_cast<unsigned char>(last_char_)) ||
+                      last_char_ == '.' || last_char_ == '_')) {
     if (num_type != NumberType::Float && last_char_ == '.') {
       num_type = NumberType::Float;
     }
@@ -212,17 +250,21 @@ Token Lexer::HandleString() {
   std::string str;
   // start with quotes
   NextChar();
-  while (last_char_ != '"') {
+  while (IsEOL() || last_char_ != '"') {
+    if (IsEOL()) return LogError("expected '\"'");
     if (last_char_ == '\\') {
       // read escape char
       int const ret = ReadEscape();
-      if (ret < 0) return LogError("invalid escape character");
+      if (ret < 0) {
+        const auto token = LogError("invalid escape character");
+        SkipQuotedLiteral('"');
+        return token;
+      }
       str += static_cast<char>(ret);
     } else {
       str += last_char_;
     }
     NextChar();
-    if (IsEOL()) return LogError("expected '\"'");
   }
   // eat right quotation mark
   NextChar();
@@ -237,16 +279,35 @@ Token Lexer::HandleChar() {
   if (last_char_ == '\\') {
     // read escape char
     int const ret = ReadEscape();
-    if (ret < 0) return LogError("invalid escape character");
+    if (ret < 0) {
+      const auto token = LogError("invalid escape character");
+      SkipQuotedLiteral('\'');
+      return token;
+    }
     char_val_ = ret;
   } else {
     char_val_ = last_char_;
   }
   NextChar();
   // check & eat right quotation mark
-  if (IsEOL() || last_char_ != '\'') return LogError("expected \"'\"");
+  if (IsEOL() || last_char_ != '\'') {
+    const auto token = LogError("expected \"'\"");
+    SkipQuotedLiteral('\'');
+    return token;
+  }
   NextChar();
   return Token::Char;
+}
+
+void Lexer::SkipQuotedLiteral(char quote) {
+  while (!IsEOL() && last_char_ != quote) {
+    if (last_char_ == '\\') {
+      NextChar();
+      if (IsEOL()) return;
+    }
+    NextChar();
+  }
+  if (!IsEOL()) NextChar();
 }
 
 Token Lexer::HandleOperator() {
@@ -343,9 +404,12 @@ Token Lexer::NextToken() {
     logger_ = saved_logger_;
   }
   // id or keyword
-  if (std::isalpha(last_char_) || last_char_ == '_') return HandleId();
+  if (IsASCIIIdentifierStart(last_char_) ||
+      static_cast<unsigned char>(last_char_) >= 0x80) {
+    return HandleId();
+  }
   // number
-  if (std::isdigit(last_char_)) return HandleNum();
+  if (std::isdigit(static_cast<unsigned char>(last_char_))) return HandleNum();
   // string
   if (last_char_ == '"') return HandleString();
   // character

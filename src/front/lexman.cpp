@@ -1,7 +1,8 @@
 #include "front/lexman.h"
 
-#include <cctype>
 #include <utility>
+
+#include "front/unicode.h"
 
 namespace yulang::front {
 
@@ -20,10 +21,7 @@ bool LexerManager::AddDefine(std::string_view definition) {
   if (equal == std::string_view::npos || equal == 0) return false;
   const auto name = definition.substr(0, equal);
   // Check if the name is a valid identifier.
-  for (std::size_t i = 0; i < name.size(); ++i) {
-    const auto c = static_cast<unsigned char>(name[i]);
-    if (c != '_' && !(i ? std::isalnum(c) : std::isalpha(c))) return false;
-  }
+  if (!unicode::IsIdentifier(name)) return false;
   defines_[std::string(name)] = std::string(definition.substr(equal + 1));
   return true;
 }
