@@ -1,7 +1,7 @@
 #include "front/unicode.h"
 
 #include <algorithm>
-#include <iterator>
+#include <array>
 
 namespace yulang::front::unicode {
 
@@ -14,11 +14,11 @@ struct Range {
 #include "front/unicode_xid.inc"
 
 template <std::size_t N>
-bool Contains(const Range (&ranges)[N], char32_t code_point) {
+bool Contains(const std::array<Range, N> &ranges, char32_t code_point) {
   const auto it = std::lower_bound(
-      std::begin(ranges), std::end(ranges), code_point,
+      ranges.begin(), ranges.end(), code_point,
       [](const Range &range, char32_t value) { return range.last < value; });
-  return it != std::end(ranges) && it->first <= code_point;
+  return it != ranges.end() && it->first <= code_point;
 }
 
 }  // namespace
@@ -45,13 +45,13 @@ std::optional<char32_t> DecodeUTF8(std::string_view bytes) {
   const auto length = UTF8SequenceLength(lead);
   if (!length || bytes.size() != length) return {};
   if (length == 1) return lead;
-  char32_t value = lead & (0x7f >> length);
+  char32_t value = lead & (0x7fU >> length);
   for (std::size_t i = 1; i < length; ++i) {
     const auto byte = static_cast<unsigned char>(bytes[i]);
-    if ((byte & 0xc0) != 0x80) return {};
-    value = (value << 6) | (byte & 0x3f);
+    if ((byte & 0xc0U) != 0x80U) return {};
+    value = (value << 6U) | (byte & 0x3fU);
   }
-  constexpr char32_t minimum[] = {0, 0, 0x80, 0x800, 0x10000};
+  constexpr std::array<char32_t, 5> minimum = {0, 0, 0x80, 0x800, 0x10000};
   if (value < minimum[length] || value > 0x10ffff ||
       (value >= 0xd800 && value <= 0xdfff)) {
     return {};

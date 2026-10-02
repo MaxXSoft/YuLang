@@ -108,39 +108,44 @@ void Lexer::SkipSpaces() {
   }
 }
 
+bool Lexer::ReadIdentifierChar(std::string &id) {
+  if (static_cast<unsigned char>(last_char_) < 0x80) {
+    id += last_char_;
+    NextChar();
+    return true;
+  }
+  const auto char_location = logger_;
+  const auto length =
+      unicode::UTF8SequenceLength(static_cast<unsigned char>(last_char_));
+  std::string bytes(1, last_char_);
+  // Consume at least the leading byte, even if the sequence is invalid.
+  // Leave ASCII delimiters/newlines untouched on an incomplete sequence.
+  NextChar();
+  for (std::size_t i = 1; i < length && !IsEOL(); ++i) {
+    if ((static_cast<unsigned char>(last_char_) & 0xc0U) != 0x80U) break;
+    bytes += last_char_;
+    NextChar();
+  }
+  const auto value = unicode::DecodeUTF8(bytes);
+  if (!value) {
+    char_location.LogError("invalid UTF-8 sequence in identifier");
+    return false;
+  }
+  if (!(id.empty() ? unicode::IsIdentifierStart(*value)
+                   : unicode::IsIdentifierContinue(*value))) {
+    char_location.LogError("invalid Unicode identifier character");
+    return false;
+  }
+  id += bytes;
+  return true;
+}
+
 Token Lexer::HandleId() {
   const auto location = logger_;
   // read string
   std::string id;
   do {
-    if (static_cast<unsigned char>(last_char_) < 0x80) {
-      id += last_char_;
-      NextChar();
-    } else {
-      const auto char_location = logger_;
-      const auto length =
-          unicode::UTF8SequenceLength(static_cast<unsigned char>(last_char_));
-      std::string bytes(1, last_char_);
-      // Consume at least the leading byte, even if the sequence is invalid.
-      // Leave ASCII delimiters/newlines untouched on an incomplete sequence.
-      NextChar();
-      for (std::size_t i = 1; i < length && !IsEOL(); ++i) {
-        if ((static_cast<unsigned char>(last_char_) & 0xc0) != 0x80) break;
-        bytes += last_char_;
-        NextChar();
-      }
-      const auto value = unicode::DecodeUTF8(bytes);
-      if (!value) {
-        char_location.LogError("invalid UTF-8 sequence in identifier");
-        return Token::Error;
-      }
-      if (!(id.empty() ? unicode::IsIdentifierStart(*value)
-                       : unicode::IsIdentifierContinue(*value))) {
-        char_location.LogError("invalid Unicode identifier character");
-        return Token::Error;
-      }
-      id += bytes;
-    }
+    if (!ReadIdentifierChar(id)) return Token::Error;
   } while (!IsEOL() && (IsASCIIIdentifierContinue(last_char_) ||
                         static_cast<unsigned char>(last_char_) >= 0x80));
   // check if string is keyword

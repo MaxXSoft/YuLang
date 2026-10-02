@@ -45,8 +45,9 @@ def main():
         '',
     ]
     for prop, entries in ranges.items():
-        lines.append(f'constexpr Range k{prop.replace("_", "")}[] = {{')
-        lines.extend(f'    {{0x{first:04x}, 0x{last:04x}}},' for first, last in entries)
+        lines.append(f'constexpr std::array<Range, {len(entries)}> '
+                     f'k{prop.replace("_", "")} = {{')
+        lines.extend(f'    Range{{0x{first:04x}, 0x{last:04x}}},' for first, last in entries)
         lines += ['};', '']
     lines += ['// clang-format on', '']
     args.output.write_text('\n'.join(lines), encoding='utf-8')

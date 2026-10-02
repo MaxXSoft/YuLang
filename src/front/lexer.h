@@ -72,6 +72,8 @@ class Lexer {
   void SkipSpaces();
   // recover after a bad literal, preserving the next line for the parser
   void SkipQuotedLiteral(char quote);
+  // validate and append one identifier character, consuming its source bytes
+  bool ReadIdentifierChar(std::string &id);
 
   define::Token HandleId();
   define::Token HandleNum();
