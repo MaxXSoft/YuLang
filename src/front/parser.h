@@ -18,17 +18,14 @@ class Parser {
     lexer()->Reset();
     ended_ = false;
     in_import_ = 0;
+    brace_depth_ = 0;
+    token_index_ = 0;
+    cur_token_ = define::Token::End;
     NextToken();
   }
 
   // get next AST from token stream
-  define::ASTPtr ParseNext() {
-    if (cur_token_ == define::Token::End) {
-      ended_ = true;
-      return nullptr;
-    }
-    return ParseLine();
-  }
+  define::ASTPtr ParseNext();
 
   // getters
   // returns true if parser met EOF
@@ -42,10 +39,15 @@ class Parser {
   }
   // get next token from lexer without skipping EOLs
   define::Token NextTokenKeepEOL() {
+    if (IsTokenChar('{')) ++brace_depth_;
+    if (IsTokenChar('}') && brace_depth_) --brace_depth_;
     last_token_ = cur_token_;
-    return cur_token_ = Logger::error_num() ? define::Token::Error
-                                            : lexer()->NextToken();
+    ++token_index_;
+    return cur_token_ = lexer()->NextToken();
   }
+
+  // Skip a failed statement, preserving the next line or enclosing '}'.
+  void Synchronize(std::size_t depth, std::size_t start, bool in_block);
 
   // check if current token is a character (token type 'Other')
   [[nodiscard]] bool IsTokenChar(char c) const {
@@ -177,6 +179,7 @@ class Parser {
   define::Token last_token_{define::Token::End}, cur_token_{define::Token::End};
   bool ended_{};
   unsigned int in_import_{};
+  std::size_t brace_depth_{}, token_index_{};
 };
 
 }  // namespace yulang::front

@@ -157,11 +157,20 @@ bool CompileToIR(const xstl::ArgParser &argp, std::ostream &os,
   Analyzer ana(eval);
   // compile source code
   const auto dump_ast = type == OutputType::AST;
-  while (auto ast = parser.ParseNext()) {
+  yulang::define::ASTPtrList asts;
+  while (!parser.ended()) {
+    auto ast = parser.ParseNext();
+    if (!ast) continue;
     // perform semantic analyze
-    if (!ast->SemaAnalyze(ana)) break;
+    const auto errors = Logger::error_num();
+    if (!ast->SemaAnalyze(ana) || Logger::error_num() != errors) continue;
     ast->Eval(eval);
-    if (Logger::error_num()) break;
+    if (Logger::error_num() != errors) continue;
+    asts.push_back(std::move(ast));
+  }
+  // Only complete, error-free input may reach IR generation or AST output.
+  if (Logger::error_num()) return false;
+  for (const auto &ast : asts) {
     // dump to output
     if (dump_ast) ast->Dump(os);
     // generate IR

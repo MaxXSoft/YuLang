@@ -488,12 +488,20 @@ std::optional<TypePtr> Analyzer::CheckOpOverload(
 }
 
 TypePtr Analyzer::AnalyzeOn(VarLetDefAST &ast) {
-  last_prop_ = ast.prop();
+  const auto previous = std::exchange(last_prop_, ast.prop());
+  const xstl::Guard property([this, previous] { last_prop_ = previous; });
+  bool valid = true;
   for (const auto &i : ast.defs()) {
-    if (!AnalyzeExpr(*i)) return nullptr;
+    const auto errors = Logger::error_num();
+    if (!AnalyzeExpr(*i) || Logger::error_num() != errors) {
+      valid = false;
+      continue;
+    }
     // run evaluation on var/let definitions for constant definitions
     i->Eval(eval_);
+    valid &= Logger::error_num() == errors;
   }
+  if (!valid) return nullptr;
   return ast.set_ast_type(MakeVoid());
 }
 
@@ -510,7 +518,8 @@ TypePtr Analyzer::AnalyzeOn(FunDefAST &ast) {
   // get return type
   auto ret = ast.type() ? AnalyzeExpr(*ast.type()) : MakeVoid();
   if (!ret) return nullptr;
-  cur_ret_ = ret;
+  const auto previous = std::exchange(cur_ret_, ret);
+  const xstl::Guard return_type([this, previous] { cur_ret_ = previous; });
   if (!ret->IsReference() && !ret->IsRightValue()) {
     ret = ret->GetValueType(true);
   }
@@ -606,6 +615,8 @@ TypePtr Analyzer::AnalyzeOn(StructAST &ast) {
   // create an empty struct type
   auto type = std::make_shared<StructType>(elems, ast.id(), false);
   if (!AddUserType(ast.logger(), ast.id(), type)) return nullptr;
+  xstl::Guard registration(
+      [this, &ast] { user_types_->RemoveItem(ast.id(), false); });
   // analyze elements
   std::unordered_set<std::string_view> names;
   for (const auto &i : ast.defs()) {
@@ -630,6 +641,7 @@ TypePtr Analyzer::AnalyzeOn(StructAST &ast) {
   // TODO(YuLang): circular reference!
   type->set_elems(std::move(elems));
   ast.set_ast_type(std::move(type));
+  registration.Invalidate();
   return MakeVoid();
 }
 
@@ -652,27 +664,34 @@ TypePtr Analyzer::AnalyzeOn(EnumAST &ast) {
                       last_enum_elem_name_);
     }
   }
-  // add user type to environment
-  const auto enum_type = std::make_shared<EnumType>(
-      std::move(type), std::move(elems), ast.id(), false);
-  if (!AddUserType(ast.logger(), ast.id(), enum_type)) return nullptr;
-  // add enumeration right value to symbol environment
+  // Validate both namespaces before publishing the enumeration type.
   if (symbols_->GetItem(ast.id(), false)) {
     return LogError(ast.logger(),
                     "enumeration name has already been used "
                     "by another symbol",
                     ast.id());
   }
+  const auto enum_type = std::make_shared<EnumType>(
+      std::move(type), std::move(elems), ast.id(), false);
+  if (!AddUserType(ast.logger(), ast.id(), enum_type)) return nullptr;
+  // add enumeration right value to symbol environment
   symbols_->AddItem(ast.id(), enum_type->GetValueType(true));
   return ast.set_ast_type(MakeVoid());
 }
 
 TypePtr Analyzer::AnalyzeOn(ImportAST &ast) {
+  bool valid = true;
   for (const auto &i : ast.defs()) {
-    if (!AnalyzeExpr(*i)) return nullptr;
+    const auto errors = Logger::error_num();
+    if (!AnalyzeExpr(*i) || Logger::error_num() != errors) {
+      valid = false;
+      continue;
+    }
     // run evaluation on imported ASTs for constant definitions
     i->Eval(eval_);
+    valid &= Logger::error_num() == errors;
   }
+  if (!valid) return nullptr;
   return ast.set_ast_type(MakeVoid());
 }
 
@@ -799,12 +818,18 @@ TypePtr Analyzer::AnalyzeOn(BlockAST &ast) {
   const auto env = NewEnv();
   const auto eval_env = eval_.NewEnv();
   auto ret = MakeVoid();
+  bool valid = true;
   for (std::size_t i = 0; i < ast.stmts().size(); ++i) {
+    const auto errors = Logger::error_num();
     auto type = AnalyzeExpr(*ast.stmts()[i],
                             i + 1 == ast.stmts().size() ? expected_ : nullptr);
-    if (!type) return nullptr;
+    if (!type || Logger::error_num() != errors) {
+      valid = false;
+      continue;
+    }
     if (i == ast.stmts().size() - 1) ret = std::move(type);
   }
+  if (!valid) return nullptr;
   return ast.set_ast_type(ret);
 }
 
@@ -869,8 +894,8 @@ TypePtr Analyzer::AnalyzeOn(WhileAST &ast) {
   }
   // check body
   ++in_loop_;
+  const xstl::Guard loop([this] { --in_loop_; });
   if (!AnalyzeExpr(*ast.body())) return nullptr;
-  --in_loop_;
   return ast.set_ast_type(MakeVoid());
 }
 
@@ -905,8 +930,8 @@ TypePtr Analyzer::AnalyzeOn(ForInAST &ast) {
   ast.set_id_type(type);
   // check body
   ++in_loop_;
+  const xstl::Guard loop([this] { --in_loop_; });
   if (!AnalyzeExpr(*ast.body())) return nullptr;
-  --in_loop_;
   return ast.set_ast_type(MakeVoid());
 }
 
@@ -925,6 +950,9 @@ TypePtr Analyzer::AnalyzeOn(ControlAST &ast) {
       break;
     }
     case Keyword::Return: {
+      if (!cur_ret_) {
+        return LogError(ast.logger(), "using return outside a function");
+      }
       const auto type =
           ast.expr() ? AnalyzeExpr(*ast.expr(), cur_ret_) : MakeVoid();
       // check if is compatible

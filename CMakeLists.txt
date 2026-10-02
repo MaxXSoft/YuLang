@@ -147,6 +147,12 @@ if(BUILD_TESTING)
   add_test(NAME front.identifiers
     COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/front/test_identifiers.py
             --yuc $<TARGET_FILE:yuc> --work-dir ${CMAKE_BINARY_DIR}/test)
+  foreach(regression IN ITEMS recovery semantic_recovery)
+    add_test(NAME front.${regression}
+      COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/front/test_${regression}.py
+              --yuc $<TARGET_FILE:yuc> --work-dir ${CMAKE_BINARY_DIR}/test)
+    set_tests_properties(front.${regression} PROPERTIES TIMEOUT 120 LABELS front)
+  endforeach()
   add_test(NAME front.dependencies
     COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/front/test_dependencies.py
             --yuc $<TARGET_FILE:yuc> --work-dir ${CMAKE_BINARY_DIR}/test)

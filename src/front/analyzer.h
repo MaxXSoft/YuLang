@@ -26,7 +26,9 @@ class Analyzer {
     user_types_ = define::MakeEnv();
     funcs_ = define::MakeFuncMap();
     in_loop_ = 0;
+    cur_ret_.reset();
     expected_.reset();
+    last_prop_ = define::Property::None;
   }
 
   // Context applies only to this expression and explicitly selected children.

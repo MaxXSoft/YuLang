@@ -6,6 +6,7 @@
 #include <stack>
 
 #include "define/token.h"
+#include "xstl/guard.h"
 
 namespace yulang::front {
 
@@ -74,13 +75,46 @@ inline int GetOpPrec(Operator op) { return kOpPrecTable[static_cast<int>(op)]; }
 }  // namespace
 
 ASTPtr Parser::LogError(std::string_view message) {
-  logger().LogError(message);
+  // The lexer already diagnosed this token.
+  if (cur_token_ != Token::Error) logger().LogError(message);
   return nullptr;
 }
 
+ASTPtr Parser::ParseNext() {
+  if (cur_token_ == Token::End) {
+    ended_ = true;
+    return nullptr;
+  }
+  const auto start = token_index_;
+  auto stmt = ParseLine();
+  if (!stmt) Synchronize(0, start, false);
+  return stmt;
+}
+
+void Parser::Synchronize(std::size_t depth, std::size_t start, bool in_block) {
+  while (cur_token_ != Token::End) {
+    if (brace_depth_ <= depth) {
+      if (cur_token_ == Token::EOL) {
+        NextToken();
+        return;
+      }
+      if (token_index_ != start && last_token_ == Token::EOL) return;
+      if (IsTokenChar('}')) {
+        if (!in_block) NextToken();
+        return;
+      }
+    }
+    NextTokenKeepEOL();
+  }
+}
+
 ASTPtr Parser::ParseLine() {
+  const auto errors = Logger::error_num();
   auto stmt = GetStatement(GetProp());
-  if (!stmt) return LogError("invalid statement");
+  if (!stmt) {
+    if (Logger::error_num() == errors) LogError("invalid statement");
+    return nullptr;
+  }
   if (!ExpectEOL()) return nullptr;
   return stmt;
 }
@@ -180,6 +214,7 @@ ASTPtr Parser::ParseDeclare(Property prop) {
   if (!ExpectChar(':')) return nullptr;
   // get type
   auto type = ParseType();
+  if (!type) return nullptr;
   return MakeAST<DeclareAST>(log, prop, is_var, id, std::move(type));
 }
 
@@ -202,6 +237,7 @@ ASTPtr Parser::ParseTypeAlias(Property prop) {
   NextToken();
   // get type
   auto type = ParseType();
+  if (!type) return nullptr;
   return MakeAST<TypeAliasAST>(log, prop, id, std::move(type));
 }
 
@@ -304,27 +340,39 @@ ASTPtr Parser::ParseImport(Property prop) {
   // switch lexer
   const auto last_token = last_token_;
   const auto cur_token = cur_token_;
+  const auto depth = brace_depth_;
   auto last_lex = lex_man_.SetLexer(mod_path);
   if (!last_lex || !*last_lex) return LogError("failed to switch import lexer");
+  const xstl::Guard restore([&, this] {
+    --in_import_;
+    lex_man_.SetLexer(*last_lex);
+    last_token_ = last_token;
+    cur_token_ = cur_token;
+    brace_depth_ = depth;
+  });
+  cur_token_ = Token::End;
+  brace_depth_ = 0;
+  ++in_import_;
   NextToken();
   // get all public/extern/inline definitions
   ASTPtrList defs;
-  ++in_import_;
-  while (!Logger::error_num() && cur_token_ != Token::End) {
+  while (cur_token_ != Token::End) {
+    const auto start = token_index_;
     const auto prop = GetProp();
-    if (prop != Property::None) {
+    if (prop != Property::None && brace_depth_ == 0) {
+      const auto errors = Logger::error_num();
       auto def = GetStatement(prop);
-      if (!def) return nullptr;
-      defs.push_back(std::move(def));
+      if (def) {
+        defs.push_back(std::move(def));
+      } else {
+        if (Logger::error_num() == errors) LogError("invalid statement");
+        Synchronize(0, start, false);
+      }
     } else {
       NextToken();
     }
   }
-  --in_import_;
-  // reset to original status
-  lex_man_.SetLexer(last_lex.value());
-  last_token_ = last_token;
-  cur_token_ = cur_token;
+  // Keep the successfully parsed exports for subsequent diagnostics.
   return MakeAST<ImportAST>(log, std::move(defs));
 }
 
@@ -402,18 +450,26 @@ ASTPtr Parser::ParseBlock() {
   if (!ExpectChar('{')) return nullptr;
   // get lines
   ASTPtrList stmts;
-  while (!IsTokenChar('}')) {
+  const auto depth = brace_depth_;
+  bool valid = true;
+  while (!IsTokenChar('}') && cur_token_ != Token::End) {
+    const auto start = token_index_;
     auto stmt = ParseBlockLine();
-    if (!stmt) return nullptr;
-    stmts.push_back(std::move(stmt));
+    if (stmt) {
+      stmts.push_back(std::move(stmt));
+    } else {
+      valid = false;
+      Synchronize(depth, start, true);
+    }
   }
   // eat '}'
-  NextToken();
+  if (!ExpectChar('}') || !valid) return nullptr;
   return MakeAST<BlockAST>(log, std::move(stmts));
 }
 
 ASTPtr Parser::ParseBlockLine() {
   auto stmt = ParseBlockStatement();
+  if (!stmt) return nullptr;
   if (!IsTokenChar('}') && !ExpectEOL()) return nullptr;
   return stmt;
 }
@@ -424,8 +480,11 @@ ASTPtr Parser::ParseBlockStatement() {
     return LogError("invalid in-block statement");
   }
   // get normal statement
+  const auto errors = Logger::error_num();
   auto stmt = GetStatement(Property::None);
   if (stmt) return stmt;
+  if (Logger::error_num() != errors || cur_token_ == Token::Error)
+    return nullptr;
   // parse other in-block statements
   if (cur_token_ == Token::Keyword) {
     switch (lexer()->key_val()) {
@@ -724,6 +783,7 @@ ASTPtr Parser::ParseFactor() {
     // bracket expression
     NextToken();
     factor = ParseExpr();
+    if (!factor) return nullptr;
     if (!ExpectChar(')')) return nullptr;
   } else {
     // other values
@@ -807,7 +867,7 @@ ASTPtr Parser::ParseValue() {
         case Keyword::Null:
           return ParseNull();
         default:
-          return ParseValInit();
+          return LogError("invalid value");
       }
     }
     default: {
@@ -1023,7 +1083,7 @@ ASTPtr Parser::ParsePointer(bool is_var, ASTPtr type) {
     ast = MakeAST<PointerTypeAST>(is_var, std::move(type));
   } else {  // Token::Id
     for (const auto &c : lexer()->id_val()) {
-      if (c != '*') LogError("expected '*'");
+      if (c != '*') return LogError("expected '*'");
       if (!ast) {
         ast = MakeAST<PointerTypeAST>(is_var, std::move(type));
       } else {
