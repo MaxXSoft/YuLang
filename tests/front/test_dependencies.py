@@ -68,10 +68,14 @@ with tempfile.TemporaryDirectory(dir=args.work_dir, prefix='dependencies-') as d
         (project / 'direct.yu').write_text('import test.leaf\n')
         (project / 'leaf.yu').write_text('public type Number = i32\n')
         (project / 'unused.yu').write_text('public type Unused = i32\n')
+        # Make also exercises an output next to its library marker. Depfile
+        # replacement changes the registered root's mtime, which must not make
+        # the just-built object immediately stale.
+        output_dir = 'SOURCE' if tool == 'make' else 'BINARY'
         (project / 'CMakeLists.txt').write_text(f'''
 cmake_minimum_required(VERSION 3.28)
 project(DepfileTest NONE)
-set(object "${{CMAKE_CURRENT_BINARY_DIR}}/main.o")
+set(object "${{CMAKE_CURRENT_{output_dir}_DIR}}/main.o")
 add_custom_command(OUTPUT "${{object}}"
   COMMAND "{yuc}" -I "${{CMAKE_CURRENT_SOURCE_DIR}}" "${{CMAKE_CURRENT_SOURCE_DIR}}/main.yu" -o "${{object}}" -MD
   DEPENDS "${{CMAKE_CURRENT_SOURCE_DIR}}/main.yu"
@@ -81,7 +85,7 @@ add_custom_target(check ALL DEPENDS "${{object}}")
         run(['cmake', '-S', '.', '-B', 'build', '-G', generator], project)
         build = ['cmake', '--build', 'build']
         run(build, project)
-        obj = project / 'build/main.o'
+        obj = project / ('main.o' if tool == 'make' else 'build/main.o')
         stamp = obj.stat().st_mtime_ns
         run(build, project)
         assert obj.stat().st_mtime_ns == stamp, generator
@@ -93,10 +97,15 @@ add_custom_target(check ALL DEPENDS "${{object}}")
             current = obj.stat().st_mtime_ns
             assert (current != stamp) == rebuild, (generator, name)
             stamp = current
+            run(build, project)
+            assert obj.stat().st_mtime_ns == stamp, (generator, name, 'no-op')
         # A removed import may still appear in the previous depfile.
         time.sleep(1.1)
         (project / 'direct.yu').write_text('// no longer imports leaf\n')
         (project / 'leaf.yu').unlink()
         run(build, project)
         assert obj.stat().st_mtime_ns != stamp, generator
-        assert 'leaf.yu' not in (project / 'build/main.o.d').read_text()
+        assert 'leaf.yu' not in obj.with_suffix('.o.d').read_text()
+        stamp = obj.stat().st_mtime_ns
+        run(build, project)
+        assert obj.stat().st_mtime_ns == stamp, (generator, 'removed import', 'no-op')
