@@ -2,7 +2,9 @@
 #define YULANG_MID_IRBUILDER_H_
 
 #include <stack>
+#include <unordered_map>
 #include <utility>
+#include <vector>
 
 #include "define/ast.h"
 #include "mid/module.h"
@@ -15,6 +17,10 @@ namespace yulang::mid {
 class IRBuilder {
  public:
   IRBuilder() : vals_(xstl::MakeNestedMap<std::string, SSAPtr>()) {}
+
+  // Declare the complete module graph before emitting any initializer or body.
+  void GenerateModules(const std::vector<define::SourceModulePtr> &modules,
+                       const define::SourceModulePtr &root);
 
   SSAPtr GenerateOn(define::VarLetDefAST &ast);
   SSAPtr GenerateOn(define::FunDefAST &ast);
@@ -73,6 +79,10 @@ class IRBuilder {
 
   // switch to a new environment
   xstl::Guard NewEnv();
+  void Predeclare(define::BaseAST &ast, bool declarations);
+  LinkageTypes DefinitionLinkage(define::Property prop,
+                                 const define::BaseAST &ast) const;
+  bool EmitsBody(const define::FunDefAST &ast) const;
   // create binary operation
   SSAPtr CreateBinOp(define::Operator op, const SSAPtr &lhs, const SSAPtr &rhs);
 
@@ -80,6 +90,8 @@ class IRBuilder {
   Module module_;
   // table of values
   xstl::NestedMapPtr<std::string, SSAPtr> vals_;
+  std::unordered_map<const define::BaseAST *, SSAPtr> predeclared_;
+  define::SourceModulePtr root_module_, current_module_;
   // used when generating var/let definitions
   define::Property last_prop_{define::Property::None};
   // used when generating function definitions

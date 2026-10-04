@@ -89,6 +89,14 @@ inline llvm::GlobalValue::LinkageTypes GetLinkType(LinkageTypes link) {
 llvm::Value *LLVMGen::GetVal(const SSAPtr &ssa) {
   const auto *val = std::any_cast<llvm::Value *>(&ssa->metadata());
   if (!val) {
+    // A forward reference must not recursively emit a body and disturb the
+    // current function's insertion point. The module traversal emits bodies.
+    if (auto *function = dynamic_cast<FunctionSSA *>(ssa.get())) {
+      return DeclareFunction(*function);
+    }
+    if (auto *global = dynamic_cast<GlobalVarSSA *>(ssa.get())) {
+      return DeclareGlobal(*global);
+    }
     ssa->GenerateCode(*this);
     val = std::any_cast<llvm::Value *>(&ssa->metadata());
     assert(val);
@@ -468,7 +476,10 @@ void LLVMGen::GenerateOn(ReturnSSA &ssa) {
   SetVal(ssa, ret);
 }
 
-void LLVMGen::GenerateOn(FunctionSSA &ssa) {
+llvm::Function *LLVMGen::DeclareFunction(FunctionSSA &ssa) {
+  if (const auto *value = std::any_cast<llvm::Value *>(&ssa.metadata())) {
+    return llvm::cast<llvm::Function>(*value);
+  }
   // get linkage type
   const auto link = GetLinkType(ssa.link());
   // get function type
@@ -494,6 +505,11 @@ void LLVMGen::GenerateOn(FunctionSSA &ssa) {
     attrs = attrs.addDereferenceableRetAttr(context_, ret->GetSize());
     func->setAttributes(attrs);
   }
+  return func;
+}
+
+void LLVMGen::GenerateOn(FunctionSSA &ssa) {
+  auto *func = DeclareFunction(ssa);
   // register global ctor
   if (ssa.link() == LinkageTypes::GlobalCtor) CreateCtorArray(func);
   // generate function body
@@ -510,18 +526,25 @@ void LLVMGen::GenerateOn(FunctionSSA &ssa) {
   }
 }
 
-void LLVMGen::GenerateOn(GlobalVarSSA &ssa) {
+llvm::GlobalVariable *LLVMGen::DeclareGlobal(GlobalVarSSA &ssa) {
+  if (const auto *value = std::any_cast<llvm::Value *>(&ssa.metadata())) {
+    return llvm::cast<llvm::GlobalVariable>(*value);
+  }
   // get linkage type
   const auto link = GetLinkType(ssa.link());
-  // get initializer
-  llvm::Constant *init = nullptr;
-  if (ssa.init()) init = llvm::dyn_cast<llvm::Constant>(GetVal(ssa.init()));
   // create global variable
   auto *type = GenerateType(ssa.type()->GetDerefedType());
   auto *global = new llvm::GlobalVariable(*module_, type, !ssa.is_var(), link,
                                           nullptr, ssa.name());
-  global->setInitializer(init);
   SetVal(ssa, global);
+  return global;
+}
+
+void LLVMGen::GenerateOn(GlobalVarSSA &ssa) {
+  auto *global = DeclareGlobal(ssa);
+  llvm::Constant *init = nullptr;
+  if (ssa.init()) init = llvm::dyn_cast<llvm::Constant>(GetVal(ssa.init()));
+  global->setInitializer(init);
 }
 
 void LLVMGen::GenerateOn(AllocaSSA &ssa) {

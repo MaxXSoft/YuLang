@@ -31,7 +31,10 @@ using yulang::define::IfAST;
 using yulang::define::ImportAST;
 using yulang::define::IndexAST;
 using yulang::define::IntAST;
+using yulang::define::IsExtern;
+using yulang::define::IsInline;
 using yulang::define::IsOperatorAssign;
+using yulang::define::IsPublic;
 using yulang::define::Keyword;
 using yulang::define::NullAST;
 using yulang::define::Operator;
@@ -57,16 +60,113 @@ namespace {
 
 // convert property to linkage type
 inline LinkageTypes GetLinkageType(Property prop) {
-  if (prop == Property::Public || prop == Property::Extern) {
+  if (IsPublic(prop) || IsExtern(prop)) {
     return LinkageTypes::External;
   }
-  if (prop == Property::Inline) {
+  if (IsInline(prop)) {
     return LinkageTypes::Inline;
   }
   return LinkageTypes::Internal;
 }
 
 }  // namespace
+
+bool IRBuilder::EmitsBody(const FunDefAST &ast) const {
+  return ast.body() && (!root_module_ || current_module_ == root_module_ ||
+                        (IsInline(ast.prop()) &&
+                         (IsPublic(ast.prop()) || ast.abi_reachable())));
+}
+
+LinkageTypes IRBuilder::DefinitionLinkage(Property prop,
+                                          const define::BaseAST &ast) const {
+  if (!root_module_) return GetLinkageType(prop);
+  if (current_module_ != root_module_) {
+    return IsInline(prop) && (IsPublic(prop) || ast.abi_reachable())
+               ? LinkageTypes::Inline
+               : LinkageTypes::External;
+  }
+  if (IsExtern(prop)) return LinkageTypes::External;
+  if (root_module_->anonymous) return LinkageTypes::Internal;
+  // Inline clients may retain calls and symbol addresses at any -O level.
+  if (IsPublic(prop) || ast.abi_reachable()) return LinkageTypes::External;
+  return LinkageTypes::Internal;
+}
+
+void IRBuilder::Predeclare(define::BaseAST &ast, bool declarations) {
+  const auto context = module_.SetContext(ast.logger());
+  if (auto *function = dynamic_cast<FunDefAST *>(&ast);
+      function && !declarations) {
+    auto value = vals_->GetItem(function->id(), false);
+    if (!value) {
+      const auto link = EmitsBody(*function)
+                            ? DefinitionLinkage(function->prop(), *function)
+                            : LinkageTypes::External;
+      value =
+          module_.CreateFunction(link, function->id(), function->ast_type());
+      vals_->AddItem(function->id(), value);
+    }
+    predeclared_[function] = value;
+  } else if (auto *group = dynamic_cast<VarLetDefAST *>(&ast);
+             group && !declarations) {
+    for (const auto &definition : group->defs()) {
+      auto &variable = dynamic_cast<VarLetElemAST &>(*definition);
+      const auto element_context = module_.SetContext(variable.logger());
+      auto value = vals_->GetItem(variable.id(), false);
+      if (!value) {
+        // Global storage and initialization always remain in their owner.
+        const auto link = current_module_ == root_module_
+                              ? DefinitionLinkage(group->prop(), variable)
+                              : LinkageTypes::External;
+        value = module_.CreateGlobalVar(link, variable.is_var(), variable.id(),
+                                        variable.ast_type());
+        vals_->AddItem(variable.id(), value);
+      }
+      predeclared_[&variable] = value;
+    }
+  } else if (auto *declaration = dynamic_cast<DeclareAST *>(&ast);
+             declaration && declarations) {
+    auto value = vals_->GetItem(declaration->id(), false);
+    if (!value) {
+      const auto &type = declaration->type()->ast_type();
+      if (type->IsFunction()) {
+        value = module_.CreateFunction(LinkageTypes::External,
+                                       declaration->id(), type);
+      } else {
+        value = module_.CreateGlobalVar(LinkageTypes::External,
+                                        declaration->is_var(),
+                                        declaration->id(), type);
+      }
+      vals_->AddItem(declaration->id(), value);
+    }
+    predeclared_[declaration] = value;
+  }
+}
+
+void IRBuilder::GenerateModules(
+    const std::vector<define::SourceModulePtr> &modules,
+    const define::SourceModulePtr &root) {
+  module_.Reset();
+  vals_ = xstl::MakeNestedMap<std::string, SSAPtr>();
+  predeclared_.clear();
+  root_module_ = root;
+  // Definitions establish linkage before a repeated extern declaration is seen.
+  for (const bool declarations : {false, true}) {
+    for (const auto &source : modules) {
+      current_module_ = source;
+      for (const auto &ast : source->defs) Predeclare(*ast, declarations);
+    }
+  }
+  for (const auto &source : modules) {
+    current_module_ = source;
+    for (const auto &ast : source->defs) {
+      if (dynamic_cast<ImportAST *>(ast.get())) continue;
+      if (source == root || dynamic_cast<FunDefAST *>(ast.get())) {
+        ast->GenerateIR(*this);
+      }
+    }
+  }
+  current_module_.reset();
+}
 
 xstl::Guard IRBuilder::NewEnv() {
   vals_ = xstl::MakeNestedMap<std::string, SSAPtr>(vals_);
@@ -144,13 +244,20 @@ SSAPtr IRBuilder::GenerateOn(VarLetDefAST &ast) {
 
 SSAPtr IRBuilder::GenerateOn(FunDefAST &ast) {
   const auto context = module_.SetContext(ast.logger());
+  if (root_module_ && !EmitsBody(ast)) return nullptr;
   const auto env = NewEnv();
   // get linkage type
   auto link = GetLinkageType(ast.prop());
   if (!ast.body()) link = LinkageTypes::External;
   // create function declaration
-  const auto func = module_.CreateFunction(link, ast.id(), ast.ast_type());
-  vals_->outer()->AddItem(ast.id(), func);
+  const auto predeclared = predeclared_.find(&ast);
+  const auto func =
+      predeclared != predeclared_.end()
+          ? std::static_pointer_cast<User>(predeclared->second)
+          : module_.CreateFunction(link, ast.id(), ast.ast_type());
+  if (predeclared == predeclared_.end()) {
+    vals_->outer()->AddItem(ast.id(), func);
+  }
   if (!ast.body()) return nullptr;
   // generate arguments
   const auto args_block = module_.CreateBlock(func, "args");
@@ -189,6 +296,7 @@ SSAPtr IRBuilder::GenerateOn(FunDefAST &ast) {
 }
 
 SSAPtr IRBuilder::GenerateOn(DeclareAST &ast) {
+  if (predeclared_.find(&ast) != predeclared_.end()) return nullptr;
   const auto context = module_.SetContext(ast.logger());
   // get linkage type
   const auto link = LinkageTypes::External;
@@ -224,6 +332,7 @@ SSAPtr IRBuilder::GenerateOn(EnumAST & /*ast*/) {
 }
 
 SSAPtr IRBuilder::GenerateOn(ImportAST &ast) {
+  if (root_module_) return nullptr;
   const auto context = module_.SetContext(ast.logger());
   for (const auto &i : ast.defs()) i->GenerateIR(*this);
   return nullptr;
@@ -239,8 +348,11 @@ SSAPtr IRBuilder::GenerateOn(VarLetElemAST &ast) {
   // check if is global definition
   if (vals_->is_root()) {
     // global variables/constants
+    const auto predeclared = predeclared_.find(&ast);
     const auto var =
-        module_.CreateGlobalVar(link, ast.is_var(), ast.id(), type);
+        predeclared != predeclared_.end()
+            ? std::static_pointer_cast<GlobalVarSSA>(predeclared->second)
+            : module_.CreateGlobalVar(link, ast.is_var(), ast.id(), type);
     if (init) {
       if (init->IsLiteral()) {
         // generate initializer
@@ -255,7 +367,7 @@ SSAPtr IRBuilder::GenerateOn(VarLetElemAST &ast) {
         const auto ctor = module_.EnterGlobalCtor();
         module_.CreateInit(init->GenerateIR(*this), var, type->IsReference());
       }
-    } else if (link != LinkageTypes::External) {
+    } else if (root_module_ || link != LinkageTypes::External) {
       // generate zero initializer
       var->set_init(module_.GetZero(type));
     }
@@ -567,6 +679,13 @@ SSAPtr IRBuilder::GenerateOn(BinaryAST &ast) {
 
 SSAPtr IRBuilder::GenerateOn(AccessAST &ast) {
   const auto context = module_.SetContext(ast.logger());
+  if (!ast.resolved_id().empty()) {
+    auto value = vals_->GetItem(ast.resolved_id());
+    assert(value);
+    return value->type()->IsFunction()
+               ? value
+               : module_.CreateLoad(value, ast.ast_type()->IsReference());
+  }
   // generate expression
   const auto expr = ast.expr()->GenerateIR(*this);
   const auto &expr_ty = ast.expr()->ast_type();

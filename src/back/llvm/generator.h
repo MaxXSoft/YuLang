@@ -57,6 +57,8 @@ class LLVMGen : public CodeGenInterface {
   llvm::Value *GetVal(const mid::SSAPtr &ssa);
   // store llvm value to metadata
   static void SetVal(mid::Value &ssa, llvm::Value *val);
+  llvm::Function *DeclareFunction(mid::FunctionSSA &ssa);
+  llvm::GlobalVariable *DeclareGlobal(mid::GlobalVarSSA &ssa);
   // create global ctor array
   void CreateCtorArray(llvm::Function *ctor);
 
