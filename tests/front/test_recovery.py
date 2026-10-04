@@ -36,12 +36,13 @@ def main():
     }
     with tempfile.TemporaryDirectory(dir=args.work_dir, prefix='recovery-') as directory:
         work = Path(directory)
+        (work / 'test.lib.yu').write_text('')
         source = work / 'input.yu'
 
         def compile(text, name, count, *flags, mode='llvm'):
             source.write_bytes(text if isinstance(text, bytes) else (text + '\n').encode('utf-8'))
             output = work / f'{name}.{mode}'
-            result = subprocess.run([str(args.yuc), str(source), '-ot', mode,
+            result = subprocess.run([str(args.yuc), '-I', str(work), str(source), '-ot', mode,
                                      '-o', str(output), *flags], capture_output=True,
                                     text=True, timeout=10)
             errors = re.sub(r'\x1b\[[0-9;]*m', '', result.stderr)
@@ -58,16 +59,16 @@ def main():
         # Recover imported syntax errors and restore the importing source's lexer.
         (work / 'broken.yu').write_text('public declare a: ;\npublic type B = ;\n'
                                        'public declare good: ()\n')
-        errors = compile('import broken\ndef f() { good(); let c = ; }\n'
+        errors = compile('import test.broken.good\ndef f() { good(); let c = ; }\n'
                          'def g() { missing_name }', 'import', 4)
         assert 'broken.yu:' in errors and 'input.yu:' in errors, errors
         assert 'missing_name' in errors, errors
         # Good exports from a partially invalid module remain available for analysis.
-        errors = compile('import broken\ndef f() { good() }', 'import_exports', 2)
+        errors = compile('import test.broken.good\ndef f() { good() }', 'import_exports', 2)
         assert 'not been defined' not in errors, errors
-        errors = compile('extern var a: i32 = 0\ndef f() { missing_name }',
+        errors = compile('def f() { var a: i32[1]; a[2]; missing_name }',
                          'werror', 2, '-Werror')
-        assert 'missing_name' in errors and "cannot be 'extern'" in errors, errors
+        assert 'missing_name' in errors and 'subscript out of bounds' in errors, errors
         for mode in ('ast', 'yuir', 'asm', 'obj'):
             compile('def valid() {}\ndef bad() { missing_name }',
                     f'output_{mode}', 1, '-MD', mode=mode)
@@ -90,7 +91,7 @@ def main():
                     assert result.returncode == 1, result.stderr
                     assert 'failed to open file' in result.stderr, result.stderr
                     assert not result.stdout, result.stdout
-                    errors = compile('import unreadable\ndef f() { missing_name }',
+                    errors = compile('import test.unreadable\ndef f() { missing_name }',
                                      'unreadable_import', 2)
                     assert 'failed to open file' in errors and 'missing_name' in errors, errors
             finally:

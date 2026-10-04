@@ -71,11 +71,12 @@ def 色彩(): 颜色 { 颜色.红 }
 
     with tempfile.TemporaryDirectory(dir=args.work_dir, prefix='identifiers-') as directory:
         work = Path(directory)
+        (work / 'test.lib.yu').write_text('')
 
         def compile(name, source, definitions=(), output='llvm'):
             path = work / f'{name}.yu'
             path.write_bytes(source.encode('utf-8') if isinstance(source, str) else source)
-            command = [str(args.yuc.resolve()), str(path), '-ot', output]
+            command = [str(args.yuc.resolve()), '-I', str(work), str(path), '-ot', output]
             for definition in definitions:
                 command += ['-D', definition]
             return subprocess.run(command, capture_output=True, text=True,
@@ -104,7 +105,7 @@ def 色彩(): 颜色 { 颜色.红 }
         ]
         for name, source, definitions, expected in macros:
             actual = compile(name, source, definitions, output='ast')
-            reference = compile(name + '_reference', expected, output='ast')
+            reference = compile(name, expected, output='ast')
             assert actual.returncode == reference.returncode == 0, (name, actual.stderr, reference.stderr)
             assert actual.stdout == reference.stdout, (name, actual.stdout, reference.stdout)
 
@@ -120,7 +121,7 @@ def 色彩(): 颜色 { 颜色.红 }
         # Unicode module names, imported declarations and definitions share the
         # same lexical rules, including macro expansion in the imported source.
         (work / '数学.yu').write_text('public type 整数 = 类型\n', encoding='utf-8')
-        result = compile('import', 'import 数学\nvar 值: 整数', ['类型=i32'])
+        result = compile('unicode_import', 'import test.数学.整数\nvar 值: 整数', ['类型=i32'])
         assert result.returncode == 0, result.stderr
 
     print(f'PASS: {len(accepted)} accepted, {len(rejected)} rejected, Unicode macros/imports')

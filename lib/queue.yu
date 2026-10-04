@@ -1,19 +1,18 @@
-import sys.stdlib
-
-public struct __QueueElem {
+import std.sys.stdlib.{free, malloc}
+struct QueueElem {
   val: i32,
-  prev: __QueueElem var*,
-  next: __QueueElem var*,
+  prev: QueueElem var*,
+  next: QueueElem var*,
 }
 
 public struct Queue {
-  __head: __QueueElem var*,
+  head: QueueElem var*,
 }
 
 
 // constructor
 public def newQueue(): Queue {
-  let head = malloc(sizeof __QueueElem) as __QueueElem var*
+  let head = malloc(sizeof QueueElem) as QueueElem var*
   (*head).prev = head
   (*head).next = head
   [] {head}
@@ -21,25 +20,25 @@ public def newQueue(): Queue {
 
 // check if current queue is empty
 public def empty(this: Queue&): bool {
-  (*this.__head).next == this.__head
+  (*this.head).next == this.head
 }
 
 // push element to back of queue
 public def push(this: Queue var&, val: i32) {
-  let elem = malloc(sizeof __QueueElem) as __QueueElem var*
+  let elem = malloc(sizeof QueueElem) as QueueElem var*
   (*elem).val = val
   // push into queue
-  let prev = (*this.__head).prev
+  let prev = (*this.head).prev
   (*prev).next = elem
   (*elem).prev = prev
-  (*this.__head).prev = elem
-  (*elem).next = this.__head
+  (*this.head).prev = elem
+  (*elem).next = this.head
 }
 
 // pop element from front of queue
 public def pop(this: Queue var&): i32 {
   // get result
-  let elem = (*this.__head).next, val = (*elem).val
+  let elem = (*this.head).next, val = (*elem).val
   // pop from queue
   let prev = (*elem).prev, next = (*elem).next
   (*next).prev = prev
@@ -53,5 +52,5 @@ public def del(this: Queue var&) {
   while !this.empty() {
     this.pop()
   }
-  free(this.__head as u8*)
+  free(this.head as u8*)
 }

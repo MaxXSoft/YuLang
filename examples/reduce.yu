@@ -1,6 +1,5 @@
-import io
-import range
-
+import std.io.out
+import std.range.{Range, to}
 def reduceImpl(r: Range var&, cur: i32, op: (i32, i32): i32): i32 {
   if r.last() {
     cur

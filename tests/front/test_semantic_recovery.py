@@ -15,13 +15,14 @@ args.work_dir.mkdir(parents=True, exist_ok=True)
 with tempfile.TemporaryDirectory(dir=args.work_dir,
                                  prefix='semantic-recovery-') as directory:
     work = Path(directory)
+    (work / 'test.lib.yu').write_text('')
 
     def reject(name, source, diagnostics, options=()):
         path = work / f'{name}.yu'
         output = work / f'{name}.ll'
         path.write_text(source, encoding='utf-8')
         result = subprocess.run(
-            [str(args.yuc), str(path), '-ot', 'llvm', '-o', str(output),
+            [str(args.yuc), '-I', str(work), str(path), '-ot', 'llvm', '-o', str(output),
              *options], capture_output=True, text=True, timeout=10)
         assert result.returncode == 1, (name, result.returncode, result.stderr)
         for diagnostic in diagnostics:
@@ -102,7 +103,7 @@ public type FirstAlias = MissingImportTypeOne
 public type SecondAlias = MissingImportTypeTwo
 ''', encoding='utf-8')
     reject('imports', '''
-import broken_module
+import test.broken_module
 def after_import() { missing_after_import }
 ''', ['enumeration value must be a constant integer',
       'id: MissingImportTypeOne', 'id: MissingImportTypeTwo',

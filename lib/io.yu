@@ -1,10 +1,8 @@
-import sys.unistd
-import sys.ctype
-import sys.string
-
-
+import std.sys.unistd.{FD_STDERR, FD_STDIN, FD_STDOUT, read, write}
+import std.sys.ctype.isdigit
+import std.sys.string.strlen
 // definition of IO structure
-public struct IO { __fd: i32 }
+public struct IO { fd: i32 }
 
 // definition of three UNIX standard IO
 public let iin: IO = [] {FD_STDIN}
@@ -19,7 +17,7 @@ public let err: IO = [] {FD_STDERR}
 def writeAll(this: IO&, data: u8*, size: usize) {
   var cur = data, remaining = size
   while remaining != 0 {
-    let written = write(this.__fd, cur, remaining)
+    let written = write(this.fd, cur, remaining)
     if written <= 0 {
       return
     }
@@ -36,7 +34,7 @@ public def put(this: IO&, char: u8) {
 // get character from IO
 public def get(this: IO&): u8 {
   var char: u8
-  read(this.__fd, &char, 1)
+  read(this.fd, &char, 1)
   char
 }
 

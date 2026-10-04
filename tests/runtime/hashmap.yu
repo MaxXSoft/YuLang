@@ -1,4 +1,4 @@
-import hashmap
+import std.hashmap.{HashMap, newHashMap}
 
 // Keep every key in one chain even after rehashing.
 def collisionHasher(map: HashMap var&, key: u32): usize {
@@ -17,7 +17,7 @@ def checkNullValues(): i32 {
     if !map.insert(i, expectedValue(i)) { return 10 }
     i += 1
   }
-  let capacity = map.__table.size
+  let capacity = map.capacity()
   i = 0
   while i < 32 {
     // Reject replacement with either a null or a non-null value, including
@@ -27,21 +27,21 @@ def checkNullValues(): i32 {
     if map.get(i) != expectedValue(i) { return 13 }
     i += 1
   }
-  if map.size() != 32 || map.__table.size != capacity { return 14 }
+  if map.size() != 32 || map.capacity() != capacity { return 14 }
   // Force rehashes while preserving null and non-null values in the chain.
   while i < 97 {
     if !map.insert(i, expectedValue(i)) { return 15 }
     i += 1
   }
-  if map.__table.size <= capacity { return 16 }
-  let grown_capacity = map.__table.size
+  if map.capacity() <= capacity { return 16 }
+  let grown_capacity = map.capacity()
   i = 0
   while i < 97 {
     if map.get(i) != expectedValue(i) { return 17 }
     if map.insert(i, 999 as u8 var*) { return 18 }
     i += 1
   }
-  if map.size() != 97 || map.__table.size != grown_capacity { return 19 }
+  if map.size() != 97 || map.capacity() != grown_capacity { return 19 }
   var seen = 0
   for pair in map.iter() {
     if pair.key() >= 97 || pair.value() != expectedValue(pair.key()) {
@@ -73,7 +73,7 @@ def checkNullValues(): i32 {
   if !map.insert(0, null) || !map.remove(0) {
     return 31
   }
-  if !map.empty() || map.__table.occupied != 0 { return 32 }
+  if !map.empty() { return 32 }
   map.del()
   0
 }
@@ -88,7 +88,7 @@ extern def check_hashmap(): i32 {
     }
     i += 1
   }
-  if map.__table.size < map.size() { return 2 }
+  if map.capacity() < map.size() { return 2 }
   i = 0
   while i < 1000 {
     if map.get((i * 32) as u32) as usize != (i + 1) as usize { return 3 }
@@ -97,7 +97,7 @@ extern def check_hashmap(): i32 {
   }
   var seen = 0
   for pair in map.iter() {
-    if (*pair).value as usize != ((*pair).key / 32 + 1) as usize {
+    if pair.value() as usize != (pair.key() / 32 + 1) as usize {
       return 5
     }
     seen += 1

@@ -1,5 +1,4 @@
-import io
-
+import std.io.out
 extern def output_text() {
   out <<< "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 }

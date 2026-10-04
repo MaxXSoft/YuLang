@@ -1,7 +1,6 @@
-import range
-import io
-import dynarray
-
+import std.range.until
+import std.io.out
+import std.dynarray.{DynArray, newDynArray}
 def addOne(val: i32): i32 {
   val + 1
 }

@@ -46,6 +46,7 @@ target_link_libraries(yuc PRIVATE LLVM)
 
 # Compile Yu sources with the compiler built by this project.
 file(GLOB_RECURSE YU_LIBRARY_SOURCES CONFIGURE_DEPENDS "lib/*.yu")
+list(FILTER YU_LIBRARY_SOURCES EXCLUDE REGEX "\\.lib\\.yu$")
 
 function(compile_yu source output)
   file(RELATIVE_PATH relative "${CMAKE_CURRENT_SOURCE_DIR}" "${source}")
@@ -133,6 +134,11 @@ if(BUILD_TESTING)
   target_include_directories(test_usedef PRIVATE src 3rdparty/xstl)
   set_target_properties(test_usedef PROPERTIES CXX_EXTENSIONS OFF)
   add_test(NAME mid.usedef COMMAND test_usedef)
+  add_executable(test_type_identity tests/define/test_type_identity.cpp src/define/type.cpp)
+  target_compile_features(test_type_identity PRIVATE cxx_std_17)
+  target_include_directories(test_type_identity PRIVATE src 3rdparty/xstl)
+  set_target_properties(test_type_identity PROPERTIES CXX_EXTENSIONS OFF)
+  add_test(NAME define.type_identity COMMAND test_type_identity)
   add_test(NAME front.constants
     COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/front/test_constants.py
             --yuc $<TARGET_FILE:yuc> --work-dir ${CMAKE_BINARY_DIR}/test)
@@ -148,12 +154,18 @@ if(BUILD_TESTING)
   add_test(NAME front.identifiers
     COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/front/test_identifiers.py
             --yuc $<TARGET_FILE:yuc> --work-dir ${CMAKE_BINARY_DIR}/test)
-  foreach(regression IN ITEMS shadowing recovery semantic_recovery)
+  foreach(regression IN ITEMS shadowing recovery semantic_recovery modules module_lookup)
     add_test(NAME front.${regression}
       COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/front/test_${regression}.py
               --yuc $<TARGET_FILE:yuc> --work-dir ${CMAKE_BINARY_DIR}/test)
     set_tests_properties(front.${regression} PROPERTIES TIMEOUT 120 LABELS front)
   endforeach()
+  add_test(NAME front.module_abi
+    COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/front/test_module_abi.py
+            --yuc $<TARGET_FILE:yuc> --cc ${CMAKE_C_COMPILER}
+            --llvm-bin ${LLVM_TOOLS_BINARY_DIR} "--sdk=${CMAKE_OSX_SYSROOT}"
+            --work-dir ${CMAKE_BINARY_DIR}/test)
+  set_tests_properties(front.module_abi PROPERTIES TIMEOUT 180 LABELS "front;runtime")
   add_test(NAME front.dependencies
     COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/front/test_dependencies.py
             --yuc $<TARGET_FILE:yuc> --work-dir ${CMAKE_BINARY_DIR}/test)

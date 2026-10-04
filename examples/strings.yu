@@ -1,6 +1,5 @@
-import io
-import strview
-
+import std.io.{IO, out}
+import std.strview.{StrView, newStrView}
 def <<<(this: IO&, sv: StrView&): IO& {
   var i: usize = 0
   while i < sv.len() {

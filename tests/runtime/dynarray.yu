@@ -1,5 +1,4 @@
-import dynarray
-
+import std.dynarray.newDynArray
 extern def check_dynarray_copy(): i32 {
   var source = newDynArray(4, 42)
   var dest = newDynArray(2, 7)

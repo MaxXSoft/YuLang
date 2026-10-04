@@ -111,6 +111,51 @@ structure by its shape. Use `[Type] {...}` when the type is ambiguous or absent,
 such as `let point = [Point] {1, 2}`. This syntax creates values and cannot bind
 temporary references or initialize scalar types.
 
+Libraries are registered with `-I DIR`. Each root contains exactly one empty
+`<name>.lib.yu` marker (only whitespace is allowed in its contents). The standard
+library is registered with `-I lib` and its marker is `lib/std.lib.yu`.
+Imports always start with the library name, including imports within a library:
+
+```yu
+import std.dynarray as da
+import std.range.until
+import std.io.{out, err as errors}
+import std.sys.ctype.*
+
+var values = da.newDynArray()
+for i in 0 until 10 { values.push(i) }
+```
+
+A module import binds a namespace; it does not inject its definitions. Selected
+and wildcard imports bind public definitions in the current module only.
+Imports cannot be public or re-export another module's bindings. An import that
+could name both a module and a definition is an error, including with `as`;
+rename one of the conflicting targets. Registering two different roots with the
+same library name is also an error. Marker files are not compiled as modules.
+
+Definitions and structure fields are private to their defining module unless
+marked `public`. Visibility is independent of `extern` and `inline`: exported C
+declarations use `public extern declare`, while a private C entry point may use
+`extern def main`. Inline functions intended for callers use `public inline def`.
+Public types may contain private fields and internal helper types; public fields,
+function signatures, globals and aliases cannot expose private nominal types.
+Construct a structure with private fields through a function in its defining
+module rather than an aggregate initializer in another module.
+
+Structures and enumerations have declaration identity: equal layouts in different
+modules are different types. Transparent type aliases and renamed imports keep
+the original identity. Library names and module-relative paths are part of the
+ABI, so changing either requires rebuilding callers; moving a library root does
+not change its identity.
+
+`value.method(args)` searches visible functions and public functions in the
+receiver type's defining module. Named infix calls and the `next`/`last` iterator
+protocol use the same lookup; ambiguous overloads require an explicit module
+qualification. Functions on primitive values, such as `until`, still need a
+selected or wildcard import. `module.function(args)` is a qualified call without
+an inserted receiver, and `(value.callback)(args)` calls a function-valued field.
+Bare `function(value, args)` uses names visible in the current scope.
+
 <details>
   <summary>EBNF of Yu</summary>
 
@@ -126,11 +171,14 @@ temporary references or initialize scalar types.
                 "(" [arg_list [","]] ")" [":" type] block;
   declare   ::= property "declare" ["var"] id ":" type;
   ty_alias  ::= property "type" id "=" type;
-  struct    ::= property "struct" id "{" arg_list [","] "}";
+  struct    ::= ["public"] "struct" id "{" [field_list [","]] "}";
   enum      ::= property "enum" id [":" type] "{" enum_list "}";
-  import    ::= property "import" id {"." id};
+  import    ::= "import" path ["as" id | ".*" | ".{" import_list [","] "}"];
 
-  property  ::= ["public" | "extern" | "inline"]
+  property  ::= ["public"] ["extern" | "inline"];
+  path      ::= id {"." id};
+  import_list ::= id ["as" id] {"," id ["as" id]};
+  field_list ::= ["public"] id ":" type {"," ["public"] id ":" type};
   var_elem  ::= id [":" type] ["=" expr];
   let_elem  ::= id [":" type] "=" expr;
   arg_list  ::= id ":" type ["," arg_list];
@@ -176,7 +224,7 @@ temporary references or initialize scalar types.
   null_ptr  ::= "null";
   val_init  ::= "[" [type] "]" "{" [expr {"," expr} [","]] "}";
 
-  type      ::= (prim_type | id | pointer | array | ref | func) ["volatile"];
+  type      ::= (prim_type | path | pointer | array | ref | func) ["volatile"];
   prim_type ::= "i8"  | "i16" | "i32"   | "i64" | "isize" | "u8"  | "u16"
               | "u32" | "u64" | "usize" | "f32" | "f64" | "bool";
   pointer   ::= type ["var"] "*";
@@ -191,8 +239,8 @@ temporary references or initialize scalar types.
 C style:
 
 ```yu
-import sys.unistd
-import sys.string
+import std.sys.unistd.{FD_STDOUT, write}
+import std.sys.string.strlen
 
 extern def main(argc: i32, argv: u8**): i32 {
   let hello = "Hello world!\n", len = strlen(hello)
@@ -204,8 +252,8 @@ extern def main(argc: i32, argv: u8**): i32 {
 OOP-like style (but not real OOP):
 
 ```yu
-import sys.unistd
-import sys.string
+import std.sys.unistd.{FD_STDOUT, write}
+import std.sys.string.strlen
 
 struct Output {}
 
@@ -225,7 +273,7 @@ extern def main(argc: i32, argv: u8**): i32 {
 C++ `cout` style with custom operator `<<<`:
 
 ```yu
-import io
+import std.io.out
 
 extern def main(argc: i32, argv: u8**): i32 {
   out <<< "Hello world! " <<< 123 <<< '\n'

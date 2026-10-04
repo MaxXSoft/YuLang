@@ -1,5 +1,4 @@
-import stack
-
+import std.stack.newStack
 extern def check_stack(): i32 {
   var stack = newStack()
   var count = 1

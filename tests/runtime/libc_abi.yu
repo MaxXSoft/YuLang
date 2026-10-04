@@ -1,6 +1,5 @@
-import sys.stdlib
-import sys.math
-
+import std.sys.stdlib.{strtol, strtoul, time}
+import std.sys.math.{lround, lroundf}
 extern def store_time(destination: isize var*): isize { time(destination) }
 extern def parse_long(text: u8*): isize { strtol(text, null, 10) }
 extern def parse_ulong(text: u8*): usize { strtoul(text, null, 10) }

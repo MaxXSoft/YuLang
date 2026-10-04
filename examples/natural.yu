@@ -4,9 +4,8 @@
 */
 
 
-import io
-import range
-
+import std.io.{IO, err, out}
+import std.range.until
 struct Please {
   __buf: u8[256],
   __size: i32,

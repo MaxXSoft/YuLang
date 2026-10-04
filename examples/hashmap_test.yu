@@ -1,6 +1,5 @@
-import io
-import hashmap
-
+import std.io.out
+import std.hashmap.{HashMap, newHashMap}
 def insert(this: HashMap var&, key: i32, value: u8*): bool {
   this.insert(key as u32, value as () as u8 var*)
 }

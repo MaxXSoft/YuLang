@@ -13,11 +13,12 @@ args.work_dir.mkdir(parents=True, exist_ok=True)
 
 with tempfile.TemporaryDirectory(dir=args.work_dir, prefix='macros-') as directory:
     work = Path(directory).resolve()
+    (work / 'test.lib.yu').write_text('')
 
     def compile(source, definitions=(), option='-D'):
         path = work / 'main.yu'
         path.write_text(source)
-        command = [str(args.yuc.resolve()), str(path), '-ot', 'ast']
+        command = [str(args.yuc.resolve()), '-I', str(work), str(path), '-ot', 'ast']
         for definition in definitions:
             command += [option, definition]
         return subprocess.run(command, capture_output=True, text=True, timeout=10)
@@ -80,9 +81,9 @@ with tempfile.TemporaryDirectory(dir=args.work_dir, prefix='macros-') as directo
     assert actual.stdout == reference.stdout
 
     (work / 'leaf.yu').write_text('public type Number = TYPE\n')
-    actual = compile('import leaf\nvar value: Number', ['TYPE=i32'])
+    actual = compile('import test.leaf.Number\nvar value: Number', ['TYPE=i32'])
     (work / 'leaf.yu').write_text('public type Number = i32\n')
-    reference = compile('import leaf\nvar value: Number')
+    reference = compile('import test.leaf.Number\nvar value: Number')
     assert actual.returncode == reference.returncode == 0, actual.stderr
     assert actual.stdout == reference.stdout
 

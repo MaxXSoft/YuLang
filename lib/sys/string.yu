@@ -1,9 +1,9 @@
 // character array manipulation
-extern declare memchr: (u8*, i32, usize): u8*
-extern declare memcmp: (u8*, u8*, usize): i32
-extern declare memset: (u8 var*, i32, usize): u8 var*
-extern declare memcpy: (u8 var*, u8*, usize): u8 var*
-extern declare memmove: (u8 var*, u8*, usize): u8 var*
+public extern declare memchr: (u8*, i32, usize): u8*
+public extern declare memcmp: (u8*, u8*, usize): i32
+public extern declare memset: (u8 var*, i32, usize): u8 var*
+public extern declare memcpy: (u8 var*, u8*, usize): u8 var*
+public extern declare memmove: (u8 var*, u8*, usize): u8 var*
 
 // string examination
-extern declare strlen: (u8*): usize
+public extern declare strlen: (u8*): usize
