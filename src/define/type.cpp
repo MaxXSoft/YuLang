@@ -3,17 +3,18 @@
 #include <algorithm>
 #include <cassert>
 #include <sstream>
-#include <stack>
+#include <unordered_map>
 #include <utility>
+
+#include "xstl/guard.h"
 
 namespace yulang::define {
 
 namespace {
 
-// used in 'StructType::GetTrivialType' to prevent infinite loop
-// Empty libstdc++ stacks may allocate; startup failure is fatal.
-// NOLINTNEXTLINE(bugprone-throwing-static-initialization)
-std::stack<std::pair<const void *, TypePtr>> trivial_types;
+// All active declarations must be visible, including A -> B -> A pointer
+// cycles. Value-category views share an identity and therefore a placeholder.
+std::unordered_map<const NominalIdentity *, TypePtr> trivial_types;
 
 }  // namespace
 
@@ -165,22 +166,22 @@ TypePtr StructType::GetValueType(bool is_right) const {
 }
 
 TypePtr StructType::GetTrivialType() const {
-  // check if is in recursion
-  if (!trivial_types.empty() && trivial_types.top().first == this) {
-    return trivial_types.top().second;
-  }
+  if (const auto found = trivial_types.find(identity_.get());
+      found != trivial_types.end())
+    return found->second;
   // initialize as an empty struct type
   TypePairList elems;
   auto type = std::make_shared<StructType>(elems, id_, false);
   type->identity_ = identity_;
-  trivial_types.emplace(this, type);
+  trivial_types.emplace(identity_.get(), type);
+  const auto cleanup =
+      xstl::Guard([this] { trivial_types.erase(identity_.get()); });
   // convert elements
   for (const auto &i : data_->elems) {
     elems.emplace_back(i.first, i.second->GetTrivialType());
   }
   // update type
   type->set_elems(std::move(elems));
-  trivial_types.pop();
   return type;
 }
 

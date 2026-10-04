@@ -329,8 +329,8 @@ class StructType : public BaseType {
     std::size_t size{}, align{1};
   };
   std::shared_ptr<Data> data_{std::make_shared<Data>()};
-  std::shared_ptr<NominalIdentity> identity_{
-      std::make_shared<NominalIdentity>()};
+  std::shared_ptr<NominalIdentity> identity_ =
+      std::make_shared<NominalIdentity>();
   std::string id_;
   bool is_right_;
 };
@@ -411,8 +411,8 @@ class EnumType : public BaseType {
  private:
   TypePtr type_;
   ElemSet elems_;
-  std::shared_ptr<NominalIdentity> identity_{
-      std::make_shared<NominalIdentity>()};
+  std::shared_ptr<NominalIdentity> identity_ =
+      std::make_shared<NominalIdentity>();
   std::string id_;
   bool is_right_;
 };

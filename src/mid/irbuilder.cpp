@@ -94,8 +94,26 @@ LinkageTypes IRBuilder::DefinitionLinkage(Property prop,
 
 void IRBuilder::Predeclare(define::BaseAST &ast, bool declarations) {
   const auto context = module_.SetContext(ast.logger());
-  if (auto *function = dynamic_cast<FunDefAST *>(&ast);
-      function && !declarations) {
+  if (declarations) {
+    auto *declaration = dynamic_cast<DeclareAST *>(&ast);
+    if (!declaration) return;
+    auto value = vals_->GetItem(declaration->id(), false);
+    if (!value) {
+      const auto &type = declaration->type()->ast_type();
+      if (type->IsFunction()) {
+        value = module_.CreateFunction(LinkageTypes::External,
+                                       declaration->id(), type);
+      } else {
+        value = module_.CreateGlobalVar(LinkageTypes::External,
+                                        declaration->is_var(),
+                                        declaration->id(), type);
+      }
+      vals_->AddItem(declaration->id(), value);
+    }
+    predeclared_[declaration] = value;
+    return;
+  }
+  if (auto *function = dynamic_cast<FunDefAST *>(&ast)) {
     auto value = vals_->GetItem(function->id(), false);
     if (!value) {
       const auto link = EmitsBody(*function)
@@ -106,8 +124,9 @@ void IRBuilder::Predeclare(define::BaseAST &ast, bool declarations) {
       vals_->AddItem(function->id(), value);
     }
     predeclared_[function] = value;
-  } else if (auto *group = dynamic_cast<VarLetDefAST *>(&ast);
-             group && !declarations) {
+    return;
+  }
+  if (auto *group = dynamic_cast<VarLetDefAST *>(&ast)) {
     for (const auto &definition : group->defs()) {
       auto &variable = dynamic_cast<VarLetElemAST &>(*definition);
       const auto element_context = module_.SetContext(variable.logger());
@@ -123,22 +142,6 @@ void IRBuilder::Predeclare(define::BaseAST &ast, bool declarations) {
       }
       predeclared_[&variable] = value;
     }
-  } else if (auto *declaration = dynamic_cast<DeclareAST *>(&ast);
-             declaration && declarations) {
-    auto value = vals_->GetItem(declaration->id(), false);
-    if (!value) {
-      const auto &type = declaration->type()->ast_type();
-      if (type->IsFunction()) {
-        value = module_.CreateFunction(LinkageTypes::External,
-                                       declaration->id(), type);
-      } else {
-        value = module_.CreateGlobalVar(LinkageTypes::External,
-                                        declaration->is_var(),
-                                        declaration->id(), type);
-      }
-      vals_->AddItem(declaration->id(), value);
-    }
-    predeclared_[declaration] = value;
   }
 }
 
@@ -680,7 +683,7 @@ SSAPtr IRBuilder::GenerateOn(BinaryAST &ast) {
 SSAPtr IRBuilder::GenerateOn(AccessAST &ast) {
   const auto context = module_.SetContext(ast.logger());
   if (!ast.resolved_id().empty()) {
-    auto value = vals_->GetItem(ast.resolved_id());
+    const auto value = vals_->GetItem(ast.resolved_id());
     assert(value);
     return value->type()->IsFunction()
                ? value

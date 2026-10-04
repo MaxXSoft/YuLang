@@ -11,8 +11,16 @@ void Check(bool condition) {
 
 }  // namespace
 
-int main() {
-  using namespace yulang::define;
+int main() try {
+  using yulang::define::BaseType;
+  using yulang::define::ConstType;
+  using yulang::define::EnumType;
+  using yulang::define::PointerType;
+  using yulang::define::PrimType;
+  using yulang::define::RefType;
+  using yulang::define::StructType;
+  using yulang::define::TypePairList;
+  using yulang::define::VolaType;
   const auto number = std::make_shared<PrimType>(PrimType::Type::Int32, false);
   const auto first =
       std::make_shared<StructType>(TypePairList{}, "Cell", false);
@@ -60,4 +68,20 @@ int main() {
   const auto enum_view = enum_a->GetValueType(true);
   Check(enum_a->IsIdentical(enum_view));
   Check(enum_view->GetOwnerModule() == "first" && enum_view->IsPublicType());
+
+  // Mutually recursive pointer types must close over the same lowered nodes.
+  const auto node_a = std::make_shared<StructType>(TypePairList{}, "A", false);
+  const auto node_b = std::make_shared<StructType>(TypePairList{}, "B", false);
+  node_a->SetIdentity("A", "graph", false);
+  node_b->SetIdentity("B", "graph", false);
+  node_a->set_elems({{"next", std::make_shared<PointerType>(node_b, false)}});
+  node_b->set_elems(
+      {{"previous", std::make_shared<PointerType>(node_a, false)}});
+  const auto lowered_a = node_a->GetValueType(true)->GetTrivialType();
+  const auto lowered_b = lowered_a->GetElem(0)->GetDerefedType();
+  Check(lowered_a->GetSize() == BaseType::ptr_size());
+  Check(lowered_b->IsIdentical(node_b));
+  Check(lowered_b->GetElem(0)->GetDerefedType() == lowered_a);
+} catch (...) {
+  return 1;
 }

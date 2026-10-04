@@ -80,9 +80,9 @@ class IRBuilder {
   // switch to a new environment
   xstl::Guard NewEnv();
   void Predeclare(define::BaseAST &ast, bool declarations);
-  LinkageTypes DefinitionLinkage(define::Property prop,
-                                 const define::BaseAST &ast) const;
-  bool EmitsBody(const define::FunDefAST &ast) const;
+  [[nodiscard]] LinkageTypes DefinitionLinkage(
+      define::Property prop, const define::BaseAST &ast) const;
+  [[nodiscard]] bool EmitsBody(const define::FunDefAST &ast) const;
   // create binary operation
   SSAPtr CreateBinOp(define::Operator op, const SSAPtr &lhs, const SSAPtr &rhs);
 
