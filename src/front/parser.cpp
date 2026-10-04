@@ -95,12 +95,18 @@ ASTPtr Parser::ParseNext() {
   return stmt;
 }
 
-define::SourceModulePtr Parser::BeginModule(const std::filesystem::path &path) {
+define::SourceModulePtr Parser::DescribeModule(
+    const std::filesystem::path &path) {
   auto module = std::make_shared<define::SourceModule>();
   module->path = path.string();
   module->id = lex_man_.ModuleId(path);
   module->anonymous = module->id.empty();
   if (module->anonymous) module->id = "<anonymous>";
+  return module;
+}
+
+define::SourceModulePtr Parser::BeginModule(const std::filesystem::path &path) {
+  auto module = DescribeModule(path);
   module_cache_.emplace(module->path, module);
   modules_.push_back(module);
   return module;
@@ -127,16 +133,20 @@ define::SourceModulePtr Parser::ParseModule() {
 }
 
 define::SourceModulePtr Parser::ParseImportedModule(
-    const std::filesystem::path &path) {
+    const std::filesystem::path &path, const Logger &origin, bool alternative) {
   const auto key = path.string();
   if (loading_.find(key) != loading_.end()) {
+    // A namespace import may merely test whether its prefix also exports the
+    // last component. That is not an import edge. A descriptor avoids forming
+    // a shared_ptr cycle when the optional prefix is the current module.
+    if (alternative) return DescribeModule(path);
     std::string chain;
     for (const auto &id : import_stack_) {
       if (!chain.empty()) chain += " -> ";
       chain += id;
     }
     chain += " -> " + lex_man_.ModuleId(path);
-    logger().LogError("cyclic import: " + chain);
+    origin.LogError("cyclic import: " + chain);
     return {};
   }
   if (const auto found = module_cache_.find(key);
@@ -151,7 +161,7 @@ define::SourceModulePtr Parser::ParseImportedModule(
   const auto previous_module = current_module_id_;
   const auto previous_lexer = lex_man_.SetLexer(path);
   if (!previous_lexer || !*previous_lexer) {
-    logger().LogError("failed to load imported module");
+    origin.LogError("failed to load imported module");
     return {};
   }
   const xstl::Guard restore([&, this] {
@@ -372,17 +382,9 @@ ASTPtr Parser::ParseEnum(Property prop) {
   return MakeAST<EnumAST>(log, prop, id, std::move(type), std::move(defs));
 }
 
-ASTPtr Parser::ParseImport(Property prop) {
-  auto log = logger();
-  if (prop != Property::None) {
-    return LogError("import bindings cannot be public, extern, or inline");
-  }
-  NextToken();
-  ModName path;
-  bool grouped = false;
-  bool wildcard = false;
+bool Parser::ParseImportPath(ModName &path, ImportKind &kind) {
   for (;;) {
-    if (!ExpectId()) return nullptr;
+    if (!ExpectId()) return false;
     path.push_back(lexer()->id_val());
     NextToken();
     // The lexer preserves operator-formed identifiers, so adjacent punctuation
@@ -392,7 +394,7 @@ ASTPtr Parser::ParseImport(Property prop) {
       auto name = lexer()->id_val().substr(1);
       NextToken();
       if (name == "*") {
-        wildcard = true;
+        kind = ImportKind::Wildcard;
       } else {
         path.push_back(std::move(name));
       }
@@ -401,15 +403,14 @@ ASTPtr Parser::ParseImport(Property prop) {
     if (!IsTokenOperator(Operator::Access)) break;
     NextToken();
     if (IsTokenChar('{')) {
-      grouped = true;
+      kind = ImportKind::Selected;
       break;
     }
     if (IsTokenOperator(Operator::Mul)) {
-      wildcard = true;
+      kind = ImportKind::Wildcard;
       NextToken();
       break;
     }
-    // Operator overloads may be selected by name as well.
     if (cur_token_ == Token::Operator) {
       path.emplace_back(kOperators[static_cast<int>(lexer()->op_val())]);
       NextToken();
@@ -417,69 +418,78 @@ ASTPtr Parser::ParseImport(Property prop) {
     }
   }
   if (path.size() < 2) {
-    return LogError("import requires a library-qualified source module");
+    LogError("import requires a library-qualified source module");
+    return false;
   }
+  return true;
+}
 
-  std::vector<ImportBinding> bindings;
-  if (grouped) {
+bool Parser::ParseImportAlias(std::string &alias) {
+  if (!IsTokenKeyword(Keyword::As)) return true;
+  NextToken();
+  if (!ExpectId()) return false;
+  alias = lexer()->id_val();
+  NextToken();
+  return true;
+}
+
+bool Parser::ParseImportBinding(ImportBinding &binding) {
+  if (cur_token_ == Token::Id) {
+    binding.name = lexer()->id_val();
+  } else if (cur_token_ == Token::Operator &&
+             !IsTokenOperator(Operator::Access)) {
+    binding.name = kOperators[static_cast<int>(lexer()->op_val())];
+  } else {
+    LogError("expected imported definition");
+    return false;
+  }
+  NextToken();
+  binding.alias = binding.name;
+  return ParseImportAlias(binding.alias);
+}
+
+bool Parser::ParseImportNames(const ModName &path, ImportKind kind,
+                              std::vector<ImportBinding> &bindings) {
+  if (kind == ImportKind::Wildcard) return true;
+  if (kind == ImportKind::Namespace) {
+    ImportBinding binding{path.back(), path.back(), {}};
+    if (!ParseImportAlias(binding.alias)) return false;
+    bindings.push_back(std::move(binding));
+    return true;
+  }
+  NextToken();
+  for (;;) {
+    ImportBinding binding;
+    if (!ParseImportBinding(binding)) return false;
+    bindings.push_back(std::move(binding));
+    if (!IsTokenChar(',')) break;
     NextToken();
-    if (IsTokenChar('}')) return LogError("expected imported definition");
-    for (;;) {
-      std::string name;
-      if (cur_token_ == Token::Id) {
-        name = lexer()->id_val();
-      } else if (cur_token_ == Token::Operator &&
-                 !IsTokenOperator(Operator::Access)) {
-        name = kOperators[static_cast<int>(lexer()->op_val())];
-      } else {
-        return LogError("expected imported definition");
-      }
-      NextToken();
-      auto alias = name;
-      if (IsTokenKeyword(Keyword::As)) {
-        NextToken();
-        if (!ExpectId()) return nullptr;
-        alias = lexer()->id_val();
-        NextToken();
-      }
-      bindings.push_back({std::move(name), std::move(alias), {}});
-      if (!IsTokenChar(',')) break;
-      NextToken();
-      if (IsTokenChar('}')) break;
-    }
-    if (!ExpectChar('}')) return nullptr;
-  } else if (!wildcard) {
-    auto alias = path.back();
-    if (IsTokenKeyword(Keyword::As)) {
-      NextToken();
-      if (!ExpectId()) return nullptr;
-      alias = lexer()->id_val();
-      NextToken();
-    }
-    bindings.push_back({path.back(), std::move(alias), {}});
+    if (IsTokenChar('}')) break;
   }
+  return ExpectChar('}');
+}
 
+ASTPtr Parser::ResolveImport(Logger &log, const ModName &path, ImportKind kind,
+                             std::vector<ImportBinding> bindings) {
   const auto full_path = lex_man_.GetModPath(path);
-  if (grouped || wildcard) {
+  if (kind != ImportKind::Namespace) {
     if (full_path.empty())
       return LogError("import target is not a source module");
-    auto module = ParseImportedModule(full_path);
+    auto module = ParseImportedModule(full_path, log);
     if (!module) return nullptr;
     for (auto &binding : bindings) {
       auto alternative = path;
       alternative.push_back(binding.name);
       const auto alternative_path = lex_man_.GetModPath(alternative);
       if (!alternative_path.empty()) {
-        binding.module_alternative = ParseImportedModule(alternative_path);
-        if (!binding.module_alternative) return nullptr;
+        // Only existence is relevant: selected-definition imports never load
+        // the potentially conflicting child module.
+        binding.module_alternative = DescribeModule(alternative_path);
       }
     }
-    return MakeAST<ImportAST>(
-        log, std::move(module),
-        wildcard ? ImportKind::Wildcard : ImportKind::Selected,
-        std::move(bindings));
+    return MakeAST<ImportAST>(log, std::move(module), kind,
+                              std::move(bindings));
   }
-
   auto prefix = path;
   const auto member = prefix.back();
   prefix.pop_back();
@@ -489,21 +499,35 @@ ASTPtr Parser::ParseImport(Property prop) {
         "import target is not a source module or module definition");
   }
   if (!full_path.empty()) {
-    auto module = ParseImportedModule(full_path);
+    auto module = ParseImportedModule(full_path, log);
     if (!module) return nullptr;
     define::SourceModulePtr alternative;
     if (!prefix_path.empty()) {
-      alternative = ParseImportedModule(prefix_path);
+      alternative = ParseImportedModule(prefix_path, log, true);
       if (!alternative) return nullptr;
     }
     return MakeAST<ImportAST>(log, std::move(module), ImportKind::Namespace,
                               std::move(bindings), std::move(alternative),
                               member);
   }
-  auto module = ParseImportedModule(prefix_path);
+  auto module = ParseImportedModule(prefix_path, log);
   if (!module) return nullptr;
   return MakeAST<ImportAST>(log, std::move(module), ImportKind::Selected,
                             std::move(bindings));
+}
+
+ASTPtr Parser::ParseImport(Property prop) {
+  auto log = logger();
+  if (prop != Property::None) {
+    return LogError("import bindings cannot be public, extern, or inline");
+  }
+  NextToken();
+  ModName path;
+  auto kind = ImportKind::Namespace;
+  if (!ParseImportPath(path, kind)) return nullptr;
+  std::vector<ImportBinding> bindings;
+  if (!ParseImportNames(path, kind, bindings)) return nullptr;
+  return ResolveImport(log, path, kind, std::move(bindings));
 }
 
 ASTPtr Parser::ParseVarLetElem(Property /*prop*/, bool is_var) {

@@ -19,7 +19,7 @@ const std::array kKeywords = {YULANG_KEYWORDS(YULANG_EXPAND_SECOND)};
 
 Path Canonical(const Path &path) {
   std::error_code error;
-  auto result = std::filesystem::canonical(path, error);
+  const auto result = std::filesystem::canonical(path, error);
   return error ? Path{} : result;
 }
 
@@ -40,9 +40,50 @@ bool IsName(std::string_view name) {
          std::find(kKeywords.begin(), kKeywords.end(), name) == kKeywords.end();
 }
 
-bool Fail(std::string message) {
+bool Fail(std::string_view message) {
   Logger::LogRawError(message);
   return false;
+}
+
+Path FindMarker(const Path &root) {
+  Path marker;
+  std::error_code error;
+  std::filesystem::directory_iterator entries(root, error);
+  const std::filesystem::directory_iterator end;
+  while (!error && entries != end) {
+    if (IsMarker(entries->path())) {
+      if (!marker.empty()) {
+        Fail("library root must contain exactly one .lib.yu marker: " +
+             root.string());
+        return {};
+      }
+      marker = entries->path();
+    }
+    entries.increment(error);
+  }
+  if (error || marker.empty() ||
+      !std::filesystem::is_regular_file(marker, error)) {
+    Fail("library root must contain exactly one .lib.yu marker: " +
+         root.string());
+    return {};
+  }
+  return marker;
+}
+
+bool IsEmptyMarker(const Path &marker) {
+  std::ifstream input(marker, std::ios::binary);
+  if (!input) return Fail("cannot read library marker: " + marker.string());
+  char character{};
+  while (input.get(character)) {
+    if (character != ' ' && character != '\t' && character != '\n' &&
+        character != '\r' && character != '\f' && character != '\v') {
+      return Fail("library marker must contain only whitespace: " +
+                  marker.string());
+    }
+  }
+  if (!input.eof())
+    return Fail("cannot read library marker: " + marker.string());
+  return true;
 }
 
 }  // namespace
@@ -66,39 +107,12 @@ bool LexerManager::AddImportPath(int /*priority*/, const Path &path) {
     if (library.path == root) return true;
   }
 
-  Path marker;
-  std::filesystem::directory_iterator entries(root, error), end;
-  while (!error && entries != end) {
-    if (IsMarker(entries->path())) {
-      if (!marker.empty()) {
-        return Fail("library root must contain exactly one .lib.yu marker: " +
-                    root.string());
-      }
-      marker = entries->path();
-    }
-    entries.increment(error);
-  }
-  if (error || marker.empty() ||
-      !std::filesystem::is_regular_file(marker, error)) {
-    return Fail("library root must contain exactly one .lib.yu marker: " +
-                root.string());
-  }
+  const auto marker = FindMarker(root);
+  if (marker.empty()) return false;
   const auto filename = marker.filename().string();
   const auto name = filename.substr(0, filename.size() - kMarkerSuffix.size());
   if (!IsName(name)) return Fail("invalid library name: " + name);
-
-  std::ifstream input(marker, std::ios::binary);
-  if (!input) return Fail("cannot read library marker: " + marker.string());
-  char character{};
-  while (input.get(character)) {
-    if (character != ' ' && character != '\t' && character != '\n' &&
-        character != '\r' && character != '\f' && character != '\v') {
-      return Fail("library marker must contain only whitespace: " +
-                  marker.string());
-    }
-  }
-  if (!input.eof())
-    return Fail("cannot read library marker: " + marker.string());
+  if (!IsEmptyMarker(marker)) return false;
 
   for (const auto &library : libraries_) {
     if (library.name == name) return Fail("duplicate library name: " + name);
@@ -147,9 +161,21 @@ Path LexerManager::GetModPath(const ModName &mod_name) {
   for (std::size_t i = 1; i < mod_name.size(); ++i) {
     if (!IsName(mod_name[i])) return {};
     relative /= mod_name[i];
+    if (i + 1 < mod_name.size()) {
+      // Adding a module can turn a previously unique definition import into
+      // an ambiguous import. Track existing directories even for absent files.
+      const auto directory = Canonical(library->path / relative);
+      std::error_code error;
+      if (!directory.empty() && IsInside(directory, library->path) &&
+          std::filesystem::is_directory(directory, error) &&
+          std::find(dependencies_.begin(), dependencies_.end(), directory) ==
+              dependencies_.end()) {
+        dependencies_.push_back(directory);
+      }
+    }
   }
   relative += ".yu";
-  const auto file = Canonical(library->path / relative);
+  auto file = Canonical(library->path / relative);
   std::error_code error;
   if (file.empty() || !std::filesystem::is_regular_file(file, error)) return {};
   if (!IsInside(file, library->path)) {

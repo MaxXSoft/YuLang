@@ -111,8 +111,10 @@ class Parser {
   define::ASTPtr LogError(std::string_view message);
 
   define::ASTPtr ParseLine();
-  define::SourceModulePtr ParseImportedModule(
-      const std::filesystem::path &path);
+  define::SourceModulePtr ParseImportedModule(const std::filesystem::path &path,
+                                              const Logger &origin,
+                                              bool alternative = false);
+  define::SourceModulePtr DescribeModule(const std::filesystem::path &path);
   define::SourceModulePtr BeginModule(const std::filesystem::path &path);
   void ParseModuleContents(const define::SourceModulePtr &module);
 
@@ -123,6 +125,14 @@ class Parser {
   define::ASTPtr ParseStruct(define::Property prop);
   define::ASTPtr ParseEnum(define::Property prop);
   define::ASTPtr ParseImport(define::Property prop);
+  bool ParseImportPath(ModName &path, define::ImportKind &kind);
+  bool ParseImportAlias(std::string &alias);
+  bool ParseImportBinding(define::ImportBinding &binding);
+  bool ParseImportNames(const ModName &path, define::ImportKind kind,
+                        std::vector<define::ImportBinding> &bindings);
+  define::ASTPtr ResolveImport(Logger &log, const ModName &path,
+                               define::ImportKind kind,
+                               std::vector<define::ImportBinding> bindings);
 
   define::ASTPtr ParseVarLetElem(define::Property prop, bool is_var);
   define::ASTPtr ParseArgElem();
