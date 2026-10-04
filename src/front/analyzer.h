@@ -6,6 +6,8 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <unordered_map>
+#include <unordered_set>
 
 #include "define/ast.h"
 #include "define/symbol.h"
@@ -29,7 +31,20 @@ class Analyzer {
     cur_ret_.reset();
     expected_.reset();
     last_prop_ = define::Property::None;
+    modules_.clear();
+    definitions_.clear();
+    definition_by_ast_.clear();
+    canonical_types_.clear();
+    canonical_definitions_.clear();
+    references_.clear();
+    lookup_owners_.clear();
+    current_module_ = nullptr;
+    current_definition_ = nullptr;
+    type_indirection_ = 0;
   }
+
+  bool AnalyzeModules(const std::vector<define::SourceModulePtr> &modules,
+                      const define::SourceModulePtr &root);
 
   // Context applies only to this expression and explicitly selected children.
   define::TypePtr AnalyzeExpr(define::BaseAST &ast,
@@ -82,8 +97,8 @@ class Analyzer {
   // switch to new environment
   xstl::Guard NewEnv();
   // perform name mangling
-  static std::string MangleFuncName(const std::string &id,
-                                    const define::TypePtrList &args);
+  std::string MangleFuncName(const std::string &id,
+                             const define::TypePtrList &args);
   // A callable local binding takes precedence over named overloads.
   [[nodiscard]] define::TypePtr FindLocalFunction(const std::string &id) const;
   // check and add user type
@@ -100,8 +115,7 @@ class Analyzer {
                               define::TypePtrList &args,
                               const std::vector<define::BaseAST *> &exprs,
                               const IdSetter &id_setter);
-  [[nodiscard]] define::TypePtrList GetCallCandidates(
-      const std::string &id) const;
+  [[nodiscard]] define::TypePtrList GetCallCandidates(const std::string &id);
   bool AnalyzeInferredArguments(define::TypePtrList &args,
                                 const std::vector<define::BaseAST *> &exprs,
                                 const define::TypePtrList &candidates);
@@ -117,6 +131,81 @@ class Analyzer {
   std::optional<define::TypePtr> CheckOpOverload(
       const Logger &log, const std::string &op_name, define::TypePtrList &args,
       const IdSetter &id_setter, const std::vector<define::BaseAST *> &exprs);
+
+  struct ModuleState;
+  struct Definition {
+    define::BaseAST *ast{};
+    ModuleState *owner{};
+    define::Property prop{};
+    std::string name;
+    std::string symbol;
+    int state{};
+    bool is_type{};
+    bool is_function{};
+  };
+  struct ModuleState {
+    define::SourceModulePtr source;
+    define::EnvPtr symbols = define::MakeEnv();
+    define::EnvPtr types = define::MakeEnv();
+    define::FuncMapPtr funcs = define::MakeFuncMap();
+    std::unordered_map<std::string, std::vector<Definition *>> definitions;
+    std::unordered_map<std::string, std::vector<Definition *>> imports;
+    std::unordered_map<std::string, ModuleState *> namespaces;
+    std::unordered_map<std::string, std::string> value_ids;
+    int state{};
+    std::size_t local_type_id{};
+  };
+  std::unordered_map<std::string, std::unique_ptr<ModuleState>> modules_;
+  std::vector<std::unique_ptr<Definition>> definitions_;
+  std::unordered_map<define::BaseAST *, Definition *> definition_by_ast_;
+  std::unordered_map<std::string, define::TypePtr> canonical_types_;
+  std::unordered_map<std::string, Definition *> canonical_definitions_;
+  std::unordered_map<define::BaseAST *, std::unordered_set<define::BaseAST *>>
+      references_;
+  ModuleState *current_module_{};
+  Definition *current_definition_{};
+  std::vector<ModuleState *> lookup_owners_;
+  unsigned type_indirection_{};
+
+  xstl::Guard EnterModule(ModuleState &module);
+  void CollectDefinition(ModuleState &module, define::BaseAST &ast,
+                         define::Property prop);
+  void CollectModule(ModuleState &module);
+  void AnalyzeBodies(ModuleState &module);
+  void PromoteInlineSymbols();
+  bool PublishDefinition(Definition &definition);
+  std::vector<std::string> VisibleCallNames(const std::string &name);
+  bool AnalyzeCallArguments(const define::ASTPtrList &arguments,
+                            define::TypePtrList &args,
+                            std::vector<define::BaseAST *> &exprs,
+                            bool &needs_context);
+  bool LowerDotCall(define::FunCallAST &ast);
+  bool CollectExpressionReferences(define::BaseAST &ast);
+  bool EnsureModule(ModuleState &module);
+  bool EnsureDefinition(Definition &definition);
+  bool EnsureName(const std::string &name, bool types);
+  bool BindImport(define::ImportAST &ast);
+  bool BindName(const front::Logger &log, ModuleState &from,
+                const std::string &name, const std::string &alias);
+  std::vector<Definition *> LookupDefinitions(const std::string &name);
+  std::vector<std::pair<std::string, define::TypePtr>> CallCandidates(
+      const std::string &name);
+  [[nodiscard]] define::TypePtr SymbolType(const std::string &name) const;
+  define::TypePtr DeclareFunction(define::FunDefAST &ast);
+  define::TypePtr ResolveValue(const front::Logger &log,
+                               const std::string &name, std::string &resolved);
+  bool QualifiedName(define::BaseAST &ast, std::string &name) const;
+  [[nodiscard]] bool PublicType(const define::TypePtr &type) const;
+  [[nodiscard]] bool CanDefaultInitialize(const define::TypePtr &type) const;
+  [[nodiscard]] bool CheckAggregateVisibility(const define::TypePtr &type,
+                                              std::size_t provided,
+                                              const Logger &log) const;
+  [[nodiscard]] bool CheckCallableBinding(const define::BaseAST &callee) const;
+  void RecordReference(const std::string &symbol);
+  void CollectRuntimeReferences(define::BaseAST &ast);
+  void SetLookupOwners(const define::TypePtrList &args, bool all);
+  [[nodiscard]] std::string MangleSymbol(const std::string &name,
+                                         char kind) const;
 
   // evaluator
   // This service is bound to its owner for its entire lifetime.

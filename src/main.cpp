@@ -1,6 +1,7 @@
 #include <cstdint>
 #include <cstdlib>
 #include <exception>
+#include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <string>
@@ -59,8 +60,9 @@ xstl::ArgParser GetArgp() {
   argp.AddOption<string>("output", "o", "output file, default to stdout", "");
   argp.AddOption<bool>("deps", "MD",
                        "write dependencies to <output>.d (requires -o)", false);
-  argp.AddOption<vector<string>>("import-path", "I",
-                                 "add directory to import search path", {});
+  argp.AddOption<vector<string>>(
+      "import-path", "I", "register a library root containing <name>.lib.yu",
+      {});
   argp.AddOption<vector<string>>("define", "D",
                                  "define a single-level macro (NAME=TEXT)", {});
   argp.AddOption<int>("opt-level", "O", "set optimization level (0-3)", 0);
@@ -144,41 +146,24 @@ bool CompileToIR(const xstl::ArgParser &argp, std::ostream &os,
   // initialize lexer manager & logger
   const auto file = argp.GetValue<string>("input");
   const auto imp_path = argp.GetValue<vector<string>>("import-path");
-  if (!lex_man.LoadSource(file)) return false;
-  if (!imp_path.empty()) {
-    for (const auto &i : imp_path) {
-      if (!lex_man.AddImportPath(1, i)) return false;
-    }
-  }
   Logger::ResetErrorNum(argp.GetValue<bool>("warn-error"));
+  for (const auto &path : imp_path)
+    if (!lex_man.AddImportPath(1, path)) return false;
+  if (!lex_man.LoadSource(file)) return false;
   // initialize other stuffs
   Parser parser(lex_man);
   Evaluator eval;
   Analyzer ana(eval);
-  // compile source code
-  const auto dump_ast = type == OutputType::AST;
-  yulang::define::ASTPtrList asts;
-  while (!parser.ended()) {
-    auto ast = parser.ParseNext();
-    if (!ast) continue;
-    // perform semantic analyze
-    const auto errors = Logger::error_num();
-    if (!ast->SemaAnalyze(ana) || Logger::error_num() != errors) continue;
-    ast->Eval(eval);
-    if (Logger::error_num() != errors) continue;
-    asts.push_back(std::move(ast));
+  const auto root = parser.ParseModule();
+  if (!root) return false;
+  if (!ana.AnalyzeModules(parser.modules(), root) || Logger::error_num())
+    return false;
+  if (type == OutputType::AST) {
+    for (const auto &ast : root->defs) ast->Dump(os);
+  } else {
+    irb.GenerateModules(parser.modules(), root);
   }
-  // Only complete, error-free input may reach IR generation or AST output.
-  if (Logger::error_num()) return false;
-  for (const auto &ast : asts) {
-    // dump to output
-    if (dump_ast) ast->Dump(os);
-    // generate IR
-    ast->GenerateIR(irb);
-  }
-  // check if need to exit
-  const auto err_num = Logger::error_num();
-  return err_num == 0;
+  return Logger::error_num() == 0;
 }
 
 bool RunPasses(const xstl::ArgParser &argp, std::ostream &os, IRBuilder &irb,
@@ -222,6 +207,22 @@ bool GenerateCode(std::ostream &os, IRBuilder &irb, CodeGen &gen,
       return obj_gen.GenerateObject(file);
     }
     default:;
+  }
+  return true;
+}
+
+bool WriteDependencies(const std::string &out_file,
+                       const LexerManager &lex_man) {
+  if (!yulang::front::WriteDepfile(out_file, lex_man.dependencies()))
+    return false;
+  // A library root is a dependency so adding/removing its marker rebuilds.
+  // Writing a depfile in that root must not make the output perpetually old.
+  std::error_code error;
+  std::filesystem::last_write_time(
+      out_file, std::filesystem::file_time_type::clock::now(), error);
+  if (error) {
+    Logger::LogRawError("failed to update output timestamp");
+    return false;
   }
   return true;
 }
@@ -287,10 +288,7 @@ int main(int argc, const char *argv[]) try {
     Logger::LogRawError("failed to write output file");
     return 1;
   }
-  if (write_deps &&
-      !yulang::front::WriteDepfile(out_file, lex_man.dependencies())) {
-    return 1;
-  }
+  if (write_deps && !WriteDependencies(out_file, lex_man)) return 1;
   return 0;
 } catch (const std::exception &e) {
   PANIC(e.what());

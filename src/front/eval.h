@@ -22,6 +22,16 @@ class Evaluator {
 
   // Semantic analysis also evaluates initializers and array dimensions.
   xstl::Guard NewEnv();
+  xstl::Guard GlobalEnv() {
+    auto const values = values_;
+    auto const enums = enum_values_;
+    while (values_->outer()) values_ = values_->outer();
+    while (enum_values_->outer()) enum_values_ = enum_values_->outer();
+    return xstl::Guard([this, values, enums] {
+      values_ = values;
+      enum_values_ = enums;
+    });
+  }
   void Mask(const std::string &id) { values_->AccessItem(id) = std::nullopt; }
 
   std::optional<define::EvalNum> EvalOn(define::VarLetDefAST &ast);

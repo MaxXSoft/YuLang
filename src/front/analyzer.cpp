@@ -124,6 +124,12 @@ bool FitsInteger(std::uint64_t value, const TypePtr &type,
   return value <= maximum;
 }
 
+bool HasNominalOwner(TypePtr type) {
+  while (type->IsPointer() || type->IsReference())
+    type = type->GetDerefedType();
+  return !type->GetOwnerModule().empty();
+}
+
 bool IsIntegerOperation(Operator op) {
   switch (op) {
     case Operator::Add:
@@ -312,70 +318,46 @@ TypePtr Analyzer::ResolveCall(const Logger &log, const std::string &id,
                               TypePtrList &args,
                               const std::vector<BaseAST *> &exprs,
                               const IdSetter &id_setter) {
-  // A local callable binding takes precedence over named overloads. Keep the
-  // separate overload namespace for non-callable receiver values such as x.x().
   if (auto local = FindLocalFunction(id)) {
-    if (!MatchArguments(local, args, exprs, true)) {
+    if (!MatchArguments(local, args, exprs, true))
       return LogError(log, "invalid function call", id);
-    }
     id_setter(id);
     return local;
   }
-  // Preserve the established meaning of calls such as f(1) with f(i32).
-  const auto mangled = MangleFuncName(id, args);
-  auto exact = symbols_->GetItem(mangled);
-  if (exact && MatchArguments(exact, args, exprs, true)) {
-    id_setter(mangled);
-    return exact;
-  }
-  // A function value or an extern declaration already determines the signature.
-  if (auto direct = symbols_->GetItem(id); direct && direct->IsFunction()) {
-    if (!MatchArguments(direct, args, exprs, true)) {
-      return LogError(log, "invalid function call", id);
-    }
-    id_setter(id);
-    return direct;
-  }
+  const auto candidates = CallCandidates(id);
   TypePtr selected;
   std::string selected_id;
-  std::unordered_set<std::string> seen;
-  for (auto env = funcs_; env; env = env->outer()) {
-    const auto names = env->GetItem(id, false);
-    if (!names) continue;
-    for (const auto &name : *names) {
-      if (!seen.insert(name).second) continue;
-      auto candidate = symbols_->GetItem(name);
-      if (!candidate || !MatchArguments(candidate, args, exprs, false))
-        continue;
-      if (selected) return LogError(log, "ambiguous function call", id);
-      selected = std::move(candidate);
-      selected_id = name;
+  int best = 0;
+  for (const auto &[name, candidate] : candidates) {
+    if (!MatchArguments(candidate, args, exprs, false)) continue;
+    const auto params = candidate->GetArgsType();
+    if (!params || params->size() != args.size()) continue;
+    bool exact = true;
+    for (std::size_t i = 0; i < args.size(); ++i)
+      exact &= args[i] && (*params)[i]->GetTypeId() == args[i]->GetTypeId();
+    const int rank = exact ? 2 : 1;
+    if (rank < best) continue;
+    if (rank == best && selected) {
+      selected_id.clear();
+      continue;
     }
+    best = rank;
+    selected = candidate;
+    selected_id = name;
   }
   if (!selected) return LogError(log, "no matching function", id);
+  if (selected_id.empty()) return LogError(log, "ambiguous function call", id);
   MatchArguments(selected, args, exprs, true);
   id_setter(selected_id);
+  RecordReference(selected_id);
   return selected;
 }
 
-TypePtrList Analyzer::GetCallCandidates(const std::string &id) const {
-  if (const auto direct = symbols_->GetItem(id);
-      direct && direct->IsFunction()) {
-    return {direct};
-  }
-  TypePtrList candidates;
-  std::unordered_set<std::string> seen;
-  for (auto env = funcs_; env; env = env->outer()) {
-    const auto names = env->GetItem(id, false);
-    if (!names) continue;
-    for (const auto &name : *names) {
-      if (seen.insert(name).second) {
-        if (const auto type = symbols_->GetItem(name))
-          candidates.push_back(type);
-      }
-    }
-  }
-  return candidates;
+TypePtrList Analyzer::GetCallCandidates(const std::string &id) {
+  if (const auto local = FindLocalFunction(id)) return {local};
+  TypePtrList result;
+  for (const auto &[name, type] : CallCandidates(id)) result.push_back(type);
+  return result;
 }
 
 bool Analyzer::AnalyzeInferredArguments(TypePtrList &args,
@@ -419,12 +401,12 @@ xstl::Guard Analyzer::NewEnv() {
 
 std::string Analyzer::MangleFuncName(const std::string &id,
                                      const TypePtrList &args) {
-  std::ostringstream oss;
-  oss << "_$" << id << '_';
-  for (const auto &i : args) {
-    oss << i->GetTypeId();
+  std::string name = MangleSymbol(id, 'F');
+  for (const auto &arg : args) {
+    const auto type = arg->GetTypeId();
+    name += std::to_string(type.size()) + type;
   }
-  return oss.str();
+  return name;
 }
 
 bool Analyzer::AddUserType(const Logger &log, const std::string &id,
@@ -440,19 +422,36 @@ bool Analyzer::AddUserType(const Logger &log, const std::string &id,
 TypePtr Analyzer::FindFuncType(const Logger &log, const std::string &id,
                                const TypePtrList &args,
                                const IdSetter &id_setter) {
-  const auto mangled = MangleFuncName(id, args);
-  auto type = symbols_->GetItem(mangled);
-  if (!type) {
-    type = symbols_->GetItem(id);
-    if (!type || !type->IsFunction()) {
-      return LogError(log, "function not found", id);
+  auto previous = std::move(lookup_owners_);
+  SetLookupOwners(args, false);
+  const xstl::Guard restore([this, previous = std::move(previous)]() mutable {
+    lookup_owners_ = std::move(previous);
+  });
+  TypePtr selected;
+  std::string name;
+  int best = 0;
+  for (const auto &[candidate_id, candidate] : CallCandidates(id)) {
+    if (!candidate->GetReturnType(args)) continue;
+    const auto params = candidate->GetArgsType();
+    if (!params || params->size() != args.size()) continue;
+    bool exact = true;
+    for (std::size_t i = 0; i < args.size(); ++i)
+      exact &= (*params)[i]->GetTypeId() == args[i]->GetTypeId();
+    const auto rank = exact ? 2 : 1;
+    if (rank < best) continue;
+    if (rank == best && selected) {
+      name.clear();
+      continue;
     }
-    if (id_setter) id_setter(id);
-  } else {
-    if (id_setter) id_setter(mangled);
+    best = rank;
+    selected = candidate;
+    name = candidate_id;
   }
-  assert(type->IsFunction());
-  return type;
+  if (!selected) return LogError(log, "function not found", id);
+  if (name.empty()) return LogError(log, "ambiguous function call", id);
+  if (id_setter) id_setter(name);
+  RecordReference(name);
+  return selected;
 }
 
 bool Analyzer::CheckInit(const Logger &log, const TypePtr &type,
@@ -487,18 +486,14 @@ bool Analyzer::CheckInit(const Logger &log, const TypePtr &type,
 std::optional<TypePtr> Analyzer::CheckOpOverload(
     const Logger &log, const std::string &op_name, TypePtrList &args,
     const IdSetter &id_setter, const std::vector<BaseAST *> &exprs) {
+  auto previous = std::move(lookup_owners_);
+  SetLookupOwners(args, true);
+  const xstl::Guard restore([this, previous = std::move(previous)]() mutable {
+    lookup_owners_ = std::move(previous);
+  });
   bool found = false;
-  for (auto env = funcs_; env && !found; env = env->outer()) {
-    const auto names = env->GetItem(op_name, false);
-    if (!names) continue;
-    for (const auto &name : *names) {
-      const auto candidate = symbols_->GetItem(name);
-      if (candidate && MatchArguments(candidate, args, exprs, false)) {
-        found = true;
-        break;
-      }
-    }
-  }
+  for (const auto &[id, candidate] : CallCandidates(op_name))
+    if (MatchArguments(candidate, args, exprs, false)) found = true;
   if (!found) return {};
   auto type = ResolveCall(log, op_name, args, exprs, id_setter);
   if (!type) return nullptr;
@@ -524,55 +519,23 @@ TypePtr Analyzer::AnalyzeOn(VarLetDefAST &ast) {
 }
 
 TypePtr Analyzer::AnalyzeOn(FunDefAST &ast) {
-  // get types of arguments
+  if (!definition_by_ast_.count(&ast)) {
+    if (!DeclareFunction(ast)) return nullptr;
+  }
   const auto args_env = NewEnv();
   const auto eval_env = eval_.NewEnv();
-  TypePtrList args;
-  for (const auto &i : ast.args()) {
-    auto type = AnalyzeExpr(*i);
-    if (!type) return nullptr;
-    args.push_back(std::move(type));
-  }
-  // get return type
-  auto ret = ast.type() ? AnalyzeExpr(*ast.type()) : MakeVoid();
-  if (!ret) return nullptr;
+  for (const auto &arg : ast.args())
+    if (!AnalyzeExpr(*arg)) return nullptr;
+  auto const ret = ast.type() ? ast.type()->ast_type() : MakeVoid();
   const auto previous = std::exchange(cur_ret_, ret);
   const xstl::Guard return_type([this, previous] { cur_ret_ = previous; });
-  if (!ret->IsReference() && !ret->IsRightValue()) {
-    ret = ret->GetValueType(true);
-  }
-  // perform function name mangling
-  auto id = ast.id();
-  const auto org_id = id;
-  if (id == ".") {
-    return LogError(ast.logger(), "access operator cannot be overloaded");
-  }
-  if (ast.prop() != Property::Extern) {
-    id = MangleFuncName(id, args);
-    ast.set_id(id);
-  }
-  // check if is existed
-  // NOTE: current environment is argument env
-  if (symbols_->outer()->GetItem(id, false)) {
-    return LogError(ast.logger(), "function has already been defined", id);
-  }
-  // add function type info to symbol environment
-  auto type = std::make_shared<FuncType>(std::move(args), std::move(ret), true);
-  symbols_->outer()->AddItem(id, type);
-  // add function type info to function mapping table
-  auto &overloads = funcs_->outer()->AccessItem(org_id);
-  if (!overloads) overloads.emplace();
-  overloads->push_back(id);
-  // analyze function's body
   if (ast.body()) {
     const auto body_ret = AnalyzeExpr(*ast.body(), cur_ret_);
     if (!body_ret) return nullptr;
     if (!cur_ret_->IsVoid() &&
-        !CheckInit(ast.body()->logger(), cur_ret_, body_ret)) {
+        !CheckInit(ast.body()->logger(), cur_ret_, body_ret))
       return nullptr;
-    }
   }
-  ast.set_ast_type(std::move(type));
   return MakeVoid();
 }
 
@@ -591,12 +554,16 @@ TypePtr Analyzer::AnalyzeOn(DeclareAST &ast) {
   // check if needs to perform name mangling
   auto id = ast.id();
   const auto org_id = id;
-  if (type->IsFunction() && ast.prop() != Property::Extern) {
+  if (type->IsFunction() && !define::IsExtern(ast.prop())) {
     const auto args = type->GetArgsType();
     if (!args) {
       return LogError(ast.logger(), "expected function argument types");
     }
     id = MangleFuncName(id, *args);
+    ast.set_id(id);
+  }
+  if (!type->IsFunction() && !define::IsExtern(ast.prop())) {
+    id = MangleSymbol(id, 'G');
     ast.set_id(id);
   }
   // add type info to environment
@@ -610,6 +577,7 @@ TypePtr Analyzer::AnalyzeOn(DeclareAST &ast) {
     return LogError(ast.logger(), "symbol has already been defined", id);
   }
   symbols_->AddItem(id, type);
+  if (!type->IsFunction()) symbols_->AddItem(org_id, type);
   if (type->IsFunction()) {
     auto &overloads = funcs_->AccessItem(org_id);
     if (!overloads) overloads.emplace();
@@ -630,36 +598,39 @@ TypePtr Analyzer::AnalyzeOn(TypeAliasAST &ast) {
 
 TypePtr Analyzer::AnalyzeOn(StructAST &ast) {
   TypePairList elems;
-  // create an empty struct type
-  auto type = std::make_shared<StructType>(elems, ast.id(), false);
-  if (!AddUserType(ast.logger(), ast.id(), type)) return nullptr;
-  xstl::Guard registration(
-      [this, &ast] { user_types_->RemoveItem(ast.id(), false); });
-  // analyze elements
-  std::unordered_set<std::string_view> names;
-  for (const auto &i : ast.defs()) {
-    auto elem = AnalyzeExpr(*i);
-    if (!elem) return nullptr;
-    // check if name conflicted
-    auto [_, succ] = names.insert(last_struct_elem_name_);
-    if (!succ) {
-      return LogError(i->logger(), "conflicted struct element name",
-                      last_struct_elem_name_);
-    }
-    // check if is recursive type
-    auto ty = elem;
-    while (ty->IsArray()) ty = ty->GetDerefedType();
-    if (ty->IsStruct() && ty->GetTypeId() == ast.id()) {
-      return LogError(i->logger(), "recursive type is not allowed",
-                      last_struct_elem_name_);
-    }
-    elems.emplace_back(std::string(last_struct_elem_name_), std::move(elem));
+  auto type = std::dynamic_pointer_cast<StructType>(ast.ast_type());
+  const bool global = definition_by_ast_.count(&ast);
+  if (!global) {
+    type = std::make_shared<StructType>(elems, ast.id(), false);
+    const auto name =
+        ast.id() + ":" + std::to_string(current_module_->local_type_id++);
+    type->SetIdentity(MangleSymbol(name, 'T'), current_module_->source->id,
+                      define::IsPublic(ast.prop()));
+    if (!AddUserType(ast.logger(), ast.id(), type)) return nullptr;
+    ast.set_ast_type(type);
   }
-  // update struct type
-  // TODO(YuLang): circular reference!
+  std::unordered_set<std::string> names;
+  std::vector<bool> visibility;
+  for (const auto &field : ast.defs()) {
+    const auto &decl = dynamic_cast<StructElemAST &>(*field);
+    auto elem = AnalyzeExpr(*field);
+    if (!elem) return nullptr;
+    if (!names.insert(decl.id()).second)
+      return LogError(field->logger(), "conflicted struct element name",
+                      decl.id());
+    auto storage = elem;
+    while (storage->IsArray()) storage = storage->GetDerefedType();
+    if (storage->IsStruct() && storage->IsIdentical(type))
+      return LogError(field->logger(), "recursive type is not allowed",
+                      decl.id());
+    if (define::IsPublic(ast.prop()) && decl.is_public() && !PublicType(elem))
+      return LogError(field->logger(), "public field exposes a private type",
+                      decl.id());
+    elems.emplace_back(decl.id(), elem);
+    visibility.push_back(decl.is_public());
+  }
+  type->SetFieldVisibility(std::move(visibility));
   type->set_elems(std::move(elems));
-  ast.set_ast_type(std::move(type));
-  registration.Invalidate();
   return MakeVoid();
 }
 
@@ -691,33 +662,29 @@ TypePtr Analyzer::AnalyzeOn(EnumAST &ast) {
   }
   const auto enum_type = std::make_shared<EnumType>(
       std::move(type), std::move(elems), ast.id(), false);
+  const auto identity =
+      definition_by_ast_.count(&ast)
+          ? ast.id()
+          : ast.id() + ":" + std::to_string(current_module_->local_type_id++);
+  enum_type->SetIdentity(MangleSymbol(identity, 'T'),
+                         current_module_->source->id,
+                         define::IsPublic(ast.prop()));
   if (!AddUserType(ast.logger(), ast.id(), enum_type)) return nullptr;
   // add enumeration right value to symbol environment
   symbols_->AddItem(ast.id(), enum_type->GetValueType(true));
-  return ast.set_ast_type(MakeVoid());
+  ast.set_ast_type(enum_type);
+  return MakeVoid();
 }
 
 TypePtr Analyzer::AnalyzeOn(ImportAST &ast) {
-  bool valid = true;
-  for (const auto &i : ast.defs()) {
-    const auto errors = Logger::error_num();
-    if (!AnalyzeExpr(*i) || Logger::error_num() != errors) {
-      valid = false;
-      continue;
-    }
-    // run evaluation on imported ASTs for constant definitions
-    i->Eval(eval_);
-    valid &= Logger::error_num() == errors;
-  }
-  if (!valid) return nullptr;
-  return ast.set_ast_type(MakeVoid());
+  return BindImport(ast) ? ast.set_ast_type(MakeVoid()) : nullptr;
 }
 
 // Keep the exhaustive type/operator dispatch together for semantic review.
 // NOLINTNEXTLINE(readability-function-cognitive-complexity)
 TypePtr Analyzer::AnalyzeOn(VarLetElemAST &ast) {
   const auto &log = ast.logger();
-  const auto &id = ast.id();
+  const auto id = ast.id();
   // try to get variable type and initializer type
   TypePtr type;
   TypePtr init;
@@ -730,7 +697,8 @@ TypePtr Analyzer::AnalyzeOn(VarLetElemAST &ast) {
     if (!init) return nullptr;
   }
   // check if is ill-formed
-  if (last_prop_ == Property::Public || last_prop_ == Property::Extern) {
+  if ((define::IsPublic(last_prop_) && !define::IsInline(last_prop_)) ||
+      define::IsExtern(last_prop_)) {
     if (!type) {
       return LogError(log,
                       "'public' definitions must "
@@ -782,6 +750,12 @@ TypePtr Analyzer::AnalyzeOn(VarLetElemAST &ast) {
     }
   }
   symbols_->AccessItem(id) = sym_type;
+  if (!cur_ret_ && current_definition_ && current_definition_->ast == &ast) {
+    const auto symbol =
+        define::IsExtern(last_prop_) ? id : MangleSymbol(id, 'G');
+    ast.set_id(symbol);
+    symbols_->AccessItem(symbol) = sym_type;
+  }
   ast.set_ast_type(sym_type);
   return MakeVoid();
 }
@@ -1032,7 +1006,8 @@ TypePtr Analyzer::AnalyzeOn(BinaryAST &ast) {
     rhs = ast.rhs()->ast_type();
   }
   // check if operator was overloaded
-  if (!lhs->IsBasic() || !rhs->IsBasic()) {
+  if (!lhs->IsBasic() || !rhs->IsBasic() || HasNominalOwner(lhs) ||
+      HasNominalOwner(rhs)) {
     TypePtrList args = {lhs, rhs};
     const auto *op_name = kOperators[static_cast<int>(ast.op())];
     auto ret = CheckOpOverload(
@@ -1148,26 +1123,29 @@ TypePtr Analyzer::AnalyzeOn(BinaryAST &ast) {
 }
 
 TypePtr Analyzer::AnalyzeOn(AccessAST &ast) {
-  // get expression type & id
+  std::string qualified;
+  if (QualifiedName(ast, qualified) &&
+      qualified.find('.', qualified.find('.') + 1) == std::string::npos) {
+    std::string resolved;
+    auto const type = ResolveValue(ast.logger(), qualified, resolved);
+    if (!type) return nullptr;
+    ast.set_resolved_id(resolved);
+    return ast.set_ast_type(type);
+  }
   auto expr = AnalyzeExpr(*ast.expr());
-  // handle access
   TypePtr ret;
   if (expr) {
     if (expr->IsEnum() && expr->GetElem(ast.id())) {
-      // check if is enumeration access
-      assert(expr->IsRightValue());
-      ret = std::move(expr);
+      ret = expr;
     } else if (expr->IsStruct() && !expr->IsRightValue()) {
-      // check if is structure access
-      auto type = expr->GetElem(ast.id());
-      if (type) ret = std::move(type);
+      auto index = expr->GetElemIndex(ast.id());
+      if (index && expr->GetOwnerModule() != current_module_->source->id &&
+          !expr->IsFieldPublic(*index))
+        return LogError(ast.logger(), "structure field is private", ast.id());
+      ret = expr->GetElem(ast.id());
     }
   }
-  // check if is error
-  if (!ret) {
-    return LogError(ast.logger(), "invalid access operation");
-  }
-  // get return type
+  if (!ret) return LogError(ast.logger(), "invalid access operation");
   return ast.set_ast_type(ret);
 }
 
@@ -1194,7 +1172,8 @@ TypePtr Analyzer::AnalyzeOn(UnaryAST &ast) {
   if (opr->IsReference()) opr = opr->GetDerefedType();
   // check if operator was overloaded
   // NOTE: 'sizeof' cannot be overloaded
-  if (!opr->IsBasic() && ast.op() != UnaryOp::SizeOf) {
+  if ((!opr->IsBasic() || HasNominalOwner(opr)) &&
+      ast.op() != UnaryOp::SizeOf) {
     TypePtrList args = {opr};
     const auto *op_name = kUnaOperators[static_cast<int>(ast.op())];
     auto ret = CheckOpOverload(
@@ -1278,58 +1257,81 @@ TypePtr Analyzer::AnalyzeOn(IndexAST &ast) {
   return ast.set_ast_type(ret);
 }
 
-TypePtr Analyzer::AnalyzeOn(FunCallAST &ast) {
-  // Analyze known arguments first; omitted aggregate types need a signature.
-  TypePtrList args;
-  std::vector<BaseAST *> exprs;
-  bool needs_context = false;
-  for (const auto &i : ast.args()) {
-    exprs.push_back(i.get());
-    if (NeedsInitializerContext(*i)) {
+bool Analyzer::LowerDotCall(FunCallAST &ast) {
+  std::string name;
+  bool receiver = ast.call_kind() == FunCallAST::CallKind::Infix;
+  if (auto *access = dynamic_cast<AccessAST *>(ast.expr().get());
+      access && ast.call_kind() == FunCallAST::CallKind::Dot) {
+    if (!QualifiedName(*access, name)) {
+      name = access->id();
+      auto object = access->TakeExpr();
+      auto arguments = ast.TakeArgs();
+      arguments.insert(arguments.begin(), std::move(object));
+      ast.set_args(std::move(arguments));
+      receiver = true;
+    }
+    auto callee = std::make_unique<IdAST>(name);
+    callee->set_logger(ast.expr()->logger());
+    callee->set_module_id(ast.module_id());
+    ast.set_expr(std::move(callee));
+  }
+  return receiver;
+}
+
+bool Analyzer::AnalyzeCallArguments(const define::ASTPtrList &arguments,
+                                    TypePtrList &args,
+                                    std::vector<BaseAST *> &exprs,
+                                    bool &needs_context) {
+  for (const auto &arg : arguments) {
+    exprs.push_back(arg.get());
+    if (NeedsInitializerContext(*arg)) {
       needs_context = true;
       args.push_back(nullptr);
     } else {
-      auto arg = AnalyzeExpr(*i);
-      if (!arg) return nullptr;
-      args.push_back(std::move(arg));
+      auto type = AnalyzeExpr(*arg);
+      if (!type) return false;
+      args.push_back(type);
     }
   }
-  // get function type
+  return true;
+}
+
+TypePtr Analyzer::AnalyzeOn(FunCallAST &ast) {
+  const bool receiver = LowerDotCall(ast);
+  if (!receiver && !CheckCallableBinding(*ast.expr())) return nullptr;
+  TypePtrList args;
+  std::vector<BaseAST *> exprs;
+  bool needs_context = false;
+  if (!AnalyzeCallArguments(ast.args(), args, exprs, needs_context))
+    return nullptr;
+  auto previous = std::move(lookup_owners_);
+  lookup_owners_.clear();
+  if (receiver) SetLookupOwners(args, false);
+  const xstl::Guard restore([this, previous = std::move(previous)]() mutable {
+    lookup_owners_ = std::move(previous);
+  });
   TypePtr type;
-  if (ast.expr()->IsId()) {
-    // find function by id & update id
-    // The preceding AST tag proves this is an IdAST.
-    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-static-cast-downcast)
-    auto *id_ptr = static_cast<IdAST *>(ast.expr().get());
-    const auto setter = [id_ptr](const std::string &id) { id_ptr->set_id(id); };
-    if (needs_context && !AnalyzeInferredArguments(
-                             args, exprs, GetCallCandidates(id_ptr->id()))) {
+  if (auto *id = dynamic_cast<IdAST *>(ast.expr().get())) {
+    if (needs_context &&
+        !AnalyzeInferredArguments(args, exprs, GetCallCandidates(id->id())))
       return nullptr;
-    }
-    type = ResolveCall(ast.expr()->logger(), id_ptr->id(), args, exprs, setter);
-    id_ptr->set_ast_type(type);
+    type = ResolveCall(
+        id->logger(), id->id(), args, exprs,
+        [id](const std::string &resolved) { id->set_id(resolved); });
+    id->set_ast_type(type);
   } else {
     type = AnalyzeExpr(*ast.expr());
-  }
-  // check function type
-  if (!type || !type->IsFunction()) {
-    return LogError(ast.expr()->logger(), "calling a non-function");
-  }
-  // A function-valued expression also provides parameter contexts.
-  if (!ast.expr()->IsId()) {
-    if (needs_context && !AnalyzeInferredArguments(args, exprs, {type})) {
+    if (!type || !type->IsFunction())
+      return LogError(ast.logger(), "calling a non-function");
+    if (needs_context && !AnalyzeInferredArguments(args, exprs, {type}))
       return nullptr;
-    }
-    if (!MatchArguments(type, args, exprs, true)) {
+    if (!MatchArguments(type, args, exprs, true))
       return LogError(ast.logger(), "invalid function call");
-    }
   }
-  // get return type
-  const auto ret = type->GetReturnType(args);
-  if (!ret) {
-    return LogError(ast.expr()->logger(), "invalid function call");
-  }
-  assert(ret->IsReference() || ret->IsRightValue());
+  if (!type || !type->IsFunction())
+    return LogError(ast.logger(), "calling a non-function");
+  auto const ret = type->GetReturnType(args);
+  if (!ret) return LogError(ast.logger(), "invalid function call");
   return ast.set_ast_type(ret);
 }
 
@@ -1352,21 +1354,10 @@ TypePtr Analyzer::AnalyzeOn(CharAST &ast) {
 }
 
 TypePtr Analyzer::AnalyzeOn(IdAST &ast) {
-  // try to get type from symbol environment
-  auto type = symbols_->GetItem(ast.id());
-  if (!type) {
-    // try to get mangled name from function mapping table
-    auto name = funcs_->GetItem(ast.id());
-    if (!name || name->size() != 1) {
-      return LogError(ast.logger(), "identifier has not been defined",
-                      ast.id());
-    }
-    if (name) {
-      ast.set_id(name->front());
-      type = symbols_->GetItem(name->front());
-      assert(type);
-    }
-  }
+  std::string resolved;
+  auto const type = ResolveValue(ast.logger(), ast.id(), resolved);
+  if (!type) return nullptr;
+  if (!resolved.empty()) ast.set_id(resolved);
   return ast.set_ast_type(type);
 }
 
@@ -1408,6 +1399,8 @@ TypePtr Analyzer::AnalyzeOn(ValInitAST &ast) {
   if (ast.elems().size() > type->GetLength()) {
     return LogError(ast.logger(), "initializer list length exceeded");
   }
+  if (!CheckAggregateVisibility(type, ast.elems().size(), ast.logger()))
+    return nullptr;
   for (std::size_t i = 0; i < ast.elems().size(); ++i) {
     // get type of element
     const auto elem = AnalyzeExpr(*ast.elems()[i], type->GetElem(i));
@@ -1425,10 +1418,24 @@ TypePtr Analyzer::AnalyzeOn(PrimTypeAST &ast) {
 }
 
 TypePtr Analyzer::AnalyzeOn(UserTypeAST &ast) {
-  const auto type = user_types_->GetItem(ast.id());
-  if (!type) {
+  // A local type shadows any module-level definition of the same name.
+  for (auto env = user_types_; env && !env->is_root(); env = env->outer())
+    if (auto const type = env->GetItem(ast.id(), false))
+      return ast.set_ast_type(type);
+  if (!EnsureName(ast.id(), true))
     return LogError(ast.logger(), "type has not been defined", ast.id());
+  auto type = user_types_->GetItem(ast.id());
+  if (!type) {
+    const auto definitions = LookupDefinitions(ast.id());
+    for (const auto *definition : definitions)
+      if (definition->is_type) {
+        type = definition->owner->types->GetItem(definition->name);
+        break;
+      }
   }
+  if (!type)
+    return LogError(ast.logger(), "type has not been defined or is not public",
+                    ast.id());
   return ast.set_ast_type(type);
 }
 
@@ -1494,6 +1501,8 @@ TypePtr Analyzer::AnalyzeOn(ArrayTypeAST &ast) {
 }
 
 TypePtr Analyzer::AnalyzeOn(PointerTypeAST &ast) {
+  ++type_indirection_;
+  const xstl::Guard indirect([this] { --type_indirection_; });
   // get base type
   auto base = AnalyzeExpr(*ast.base());
   if (!base) return nullptr;
@@ -1507,6 +1516,8 @@ TypePtr Analyzer::AnalyzeOn(PointerTypeAST &ast) {
 }
 
 TypePtr Analyzer::AnalyzeOn(RefTypeAST &ast) {
+  ++type_indirection_;
+  const xstl::Guard indirect([this] { --type_indirection_; });
   // get base type
   auto base = AnalyzeExpr(*ast.base());
   if (!base) return nullptr;

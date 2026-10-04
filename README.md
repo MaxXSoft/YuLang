@@ -132,6 +132,15 @@ Imports cannot be public or re-export another module's bindings. An import that
 could name both a module and a definition is an error, including with `as`;
 rename one of the conflicting targets. Registering two different roots with the
 same library name is also an error. Marker files are not compiled as modules.
+An import must reach a `.yu` file or one of its public definitions: a library
+name or a directory alone cannot be imported. Import cycles and overlapping
+registered roots are rejected.
+
+Compile library files with their own root registered too, so direct compilation
+and importing produce the same module identity. An input outside registered
+roots is an anonymous compilation unit and needs no marker; it can still import
+registered libraries. Its own non-`extern` definitions have internal linkage.
+There is no separate library-versus-executable source classification.
 
 Definitions and structure fields are private to their defining module unless
 marked `public`. Visibility is independent of `extern` and `inline`: exported C
@@ -140,7 +149,10 @@ declarations use `public extern declare`, while a private C entry point may use
 Public types may contain private fields and internal helper types; public fields,
 function signatures, globals and aliases cannot expose private nominal types.
 Construct a structure with private fields through a function in its defining
-module rather than an aggregate initializer in another module.
+module rather than an aggregate initializer in another module. This also checks
+omitted array elements and omitted public aggregate fields. A `var` declaration
+without an initializer retains the existing zero-valued storage behavior;
+field visibility does not introduce constructor validation.
 
 Structures and enumerations have declaration identity: equal layouts in different
 modules are different types. Transparent type aliases and renamed imports keep
@@ -154,7 +166,22 @@ protocol use the same lookup; ambiguous overloads require an explicit module
 qualification. Functions on primitive values, such as `until`, still need a
 selected or wildcard import. `module.function(args)` is a qualified call without
 an inserted receiver, and `(value.callback)(args)` calls a function-valued field.
-Bare `function(value, args)` uses names visible in the current scope.
+Bare `function(value, args)` uses names visible in the current scope. Symbolic
+operators consider both operand owners, and receiver lookup follows pointer and
+reference wrappers without inserting additional dereferences or conversions.
+
+The compiler scans complete modules, including private declarations and imports.
+Module-level definitions can refer to later definitions; overload resolution
+uses the complete overload set. Local bindings still become visible after their
+initializers. Required constant and by-value layout cycles are errors; pointer
+recursion is allowed. Dynamic global initialization retains source order.
+
+Imported inline bodies keep the defining module's bindings and access rights.
+Private helpers and globals referenced by copied bodies receive canonical
+linker-visible symbols while remaining private in YuLang. Global storage and
+initialization are emitted once, in the owner. Link the owner object when inline
+code refers to its ordinary helpers or stored globals. Purely folded constants
+and layout calculations do not require such support symbols.
 
 <details>
   <summary>EBNF of Yu</summary>

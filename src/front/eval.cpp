@@ -141,6 +141,8 @@ inline ASTPtr MakeAST(const EvalNum &num, const ASTPtr &ast) {
   }
   // set additional information
   ret->set_logger(ast->logger());
+  ret->set_module_id(ast->module_id());
+  ret->set_abi_reachable(ast->abi_reachable());
   if (type->IsRightValue()) {
     ret->set_ast_type(type);
   } else {
@@ -250,7 +252,7 @@ std::optional<EvalNum> Evaluator::EvalOn(TypeAliasAST & /*ast*/) { return {}; }
 std::optional<EvalNum> Evaluator::EvalOn(StructAST & /*ast*/) { return {}; }
 
 std::optional<EvalNum> Evaluator::EvalOn(EnumAST &ast) {
-  last_enum_name_ = ast.id();
+  last_enum_name_ = ast.ast_type()->GetTypeId();
   last_enum_val_ = 0;
   for (const auto &i : ast.defs()) {
     i->Eval(*this);
@@ -577,6 +579,8 @@ std::optional<EvalNum> Evaluator::EvalOn(BinaryAST &ast) {
 // NOLINTEND(misc-static-assert)
 
 std::optional<EvalNum> Evaluator::EvalOn(AccessAST &ast) {
+  if (!ast.resolved_id().empty()) return values_->GetItem(ast.resolved_id());
+  if (!ast.expr()->ast_type()) return {};
   // check if is enumerate
   const auto type = ast.expr()->ast_type();
   if (type->IsEnum()) {
