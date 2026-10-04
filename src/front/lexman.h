@@ -2,7 +2,6 @@
 #define YULANG_FRONT_LEXMAN_H_
 
 #include <filesystem>
-#include <map>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -19,11 +18,13 @@ using ModName = std::vector<std::string>;
 // factory class of 'Lexer'
 class LexerManager {
  public:
-  LexerManager() { AddImportPath(0, std::filesystem::current_path()); }
-  explicit LexerManager(const std::filesystem::path &file) {
-    AddImportPath(0, file);
-    AddImportPath(0, std::filesystem::current_path());
-  }
+  struct LibraryRoot {
+    std::string name;
+    std::filesystem::path path;
+    std::filesystem::path marker;
+  };
+
+  LexerManager() = default;
 
   // add a path as a new import path, returns true if success
   bool AddImportPath(int priority, const std::filesystem::path &path);
@@ -33,6 +34,11 @@ class LexerManager {
   bool LoadSource(const std::filesystem::path &file);
   // get module path by module name, returns empty path if not found
   std::filesystem::path GetModPath(const ModName &mod_name);
+  // Stable library-qualified module identity, or empty for an anonymous input.
+  [[nodiscard]] std::string ModuleId(const std::filesystem::path &file) const;
+  [[nodiscard]] const std::vector<LibraryRoot> &libraries() const {
+    return libraries_;
+  }
   // check if current module has already been loaded
   bool IsLoaded(const std::filesystem::path &file);
   // set or create current lexer by path, returns last lexer
@@ -51,8 +57,8 @@ class LexerManager {
 
  private:
   MacroDefinitions defines_;
-  // import path records
-  std::multimap<int, std::filesystem::path, std::greater<>> imp_paths_;
+  // Registered roots are identities, not an ordered search path.
+  std::vector<LibraryRoot> libraries_;
   // all loaded lexers
   std::unordered_map<std::string, LexerPtr> lexers_;
   std::vector<std::filesystem::path> dependencies_;

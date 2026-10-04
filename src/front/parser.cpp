@@ -33,8 +33,12 @@ using yulang::define::FunDefAST;
 using yulang::define::IdAST;
 using yulang::define::IfAST;
 using yulang::define::ImportAST;
+using yulang::define::ImportBinding;
+using yulang::define::ImportKind;
 using yulang::define::IndexAST;
 using yulang::define::IntAST;
+using yulang::define::IsExtern;
+using yulang::define::IsInline;
 using yulang::define::Keyword;
 using yulang::define::NullAST;
 using yulang::define::Operator;
@@ -91,6 +95,84 @@ ASTPtr Parser::ParseNext() {
   return stmt;
 }
 
+define::SourceModulePtr Parser::BeginModule(const std::filesystem::path &path) {
+  auto module = std::make_shared<define::SourceModule>();
+  module->path = path.string();
+  module->id = lex_man_.ModuleId(path);
+  module->anonymous = module->id.empty();
+  if (module->anonymous) module->id = "<anonymous>";
+  module_cache_.emplace(module->path, module);
+  modules_.push_back(module);
+  return module;
+}
+
+void Parser::ParseModuleContents(const define::SourceModulePtr &module) {
+  loading_.insert(module->path);
+  import_stack_.push_back(module->id);
+  const xstl::Guard loading([&] {
+    loading_.erase(module->path);
+    import_stack_.pop_back();
+  });
+  while (!ended_) {
+    if (auto ast = ParseNext()) module->defs.push_back(std::move(ast));
+  }
+}
+
+define::SourceModulePtr Parser::ParseModule() {
+  if (root_) return root_;
+  root_ = BeginModule(std::filesystem::path(logger().cur_file()));
+  current_module_id_ = root_->id;
+  ParseModuleContents(root_);
+  return root_;
+}
+
+define::SourceModulePtr Parser::ParseImportedModule(
+    const std::filesystem::path &path) {
+  const auto key = path.string();
+  if (loading_.find(key) != loading_.end()) {
+    std::string chain;
+    for (const auto &id : import_stack_) {
+      if (!chain.empty()) chain += " -> ";
+      chain += id;
+    }
+    chain += " -> " + lex_man_.ModuleId(path);
+    logger().LogError("cyclic import: " + chain);
+    return {};
+  }
+  if (const auto found = module_cache_.find(key);
+      found != module_cache_.end()) {
+    return found->second;
+  }
+  const auto previous_last = last_token_;
+  const auto previous_current = cur_token_;
+  const auto previous_ended = ended_;
+  const auto previous_depth = brace_depth_;
+  const auto previous_index = token_index_;
+  const auto previous_module = current_module_id_;
+  const auto previous_lexer = lex_man_.SetLexer(path);
+  if (!previous_lexer || !*previous_lexer) {
+    logger().LogError("failed to load imported module");
+    return {};
+  }
+  const xstl::Guard restore([&, this] {
+    lex_man_.SetLexer(*previous_lexer);
+    last_token_ = previous_last;
+    cur_token_ = previous_current;
+    ended_ = previous_ended;
+    brace_depth_ = previous_depth;
+    token_index_ = previous_index;
+    current_module_id_ = previous_module;
+  });
+  auto module = BeginModule(path);
+  current_module_id_ = module->id;
+  last_token_ = cur_token_ = Token::End;
+  ended_ = false;
+  brace_depth_ = token_index_ = 0;
+  NextToken();
+  ParseModuleContents(module);
+  return module;
+}
+
 void Parser::Synchronize(std::size_t depth, std::size_t start, bool in_block) {
   while (cur_token_ != Token::End) {
     if (brace_depth_ <= depth) {
@@ -122,12 +204,7 @@ ASTPtr Parser::ParseLine() {
 ASTPtr Parser::ParseVarLetDef(Property prop, bool is_var) {
   auto log = logger();
   // check property
-  if (prop == Property::Extern) {
-    log.LogWarning(
-        "var/let definitions cannot be 'extern', "
-        "try using 'public'");
-    prop = Property::Public;
-  }
+  if (IsExtern(prop)) return LogError("var/let definitions cannot be 'extern'");
   // go to next token
   NextToken();
   if (!ExpectId()) return nullptr;
@@ -183,11 +260,8 @@ ASTPtr Parser::ParseFunDef(Property prop) {
     if (!type) return nullptr;
   }
   // get function body
-  ASTPtr body;
-  if (!in_import_ || prop == Property::Inline) {
-    body = ParseBlock();
-    if (!body) return nullptr;
-  }
+  auto body = ParseBlock();
+  if (!body) return nullptr;
   return MakeAST<FunDefAST>(log, prop, name, std::move(args), std::move(type),
                             std::move(body));
 }
@@ -195,10 +269,7 @@ ASTPtr Parser::ParseFunDef(Property prop) {
 ASTPtr Parser::ParseDeclare(Property prop) {
   auto log = logger();
   // check property
-  if (prop == Property::Inline) {
-    log.LogWarning("declarations cannot be 'inline', try using 'public'");
-    prop = Property::Public;
-  }
+  if (IsInline(prop)) return LogError("declarations cannot be 'inline'");
   NextToken();
   // check if is variable declaration
   bool is_var = false;
@@ -221,11 +292,8 @@ ASTPtr Parser::ParseDeclare(Property prop) {
 ASTPtr Parser::ParseTypeAlias(Property prop) {
   auto log = logger();
   // check property
-  if (prop == Property::Extern || prop == Property::Inline) {
-    log.LogWarning(
-        "type aliases cannot be 'extern' or 'inline', "
-        "try using 'public'");
-    prop = Property::Public;
+  if (IsExtern(prop) || IsInline(prop)) {
+    return LogError("type aliases cannot be 'extern' or 'inline'");
   }
   NextToken();
   // get identifier
@@ -244,11 +312,8 @@ ASTPtr Parser::ParseTypeAlias(Property prop) {
 ASTPtr Parser::ParseStruct(Property prop) {
   auto log = logger();
   // check property
-  if (prop == Property::Extern || prop == Property::Inline) {
-    log.LogWarning(
-        "structure definitions cannot be 'extern' "
-        "or 'inline', try using 'public'");
-    prop = Property::Public;
+  if (IsExtern(prop) || IsInline(prop)) {
+    return LogError("structure definitions cannot be 'extern' or 'inline'");
   }
   NextToken();
   // get identifier
@@ -259,7 +324,7 @@ ASTPtr Parser::ParseStruct(Property prop) {
   if (!ExpectChar('{')) return nullptr;
   // get definitions of all fields
   ASTPtrList defs;
-  while (cur_token_ == Token::Id) {
+  while (cur_token_ == Token::Id || IsTokenKeyword(Keyword::Public)) {
     auto elem = ParseStructElem();
     if (!elem) return nullptr;
     defs.push_back(std::move(elem));
@@ -275,11 +340,8 @@ ASTPtr Parser::ParseStruct(Property prop) {
 ASTPtr Parser::ParseEnum(Property prop) {
   auto log = logger();
   // check property
-  if (prop == Property::Extern || prop == Property::Inline) {
-    log.LogWarning(
-        "enumeration definitions cannot be 'extern' "
-        "or 'inline', try using 'public'");
-    prop = Property::Public;
+  if (IsExtern(prop) || IsInline(prop)) {
+    return LogError("enumeration definitions cannot be 'extern' or 'inline'");
   }
   NextToken();
   // get identifier
@@ -312,71 +374,139 @@ ASTPtr Parser::ParseEnum(Property prop) {
 
 ASTPtr Parser::ParseImport(Property prop) {
   auto log = logger();
-  // check property
-  if (prop == Property::Extern || prop == Property::Inline) {
-    log.LogWarning(
-        "importations cannot be 'extern' "
-        "or 'inline', try using 'public'");
+  if (prop != Property::None) {
+    return LogError("import bindings cannot be public, extern, or inline");
   }
   NextToken();
-  // get module name
-  ModName mod_name;
+  ModName path;
+  bool grouped = false;
+  bool wildcard = false;
   for (;;) {
     if (!ExpectId()) return nullptr;
-    mod_name.emplace_back(lexer()->id_val());
+    path.push_back(lexer()->id_val());
     NextToken();
-    // eat '.'
+    // The lexer preserves operator-formed identifiers, so adjacent punctuation
+    // such as '.*' and '.==' arrives as one identifier token.
+    if (cur_token_ == Token::Id && lexer()->id_val().size() > 1 &&
+        lexer()->id_val().front() == '.') {
+      auto name = lexer()->id_val().substr(1);
+      NextToken();
+      if (name == "*") {
+        wildcard = true;
+      } else {
+        path.push_back(std::move(name));
+      }
+      break;
+    }
     if (!IsTokenOperator(Operator::Access)) break;
     NextToken();
-  }
-  // get module path
-  const auto mod_path = lex_man_.GetModPath(mod_name);
-  if (mod_path.empty()) return LogError("invalid module name");
-  // check if module is loaded
-  if (lex_man_.IsLoaded(mod_path)) {
-    // return an empty 'ImportAST'
-    return MakeAST<ImportAST>(log, ASTPtrList());
-  }
-  // switch lexer
-  const auto last_token = last_token_;
-  const auto cur_token = cur_token_;
-  const auto depth = brace_depth_;
-  auto last_lex = lex_man_.SetLexer(mod_path);
-  if (!last_lex || !*last_lex) return LogError("failed to switch import lexer");
-  const xstl::Guard restore([&, this] {
-    --in_import_;
-    lex_man_.SetLexer(*last_lex);
-    last_token_ = last_token;
-    cur_token_ = cur_token;
-    brace_depth_ = depth;
-  });
-  cur_token_ = Token::End;
-  brace_depth_ = 0;
-  ++in_import_;
-  NextToken();
-  // get all public/extern/inline definitions
-  ASTPtrList defs;
-  while (cur_token_ != Token::End) {
-    const auto start = token_index_;
-    const auto prop = GetProp();
-    if (prop != Property::None && brace_depth_ == 0) {
-      const auto errors = Logger::error_num();
-      auto def = GetStatement(prop);
-      if (def) {
-        defs.push_back(std::move(def));
-      } else {
-        if (Logger::error_num() == errors) LogError("invalid statement");
-        Synchronize(0, start, false);
-      }
-    } else {
+    if (IsTokenChar('{')) {
+      grouped = true;
+      break;
+    }
+    if (IsTokenOperator(Operator::Mul)) {
+      wildcard = true;
       NextToken();
+      break;
+    }
+    // Operator overloads may be selected by name as well.
+    if (cur_token_ == Token::Operator) {
+      path.emplace_back(kOperators[static_cast<int>(lexer()->op_val())]);
+      NextToken();
+      break;
     }
   }
-  // Keep the successfully parsed exports for subsequent diagnostics.
-  return MakeAST<ImportAST>(log, std::move(defs));
+  if (path.size() < 2) {
+    return LogError("import requires a library-qualified source module");
+  }
+
+  std::vector<ImportBinding> bindings;
+  if (grouped) {
+    NextToken();
+    if (IsTokenChar('}')) return LogError("expected imported definition");
+    for (;;) {
+      std::string name;
+      if (cur_token_ == Token::Id) {
+        name = lexer()->id_val();
+      } else if (cur_token_ == Token::Operator &&
+                 !IsTokenOperator(Operator::Access)) {
+        name = kOperators[static_cast<int>(lexer()->op_val())];
+      } else {
+        return LogError("expected imported definition");
+      }
+      NextToken();
+      auto alias = name;
+      if (IsTokenKeyword(Keyword::As)) {
+        NextToken();
+        if (!ExpectId()) return nullptr;
+        alias = lexer()->id_val();
+        NextToken();
+      }
+      bindings.push_back({std::move(name), std::move(alias), {}});
+      if (!IsTokenChar(',')) break;
+      NextToken();
+      if (IsTokenChar('}')) break;
+    }
+    if (!ExpectChar('}')) return nullptr;
+  } else if (!wildcard) {
+    auto alias = path.back();
+    if (IsTokenKeyword(Keyword::As)) {
+      NextToken();
+      if (!ExpectId()) return nullptr;
+      alias = lexer()->id_val();
+      NextToken();
+    }
+    bindings.push_back({path.back(), std::move(alias), {}});
+  }
+
+  const auto full_path = lex_man_.GetModPath(path);
+  if (grouped || wildcard) {
+    if (full_path.empty())
+      return LogError("import target is not a source module");
+    auto module = ParseImportedModule(full_path);
+    if (!module) return nullptr;
+    for (auto &binding : bindings) {
+      auto alternative = path;
+      alternative.push_back(binding.name);
+      const auto alternative_path = lex_man_.GetModPath(alternative);
+      if (!alternative_path.empty()) {
+        binding.module_alternative = ParseImportedModule(alternative_path);
+        if (!binding.module_alternative) return nullptr;
+      }
+    }
+    return MakeAST<ImportAST>(
+        log, std::move(module),
+        wildcard ? ImportKind::Wildcard : ImportKind::Selected,
+        std::move(bindings));
+  }
+
+  auto prefix = path;
+  const auto member = prefix.back();
+  prefix.pop_back();
+  const auto prefix_path = lex_man_.GetModPath(prefix);
+  if (full_path.empty() && prefix_path.empty()) {
+    return LogError(
+        "import target is not a source module or module definition");
+  }
+  if (!full_path.empty()) {
+    auto module = ParseImportedModule(full_path);
+    if (!module) return nullptr;
+    define::SourceModulePtr alternative;
+    if (!prefix_path.empty()) {
+      alternative = ParseImportedModule(prefix_path);
+      if (!alternative) return nullptr;
+    }
+    return MakeAST<ImportAST>(log, std::move(module), ImportKind::Namespace,
+                              std::move(bindings), std::move(alternative),
+                              member);
+  }
+  auto module = ParseImportedModule(prefix_path);
+  if (!module) return nullptr;
+  return MakeAST<ImportAST>(log, std::move(module), ImportKind::Selected,
+                            std::move(bindings));
 }
 
-ASTPtr Parser::ParseVarLetElem(Property prop, bool is_var) {
+ASTPtr Parser::ParseVarLetElem(Property /*prop*/, bool is_var) {
   auto log = logger();
   // get identifier
   if (!ExpectId()) return nullptr;
@@ -391,8 +521,7 @@ ASTPtr Parser::ParseVarLetElem(Property prop, bool is_var) {
   }
   // get initialization expression
   ASTPtr init;
-  if ((!in_import_ || prop == Property::None || prop == Property::Inline) &&
-      IsTokenOperator(Operator::Assign)) {
+  if (IsTokenOperator(Operator::Assign)) {
     NextToken();
     init = ParseExpr();
     if (!init) return nullptr;
@@ -417,6 +546,8 @@ ASTPtr Parser::ParseArgElem() {
 
 ASTPtr Parser::ParseStructElem() {
   auto log = logger();
+  const bool is_public = IsTokenKeyword(Keyword::Public);
+  if (is_public) NextToken();
   // get identifier
   if (!ExpectId()) return nullptr;
   const auto id = lexer()->id_val();
@@ -426,7 +557,7 @@ ASTPtr Parser::ParseStructElem() {
   // get type
   auto type = ParseType();
   if (!type) return nullptr;
-  return MakeAST<StructElemAST>(log, id, std::move(type));
+  return MakeAST<StructElemAST>(log, id, std::move(type), is_public);
 }
 
 ASTPtr Parser::ParseEnumElem() {
@@ -649,7 +780,8 @@ ASTPtr Parser::ParseExpr() {
     ASTPtrList args;
     args.push_back(std::move(lhs));
     args.push_back(std::move(rhs));
-    lhs = MakeAST<FunCallAST>(log, std::move(id), std::move(args));
+    lhs = MakeAST<FunCallAST>(log, std::move(id), std::move(args),
+                              FunCallAST::CallKind::Infix);
   }
   return lhs;
 }
@@ -832,19 +964,18 @@ ASTPtr Parser::ParseAccess(ASTPtr expr) {
   if (!ExpectId()) return nullptr;
   const auto id = lexer()->id_val();
   NextToken();
+  auto access = MakeAST<AccessAST>(log, std::move(expr), id);
   // check if is a dot function call
   if (IsTokenChar('(') && last_token_ != Token::EOL) {
     NextToken();
     // get argument list
     ASTPtrList args;
-    args.push_back(std::move(expr));
     if (!GetExprList(args)) return nullptr;
-    // generate function call
-    auto id_ast = MakeAST<IdAST>(log, id);
-    return MakeAST<FunCallAST>(log, std::move(id_ast), std::move(args));
+    return MakeAST<FunCallAST>(log, std::move(access), std::move(args),
+                               FunCallAST::CallKind::Dot);
   }
   // just access
-  return MakeAST<AccessAST>(log, std::move(expr), id);
+  return access;
 }
 
 ASTPtr Parser::ParseValue() {
@@ -997,9 +1128,17 @@ ASTPtr Parser::ParseValType() {
   }
   if (cur_token_ == Token::Id) {
     // user defined type
-    auto type = MakeAST<UserTypeAST>(lexer()->id_val());
+    auto log = logger();
+    std::string name = lexer()->id_val();
     NextToken();
-    return type;
+    while (last_token_ != Token::EOL && IsTokenOperator(Operator::Access)) {
+      NextToken();
+      if (!ExpectId()) return nullptr;
+      name += '.';
+      name += lexer()->id_val();
+      NextToken();
+    }
+    return MakeAST<UserTypeAST>(log, std::move(name));
   }
   return LogError("invalid value type");
 }
@@ -1102,22 +1241,22 @@ ASTPtr Parser::ParseRef(bool is_var, ASTPtr type) {
 }
 
 Property Parser::GetProp() {
+  auto prop = Property::None;
   if (IsTokenKeyword(Keyword::Public)) {
     // eat 'public'
     NextToken();
-    return Property::Public;
+    prop = Property::Public;
   }
   if (IsTokenKeyword(Keyword::Extern)) {
     // eat 'extern'
     NextToken();
-    return Property::Extern;
-  }
-  if (IsTokenKeyword(Keyword::Inline)) {
+    prop = prop | Property::Extern;
+  } else if (IsTokenKeyword(Keyword::Inline)) {
     // eat 'inline'
     NextToken();
-    return Property::Inline;
+    prop = prop | Property::Inline;
   }
-  return Property::None;
+  return prop;
 }
 
 ASTPtr Parser::GetStatement(Property prop) {

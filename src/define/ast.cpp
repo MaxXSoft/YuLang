@@ -95,11 +95,13 @@ void ConvertChar(std::ostream &os, char c, bool in_char) {
 void DumpProperty(std::ostream &os, Property prop) {
   if (!indent_count) {
     os << indent;
-    if (prop == Property::None) {
+    if (!IsPublic(prop) && !IsExtern(prop)) {
       os << "static ";
-    } else if (prop == Property::Extern) {
+    }
+    if (IsExtern(prop)) {
       os << "extern \"C\" ";
-    } else if (prop == Property::Inline) {
+    }
+    if (IsInline(prop)) {
       os << "inline ";
     }
   }
@@ -181,16 +183,23 @@ void EnumAST::Dump(std::ostream &os) const {
 }
 
 void ImportAST::Dump(std::ostream &os) const {
-  os << indent << "/*" << '\n';
-  {
-    const auto ind = Indent();
-    os << indent << "imported contents:\n" << '\n';
-    for (const auto &i : defs_) {
-      i->Dump(os);
-      os << '\n';
+  os << indent << "/* import " << module_->id;
+  if (kind_ == ImportKind::Wildcard) {
+    os << ".*";
+  } else if (kind_ == ImportKind::Selected) {
+    os << ".{";
+    for (std::size_t i = 0; i < bindings_.size(); ++i) {
+      if (i) os << ", ";
+      const auto &binding = bindings_[i];
+      os << binding.name;
+      if (binding.alias != binding.name) os << " as " << binding.alias;
     }
+    os << '}';
+  } else if (!bindings_.empty() &&
+             bindings_.front().alias != bindings_.front().name) {
+    os << " as " << bindings_.front().alias;
   }
-  os << indent << "*/" << '\n';
+  os << " */" << '\n';
 }
 
 void VarLetElemAST::Dump(std::ostream &os) const {
@@ -215,6 +224,7 @@ void ArgElemAST::Dump(std::ostream &os) const {
 }
 
 void StructElemAST::Dump(std::ostream &os) const {
+  if (is_public_) os << "/* public */ ";
   type_->Dump(os);
   os << ' ' << id_;
 }

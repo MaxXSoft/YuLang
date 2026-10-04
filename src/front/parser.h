@@ -2,6 +2,8 @@
 #define YULANG_FRONT_PARSER_H_
 
 #include <string_view>
+#include <unordered_map>
+#include <unordered_set>
 
 #include "define/ast.h"
 #include "define/token.h"
@@ -17,15 +19,26 @@ class Parser {
   void Reset() {
     lexer()->Reset();
     ended_ = false;
-    in_import_ = 0;
     brace_depth_ = 0;
     token_index_ = 0;
+    modules_.clear();
+    module_cache_.clear();
+    loading_.clear();
+    import_stack_.clear();
+    root_.reset();
+    current_module_id_ = lex_man_.ModuleId(logger().cur_file());
+    if (current_module_id_.empty()) current_module_id_ = "<anonymous>";
+    last_token_ = define::Token::End;
     cur_token_ = define::Token::End;
     NextToken();
   }
 
   // get next AST from token stream
   define::ASTPtr ParseNext();
+  define::SourceModulePtr ParseModule();
+  [[nodiscard]] const std::vector<define::SourceModulePtr> &modules() const {
+    return modules_;
+  }
 
   // getters
   // returns true if parser met EOF
@@ -81,6 +94,7 @@ class Parser {
   define::ASTPtr MakeAST(Args &&...args) {
     auto ast = std::make_unique<T>(std::forward<Args>(args)...);
     ast->set_logger(logger());
+    ast->set_module_id(current_module_id_);
     return ast;
   }
 
@@ -89,6 +103,7 @@ class Parser {
   define::ASTPtr MakeAST(Logger &logger, Args &&...args) {
     auto ast = std::make_unique<T>(std::forward<Args>(args)...);
     ast->set_logger(logger);
+    ast->set_module_id(current_module_id_);
     return ast;
   }
 
@@ -96,6 +111,10 @@ class Parser {
   define::ASTPtr LogError(std::string_view message);
 
   define::ASTPtr ParseLine();
+  define::SourceModulePtr ParseImportedModule(
+      const std::filesystem::path &path);
+  define::SourceModulePtr BeginModule(const std::filesystem::path &path);
+  void ParseModuleContents(const define::SourceModulePtr &module);
 
   define::ASTPtr ParseVarLetDef(define::Property prop, bool is_var);
   define::ASTPtr ParseFunDef(define::Property prop);
@@ -178,8 +197,13 @@ class Parser {
   LexerManager &lex_man_;
   define::Token last_token_{define::Token::End}, cur_token_{define::Token::End};
   bool ended_{};
-  unsigned int in_import_{};
   std::size_t brace_depth_{}, token_index_{};
+  std::string current_module_id_;
+  define::SourceModulePtr root_;
+  std::vector<define::SourceModulePtr> modules_;
+  std::unordered_map<std::string, define::SourceModulePtr> module_cache_;
+  std::unordered_set<std::string> loading_;
+  std::vector<std::string> import_stack_;
 };
 
 }  // namespace yulang::front

@@ -1,7 +1,11 @@
 #include "front/lexman.h"
 
+#include <algorithm>
+#include <array>
+#include <fstream>
 #include <utility>
 
+#include "define/token.h"
 #include "front/unicode.h"
 
 namespace yulang::front {
@@ -10,8 +14,35 @@ namespace {
 
 using Path = std::filesystem::path;
 
-inline Path GetFullPath(const Path &p) {
-  return std::filesystem::canonical(std::filesystem::absolute(p));
+constexpr std::string_view kMarkerSuffix = ".lib.yu";
+const std::array kKeywords = {YULANG_KEYWORDS(YULANG_EXPAND_SECOND)};
+
+Path Canonical(const Path &path) {
+  std::error_code error;
+  auto result = std::filesystem::canonical(path, error);
+  return error ? Path{} : result;
+}
+
+bool IsInside(const Path &file, const Path &root) {
+  const auto relative = file.lexically_relative(root);
+  return !relative.empty() && *relative.begin() != "..";
+}
+
+bool IsMarker(const Path &path) {
+  const auto name = path.filename().string();
+  return name.size() >= kMarkerSuffix.size() &&
+         name.compare(name.size() - kMarkerSuffix.size(), kMarkerSuffix.size(),
+                      kMarkerSuffix) == 0;
+}
+
+bool IsName(std::string_view name) {
+  return unicode::IsIdentifier(name) &&
+         std::find(kKeywords.begin(), kKeywords.end(), name) == kKeywords.end();
+}
+
+bool Fail(std::string message) {
+  Logger::LogRawError(message);
+  return false;
 }
 
 }  // namespace
@@ -20,77 +51,160 @@ bool LexerManager::AddDefine(std::string_view definition) {
   const auto equal = definition.find('=');
   if (equal == std::string_view::npos || equal == 0) return false;
   const auto name = definition.substr(0, equal);
-  // Check if the name is a valid identifier.
   if (!unicode::IsIdentifier(name)) return false;
   defines_[std::string(name)] = std::string(definition.substr(equal + 1));
   return true;
 }
 
-bool LexerManager::AddImportPath(int priority, const Path &path) {
-  // return false if is invalid path
-  if (!std::filesystem::exists(path)) return false;
-  // get full path
-  const auto full_path = GetFullPath(path);
-  // insert if not exits
-  for (const auto &[_, p] : imp_paths_) {
-    if (p == full_path) return true;
+bool LexerManager::AddImportPath(int /*priority*/, const Path &path) {
+  const auto root = Canonical(path);
+  std::error_code error;
+  if (root.empty() || !std::filesystem::is_directory(root, error)) {
+    return Fail("invalid library root: " + path.string());
   }
-  imp_paths_.insert({priority, full_path});
+  for (const auto &library : libraries_) {
+    if (library.path == root) return true;
+  }
+
+  Path marker;
+  std::filesystem::directory_iterator entries(root, error), end;
+  while (!error && entries != end) {
+    if (IsMarker(entries->path())) {
+      if (!marker.empty()) {
+        return Fail("library root must contain exactly one .lib.yu marker: " +
+                    root.string());
+      }
+      marker = entries->path();
+    }
+    entries.increment(error);
+  }
+  if (error || marker.empty() ||
+      !std::filesystem::is_regular_file(marker, error)) {
+    return Fail("library root must contain exactly one .lib.yu marker: " +
+                root.string());
+  }
+  const auto filename = marker.filename().string();
+  const auto name = filename.substr(0, filename.size() - kMarkerSuffix.size());
+  if (!IsName(name)) return Fail("invalid library name: " + name);
+
+  std::ifstream input(marker, std::ios::binary);
+  if (!input) return Fail("cannot read library marker: " + marker.string());
+  char character{};
+  while (input.get(character)) {
+    if (character != ' ' && character != '\t' && character != '\n' &&
+        character != '\r' && character != '\f' && character != '\v') {
+      return Fail("library marker must contain only whitespace: " +
+                  marker.string());
+    }
+  }
+  if (!input.eof())
+    return Fail("cannot read library marker: " + marker.string());
+
+  for (const auto &library : libraries_) {
+    if (library.name == name) return Fail("duplicate library name: " + name);
+    if (IsInside(root, library.path) || IsInside(library.path, root)) {
+      return Fail("registered library roots must not overlap: " +
+                  root.string());
+    }
+  }
+  libraries_.push_back({name, root, marker});
+  if (!dependencies_.empty()) {
+    dependencies_.push_back(root);
+    dependencies_.push_back(marker);
+  }
   return true;
 }
 
 bool LexerManager::LoadSource(const Path &file) {
-  // return false if is invalid path
-  if (!std::filesystem::exists(file)) return false;
-  // add to import path
-  const auto full_path = GetFullPath(file);
-  AddImportPath(0, full_path.parent_path());
-  // create new lexer
-  return !!SetLexer(full_path);
+  const auto full_path = Canonical(file);
+  std::error_code error;
+  if (full_path.empty() ||
+      !std::filesystem::is_regular_file(full_path, error)) {
+    return false;
+  }
+  if (IsMarker(file) || IsMarker(full_path)) {
+    return Fail("a library marker is not a source module");
+  }
+  if (!SetLexer(full_path)) return false;
+  for (const auto &library : libraries_) {
+    for (const auto &dependency : {library.path, library.marker}) {
+      if (std::find(dependencies_.begin(), dependencies_.end(), dependency) ==
+          dependencies_.end()) {
+        dependencies_.push_back(dependency);
+      }
+    }
+  }
+  return true;
 }
 
 Path LexerManager::GetModPath(const ModName &mod_name) {
-  // get relative path of specific module
-  Path mod_path;
-  for (std::size_t i = 0; i < mod_name.size(); ++i) {
-    if (i == mod_name.size() - 1) {
-      mod_path /= mod_name[i] + ".yu";
-    } else {
-      mod_path /= mod_name[i];
-    }
+  if (mod_name.size() < 2) return {};
+  const auto library = std::find_if(
+      libraries_.begin(), libraries_.end(),
+      [&](const auto &item) { return item.name == mod_name.front(); });
+  if (library == libraries_.end()) return {};
+  Path relative;
+  for (std::size_t i = 1; i < mod_name.size(); ++i) {
+    if (!IsName(mod_name[i])) return {};
+    relative /= mod_name[i];
   }
-  // try to find a valid module on the disk
-  for (const auto &[_, path] : imp_paths_) {
-    auto file = path / mod_path;
-    if (std::filesystem::exists(file)) return file;
+  relative += ".yu";
+  const auto file = Canonical(library->path / relative);
+  std::error_code error;
+  if (file.empty() || !std::filesystem::is_regular_file(file, error)) return {};
+  if (!IsInside(file, library->path)) {
+    Fail("import resolves outside its registered library root: " +
+         file.string());
+    return {};
+  }
+  return file;
+}
+
+std::string LexerManager::ModuleId(const Path &file) const {
+  const auto full_path = Canonical(file);
+  if (full_path.empty()) return {};
+  for (const auto &library : libraries_) {
+    if (!IsInside(full_path, library.path)) continue;
+    auto relative = full_path.lexically_relative(library.path);
+    if (relative.extension() != ".yu" || IsMarker(relative)) return {};
+    relative.replace_extension();
+    std::string id = library.name;
+    for (const auto &part : relative) {
+      const auto name = part.string();
+      if (!IsName(name)) {
+        Fail("invalid module path component: " + name);
+        return {};
+      }
+      id += '.';
+      id += name;
+    }
+    return id;
   }
   return {};
 }
 
 bool LexerManager::IsLoaded(const Path &file) {
-  return lexers_.find(file.string()) != lexers_.end();
+  return lexers_.find(Canonical(file).string()) != lexers_.end();
 }
 
 std::optional<LexerPtr> LexerManager::SetLexer(const Path &file) {
+  const auto full_path = Canonical(file);
+  if (full_path.empty()) return {};
   auto last = lexer_;
-  // find specific lexer
-  const auto file_str = file.string();
-  const auto it = lexers_.find(file_str);
-  if (it == lexers_.end()) {
-    if (!std::filesystem::exists(file)) return {};
-    // not found, create lexer
-    auto [it, _] = lexers_.insert({file_str, nullptr});
-    lexer_ = std::make_shared<Lexer>(it->first, defines_);
-    it->second = lexer_;
-    dependencies_.push_back(std::filesystem::absolute(file).lexically_normal());
+  const auto file_str = full_path.string();
+  const auto found = lexers_.find(file_str);
+  if (found == lexers_.end()) {
+    auto [entry, inserted] = lexers_.insert({file_str, nullptr});
+    (void)inserted;
+    lexer_ = std::make_shared<Lexer>(entry->first, defines_);
+    entry->second = lexer_;
+    dependencies_.push_back(full_path);
   } else {
-    // just set
-    lexer_ = it->second;
+    lexer_ = found->second;
   }
   return last;
 }
 
-// set current lexer
 LexerPtr LexerManager::SetLexer(const LexerPtr &lexer) {
   auto last = lexer_;
   lexer_ = lexer;

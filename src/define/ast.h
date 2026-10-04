@@ -30,7 +30,32 @@ class IRBuilder;
 namespace yulang::define {
 
 // property of statements
-enum class Property : std::uint8_t { None, Public, Extern, Inline };
+enum class Property : std::uint8_t {
+  None = 0,
+  Public = 1,
+  Extern = 2,
+  Inline = 4,
+};
+
+constexpr Property operator|(Property lhs, Property rhs) {
+  return static_cast<Property>(static_cast<std::uint8_t>(lhs) |
+                               static_cast<std::uint8_t>(rhs));
+}
+
+constexpr bool HasProperty(Property prop, Property flag) {
+  return (static_cast<std::uint8_t>(prop) & static_cast<std::uint8_t>(flag)) !=
+         0;
+}
+
+constexpr bool IsPublic(Property prop) {
+  return HasProperty(prop, Property::Public);
+}
+constexpr bool IsExtern(Property prop) {
+  return HasProperty(prop, Property::Extern);
+}
+constexpr bool IsInline(Property prop) {
+  return HasProperty(prop, Property::Inline);
+}
 
 // definition of base class of all ASTs
 class BaseAST {
@@ -59,6 +84,10 @@ class BaseAST {
 
   // setters
   void set_logger(const front::Logger &logger) { logger_ = logger; }
+  void set_module_id(std::string module_id) {
+    module_id_ = std::move(module_id);
+  }
+  void set_abi_reachable(bool value) { abi_reachable_ = value; }
   const TypePtr &set_ast_type(const TypePtr &ast_type) {
     return ast_type_ = ast_type;
   }
@@ -66,14 +95,38 @@ class BaseAST {
   // getters
   [[nodiscard]] const front::Logger &logger() const { return logger_; }
   [[nodiscard]] const TypePtr &ast_type() const { return ast_type_; }
+  [[nodiscard]] const std::string &module_id() const { return module_id_; }
+  [[nodiscard]] bool abi_reachable() const { return abi_reachable_; }
 
  private:
   front::Logger logger_;
   TypePtr ast_type_;
+  std::string module_id_;
+  bool abi_reachable_{};
 };
 
 using ASTPtr = std::unique_ptr<BaseAST>;
 using ASTPtrList = std::vector<ASTPtr>;
+
+// A source module is parsed once. Imports only add bindings to its definitions.
+struct SourceModule {
+  std::string id;
+  std::string path;
+  bool anonymous{};
+  ASTPtrList defs;
+};
+
+using SourceModulePtr = std::shared_ptr<SourceModule>;
+
+enum class ImportKind : std::uint8_t { Namespace, Selected, Wildcard };
+
+struct ImportBinding {
+  std::string name;
+  std::string alias;
+  // An actual child module with the same path as this selected definition.
+  // Sema rejects the import if both interpretations are valid.
+  SourceModulePtr module_alternative;
+};
 
 // variable/constant definition
 class VarLetDefAST : public BaseAST {
@@ -250,7 +303,15 @@ class EnumAST : public BaseAST {
 // imported definitions
 class ImportAST : public BaseAST {
  public:
-  explicit ImportAST(ASTPtrList defs) : defs_(std::move(defs)) {}
+  ImportAST(SourceModulePtr module, ImportKind kind,
+            std::vector<ImportBinding> bindings,
+            SourceModulePtr alternative_module = {},
+            std::string alternative_member = {})
+      : module_(std::move(module)),
+        kind_(kind),
+        bindings_(std::move(bindings)),
+        alternative_module_(std::move(alternative_module)),
+        alternative_member_(std::move(alternative_member)) {}
 
   [[nodiscard]] bool IsId() const override { return false; }
   [[nodiscard]] bool IsLiteral() const override { return false; }
@@ -261,10 +322,25 @@ class ImportAST : public BaseAST {
   mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
 
   // getters
-  [[nodiscard]] const ASTPtrList &defs() const { return defs_; }
+  [[nodiscard]] const ASTPtrList &defs() const { return module_->defs; }
+  [[nodiscard]] const SourceModulePtr &module() const { return module_; }
+  [[nodiscard]] ImportKind kind() const { return kind_; }
+  [[nodiscard]] const std::vector<ImportBinding> &bindings() const {
+    return bindings_;
+  }
+  [[nodiscard]] const SourceModulePtr &alternative_module() const {
+    return alternative_module_;
+  }
+  [[nodiscard]] const std::string &alternative_member() const {
+    return alternative_member_;
+  }
 
  private:
-  ASTPtrList defs_;
+  SourceModulePtr module_;
+  ImportKind kind_;
+  std::vector<ImportBinding> bindings_;
+  SourceModulePtr alternative_module_;
+  std::string alternative_member_;
 };
 
 // variable/constant definition element
@@ -291,6 +367,7 @@ class VarLetElemAST : public BaseAST {
   [[nodiscard]] bool is_var() const { return is_var_; }
 
   // setters
+  void set_id(std::string id) { id_ = std::move(id); }
   void set_init(ASTPtr init) { init_ = std::move(init); }
 
  private:
@@ -325,8 +402,8 @@ class ArgElemAST : public BaseAST {
 // element of structure elements
 class StructElemAST : public BaseAST {
  public:
-  StructElemAST(std::string id, ASTPtr type)
-      : id_(std::move(id)), type_(std::move(type)) {}
+  StructElemAST(std::string id, ASTPtr type, bool is_public = false)
+      : id_(std::move(id)), type_(std::move(type)), is_public_(is_public) {}
 
   [[nodiscard]] bool IsId() const override { return false; }
   [[nodiscard]] bool IsLiteral() const override { return false; }
@@ -339,10 +416,12 @@ class StructElemAST : public BaseAST {
   // getters
   [[nodiscard]] const std::string &id() const { return id_; }
   [[nodiscard]] const ASTPtr &type() const { return type_; }
+  [[nodiscard]] bool is_public() const { return is_public_; }
 
  private:
   std::string id_;
   ASTPtr type_;
+  bool is_public_{};
 };
 
 // element of enumeration list
@@ -642,10 +721,15 @@ class AccessAST : public BaseAST {
   // getters
   [[nodiscard]] const std::string &id() const { return id_; }
   [[nodiscard]] const ASTPtr &expr() const { return expr_; }
+  [[nodiscard]] const std::string &resolved_id() const { return resolved_id_; }
+
+  void set_resolved_id(std::string id) { resolved_id_ = std::move(id); }
+  ASTPtr TakeExpr() { return std::move(expr_); }
 
  private:
   std::string id_;
   ASTPtr expr_;
+  std::string resolved_id_;
 };
 
 // type casting expression
@@ -741,8 +825,11 @@ class IndexAST : public BaseAST {
 // function call
 class FunCallAST : public BaseAST {
  public:
-  FunCallAST(ASTPtr expr, ASTPtrList args)
-      : expr_(std::move(expr)), args_(std::move(args)) {}
+  enum class CallKind : std::uint8_t { Normal, Dot, Infix };
+
+  FunCallAST(ASTPtr expr, ASTPtrList args,
+             CallKind call_kind = CallKind::Normal)
+      : expr_(std::move(expr)), args_(std::move(args)), call_kind_(call_kind) {}
 
   [[nodiscard]] bool IsId() const override { return false; }
   [[nodiscard]] bool IsLiteral() const override { return false; }
@@ -755,14 +842,19 @@ class FunCallAST : public BaseAST {
   // getters
   [[nodiscard]] const ASTPtr &expr() const { return expr_; }
   [[nodiscard]] const ASTPtrList &args() const { return args_; }
+  [[nodiscard]] CallKind call_kind() const { return call_kind_; }
 
   // setters
   void set_args(ASTPtrList args) { args_ = std::move(args); }
   void set_arg(std::size_t index, ASTPtr arg) { args_[index] = std::move(arg); }
+  void set_expr(ASTPtr expr) { expr_ = std::move(expr); }
+  void set_call_kind(CallKind kind) { call_kind_ = kind; }
+  ASTPtrList TakeArgs() { return std::move(args_); }
 
  private:
   ASTPtr expr_;
   ASTPtrList args_;
+  CallKind call_kind_;
 };
 
 // integer number literal
