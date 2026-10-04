@@ -6,18 +6,12 @@
 #include <stack>
 #include <utility>
 
-#include "xstl/guard.h"
-
 namespace yulang::define {
 
 namespace {
 
-// used in 'StructType::IsIdentical' to prevent infinite loop
-// Empty libstdc++ stacks may allocate; startup failure is fatal.
-// NOLINTNEXTLINE(bugprone-throwing-static-initialization)
-std::stack<std::pair<const void *, const void *>> ident_types;
 // used in 'StructType::GetTrivialType' to prevent infinite loop
-// Same startup allocation policy as ident_types and the static pass registry.
+// Empty libstdc++ stacks may allocate; startup failure is fatal.
 // NOLINTNEXTLINE(bugprone-throwing-static-initialization)
 std::stack<std::pair<const void *, TypePtr>> trivial_types;
 
@@ -127,15 +121,15 @@ TypePtr PrimType::GetValueType(bool is_right) const {
 void StructType::CalcSize() {
   std::size_t sum = 0;
   std::size_t max_base_size = 1;
-  for (const auto &[_, t] : elems_) {
+  for (const auto &[_, t] : data_->elems) {
     const auto base_size = t->GetAlignSize();
     // Each field starts at its own alignment, including nested aggregates.
     sum += (base_size - sum % base_size) % base_size;
     sum += t->GetSize();
     max_base_size = std::max(base_size, max_base_size);
   }
-  size_ = sum + (max_base_size - sum % max_base_size) % max_base_size;
-  base_size_ = max_base_size;
+  data_->size = sum + (max_base_size - sum % max_base_size) % max_base_size;
+  data_->align = max_base_size;
 }
 
 bool StructType::CanAccept(const TypePtr &type) const {
@@ -143,41 +137,31 @@ bool StructType::CanAccept(const TypePtr &type) const {
 }
 
 bool StructType::IsIdentical(const TypePtr &type) const {
-  // check if is in recursion
-  if (!ident_types.empty()) {
-    const auto &[t1, t2] = ident_types.top();
-    if ((t1 == this && t2 == type.get()) || (t2 == this && t1 == type.get())) {
-      return true;
-    }
-  }
-  // prevent infinite loop
-  ident_types.emplace(this, type.get());
-  const auto pop = xstl::Guard([] { ident_types.pop(); });
-  // check if is identical
   if (!type->IsStruct()) return false;
-  if (elems_.size() != type->GetLength()) return false;
-  for (std::size_t i = 0; i < elems_.size(); ++i) {
-    if (!elems_[i].second->IsIdentical(type->GetElem(i))) return false;
-  }
-  return true;
+  const auto *other = type->GetNominalIdentity();
+  return other && (identity_.get() == other ||
+                   (!identity_->id.empty() && identity_->id == other->id &&
+                    identity_->owner_module == other->owner_module));
 }
 
 TypePtr StructType::GetElem(const std::string &name) const {
-  for (const auto &[n, t] : elems_)
+  for (const auto &[n, t] : data_->elems)
     if (name == n) return t;
   return nullptr;
 }
 
 std::optional<std::size_t> StructType::GetElemIndex(
     const std::string &name) const {
-  for (std::size_t i = 0; i < elems_.size(); ++i) {
-    if (elems_[i].first == name) return i;
+  for (std::size_t i = 0; i < data_->elems.size(); ++i) {
+    if (data_->elems[i].first == name) return i;
   }
   return {};
 }
 
 TypePtr StructType::GetValueType(bool is_right) const {
-  return std::make_shared<StructType>(elems_, id_, is_right);
+  auto type = std::make_shared<StructType>(*this);
+  type->is_right_ = is_right;
+  return type;
 }
 
 TypePtr StructType::GetTrivialType() const {
@@ -188,9 +172,10 @@ TypePtr StructType::GetTrivialType() const {
   // initialize as an empty struct type
   TypePairList elems;
   auto type = std::make_shared<StructType>(elems, id_, false);
+  type->identity_ = identity_;
   trivial_types.emplace(this, type);
   // convert elements
-  for (const auto &i : elems_) {
+  for (const auto &i : data_->elems) {
     elems.emplace_back(i.first, i.second->GetTrivialType());
   }
   // update type
@@ -204,7 +189,11 @@ bool EnumType::CanAccept(const TypePtr &type) const {
 }
 
 bool EnumType::IsIdentical(const TypePtr &type) const {
-  return type->IsEnum() && id_ == type->GetTypeId();
+  if (!type->IsEnum()) return false;
+  const auto *other = type->GetNominalIdentity();
+  return other && (identity_.get() == other ||
+                   (!identity_->id.empty() && identity_->id == other->id &&
+                    identity_->owner_module == other->owner_module));
 }
 
 TypePtr EnumType::GetElem(const std::string &name) const {
@@ -212,7 +201,9 @@ TypePtr EnumType::GetElem(const std::string &name) const {
 }
 
 TypePtr EnumType::GetValueType(bool is_right) const {
-  return std::make_shared<EnumType>(type_, elems_, id_, is_right);
+  auto type = std::make_shared<EnumType>(*this);
+  type->is_right_ = is_right;
+  return type;
 }
 
 TypePtr ConstType::GetElem(std::size_t index) const {

@@ -24,6 +24,15 @@ using TypePtrList = std::vector<TypePtr>;
 using TypePair = std::pair<std::string, TypePtr>;
 using TypePairList = std::vector<TypePair>;
 
+// Shared by all value-category and qualifier views of one declaration.
+// An unset identity remains unique to its declaration, even when names match.
+struct NominalIdentity {
+  std::string id;
+  std::string owner_module;
+  bool is_public{};
+  std::vector<bool> public_fields;
+};
+
 class BaseType {
  public:
   BaseType() = default;
@@ -33,6 +42,24 @@ class BaseType {
   BaseType &operator=(BaseType &&) = default;
 
   virtual ~BaseType() = default;
+
+  [[nodiscard]] virtual const NominalIdentity *GetNominalIdentity() const {
+    return nullptr;
+  }
+  [[nodiscard]] const std::string &GetOwnerModule() const {
+    static const std::string empty;
+    const auto *identity = GetNominalIdentity();
+    return identity ? identity->owner_module : empty;
+  }
+  [[nodiscard]] bool IsPublicType() const {
+    const auto *identity = GetNominalIdentity();
+    return identity && identity->is_public;
+  }
+  [[nodiscard]] bool IsFieldPublic(std::size_t index) const {
+    const auto *identity = GetNominalIdentity();
+    return identity && index < identity->public_fields.size() &&
+           identity->public_fields[index];
+  }
 
   // return true if is right value
   [[nodiscard]] virtual bool IsRightValue() const = 0;
@@ -222,8 +249,20 @@ class PrimType : public BaseType {
 class StructType : public BaseType {
  public:
   StructType(TypePairList elems, std::string id, bool is_right)
-      : elems_(std::move(elems)), id_(std::move(id)), is_right_(is_right) {
-    CalcSize();
+      : id_(std::move(id)), is_right_(is_right) {
+    set_elems(std::move(elems));
+  }
+
+  void SetIdentity(std::string id, std::string owner_module, bool is_public) {
+    identity_->id = std::move(id);
+    identity_->owner_module = std::move(owner_module);
+    identity_->is_public = is_public;
+  }
+  void SetFieldVisibility(std::vector<bool> public_fields) {
+    identity_->public_fields = std::move(public_fields);
+  }
+  [[nodiscard]] const NominalIdentity *GetNominalIdentity() const override {
+    return identity_.get();
   }
 
   [[nodiscard]] bool IsRightValue() const override { return is_right_; }
@@ -245,8 +284,10 @@ class StructType : public BaseType {
   [[nodiscard]] bool CanCastTo(const TypePtr &type) const override {
     return IsIdentical(type);
   }
-  [[nodiscard]] std::size_t GetSize() const override { return size_; }
-  [[nodiscard]] std::size_t GetAlignSize() const override { return base_size_; }
+  [[nodiscard]] std::size_t GetSize() const override { return data_->size; }
+  [[nodiscard]] std::size_t GetAlignSize() const override {
+    return data_->align;
+  }
   [[nodiscard]] std::optional<TypePtrList> GetArgsType() const override {
     return {};
   }
@@ -254,13 +295,17 @@ class StructType : public BaseType {
       const TypePtrList & /*args*/) const override {
     return nullptr;
   }
-  [[nodiscard]] std::size_t GetLength() const override { return elems_.size(); }
+  [[nodiscard]] std::size_t GetLength() const override {
+    return data_->elems.size();
+  }
   [[nodiscard]] TypePtr GetElem(std::size_t index) const override {
-    return elems_[index].second;
+    return data_->elems[index].second;
   }
   [[nodiscard]] TypePtr GetDerefedType() const override { return nullptr; }
   [[nodiscard]] TypePtr GetDeconstedType() const override { return nullptr; }
-  [[nodiscard]] std::string GetTypeId() const override { return id_; }
+  [[nodiscard]] std::string GetTypeId() const override {
+    return identity_->id.empty() ? id_ : identity_->id;
+  }
 
   [[nodiscard]] bool CanAccept(const TypePtr &type) const override;
   [[nodiscard]] bool IsIdentical(const TypePtr &type) const override;
@@ -272,17 +317,22 @@ class StructType : public BaseType {
 
   // setters
   void set_elems(TypePairList elems) {
-    elems_ = std::move(elems);
+    data_->elems = std::move(elems);
     CalcSize();
   }
 
  private:
   void CalcSize();
 
-  TypePairList elems_;
+  struct Data {
+    TypePairList elems;
+    std::size_t size{}, align{1};
+  };
+  std::shared_ptr<Data> data_{std::make_shared<Data>()};
+  std::shared_ptr<NominalIdentity> identity_{
+      std::make_shared<NominalIdentity>()};
   std::string id_;
   bool is_right_;
-  std::size_t size_{}, base_size_{};
 };
 
 class EnumType : public BaseType {
@@ -294,6 +344,15 @@ class EnumType : public BaseType {
         elems_(std::move(elems)),
         id_(std::move(id)),
         is_right_(is_right) {}
+
+  void SetIdentity(std::string id, std::string owner_module, bool is_public) {
+    identity_->id = std::move(id);
+    identity_->owner_module = std::move(owner_module);
+    identity_->is_public = is_public;
+  }
+  [[nodiscard]] const NominalIdentity *GetNominalIdentity() const override {
+    return identity_.get();
+  }
 
   [[nodiscard]] bool IsRightValue() const override { return is_right_; }
   [[nodiscard]] bool IsVoid() const override { return false; }
@@ -337,7 +396,9 @@ class EnumType : public BaseType {
   }
   [[nodiscard]] TypePtr GetDerefedType() const override { return nullptr; }
   [[nodiscard]] TypePtr GetDeconstedType() const override { return nullptr; }
-  [[nodiscard]] std::string GetTypeId() const override { return id_; }
+  [[nodiscard]] std::string GetTypeId() const override {
+    return identity_->id.empty() ? id_ : identity_->id;
+  }
   [[nodiscard]] TypePtr GetTrivialType() const override {
     return type_->GetTrivialType();
   }
@@ -350,6 +411,8 @@ class EnumType : public BaseType {
  private:
   TypePtr type_;
   ElemSet elems_;
+  std::shared_ptr<NominalIdentity> identity_{
+      std::make_shared<NominalIdentity>()};
   std::string id_;
   bool is_right_;
 };
@@ -357,6 +420,10 @@ class EnumType : public BaseType {
 class ConstType : public BaseType {
  public:
   explicit ConstType(TypePtr type) : type_(std::move(type)) {}
+
+  [[nodiscard]] const NominalIdentity *GetNominalIdentity() const override {
+    return type_->GetNominalIdentity();
+  }
 
   [[nodiscard]] bool IsRightValue() const override {
     return type_->IsRightValue();
@@ -485,6 +552,10 @@ class FuncType : public BaseType {
 class VolaType : public BaseType {
  public:
   explicit VolaType(TypePtr type) : type_(std::move(type)) {}
+
+  [[nodiscard]] const NominalIdentity *GetNominalIdentity() const override {
+    return type_->GetNominalIdentity();
+  }
 
   [[nodiscard]] bool IsRightValue() const override {
     return type_->IsRightValue();
@@ -677,6 +748,10 @@ class PointerType : public BaseType {
 class RefType : public BaseType {
  public:
   explicit RefType(TypePtr base) : base_(std::move(base)) {}
+
+  [[nodiscard]] const NominalIdentity *GetNominalIdentity() const override {
+    return base_->GetNominalIdentity();
+  }
 
   [[nodiscard]] bool IsRightValue() const override { return false; }
   [[nodiscard]] bool IsVoid() const override { return base_->IsVoid(); }
